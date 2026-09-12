@@ -28,7 +28,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run unit tests
-        run: pnpm --filter @bookmark-syncer/app test
+        run: pnpm --filter @marksync/app test
 
       - name: Build (includes tsc type check)
         run: pnpm build

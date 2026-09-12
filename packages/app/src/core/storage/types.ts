@@ -90,8 +90,9 @@ export interface LastBackupFileInfo {
  * 常量配置
  */
 export const STORAGE_CONSTANTS = {
-  /** 默认备份目录 */
-  BACKUP_DIR: 'BookmarkSyncer',
+  /** 默认备份目录（v1.2.0 品牌重塑：由 BookmarkSyncer 更名，
+   * 旧目录数据保留在 WebDAV 上作为备份，升级后首次上传会在新目录重新播种） */
+  BACKUP_DIR: 'MarkSync',
   
   /** 缓存有效期（毫秒）- 5分钟 */
   CACHE_EXPIRE_MS: 5 * 60 * 1000,

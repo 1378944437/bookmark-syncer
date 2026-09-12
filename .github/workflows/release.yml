@@ -53,16 +53,16 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           # 重命名 Chrome zip
-          mv apps/chrome-extension/chrome-extension.zip bookmark-syncer-chrome-v$VERSION.zip
+          mv apps/chrome-extension/chrome-extension.zip marksync-chrome-v$VERSION.zip
           # 重命名 Firefox xpi（web-ext 生成的文件名包含版本号）
           XPI_FILE=$(ls apps/firefox-extension/*.xpi | head -n 1)
           if [ -f "$XPI_FILE" ]; then
-            mv "$XPI_FILE" bookmark-syncer-firefox-v$VERSION.xpi
+            mv "$XPI_FILE" marksync-firefox-v$VERSION.xpi
           fi
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            bookmark-syncer-chrome-v${{ steps.version.outputs.version }}.zip
-            bookmark-syncer-firefox-v${{ steps.version.outputs.version }}.xpi
+            marksync-chrome-v${{ steps.version.outputs.version }}.zip
+            marksync-firefox-v${{ steps.version.outputs.version }}.xpi

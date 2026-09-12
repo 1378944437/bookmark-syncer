@@ -7,7 +7,7 @@
  */
 import browser from "webextension-polyfill";
 
-const MESSAGE_TYPE = "bookmark-syncer:sync-completed";
+const MESSAGE_TYPE = "marksync:sync-completed";
 const TOAST_DURATION_MS = 2500;
 const FADE_OUT_MS = 300;
 

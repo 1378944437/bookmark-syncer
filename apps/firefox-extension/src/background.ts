@@ -1,6 +1,6 @@
 /**
  * Firefox 扩展后台脚本
  */
-import { initBackground } from "@bookmark-syncer/app/src/background";
+import { initBackground } from "@marksync/app/src/background";
 
 initBackground();

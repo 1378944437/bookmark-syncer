@@ -26,7 +26,7 @@ importers:
 
   apps/chrome-extension:
     dependencies:
-      '@bookmark-syncer/app':
+      '@marksync/app':
         specifier: workspace:*
         version: link:../../packages/app
     devDependencies:
@@ -69,7 +69,7 @@ importers:
 
   apps/firefox-extension:
     dependencies:
-      '@bookmark-syncer/app':
+      '@marksync/app':
         specifier: workspace:*
         version: link:../../packages/app
     devDependencies:
@@ -3717,8 +3717,6 @@ snapshots:
       is-glob: 4.0.3
       normalize-path: 3.0.0
       readdirp: 3.6.0
-    optionalDependencies:
-      fsevents: 2.3.3
 
   chrome-launcher@1.2.0:
     dependencies:
@@ -4396,8 +4394,6 @@ snapshots:
   jsonfile@6.2.0:
     dependencies:
       universalify: 2.0.1
-    optionalDependencies:
-      graceful-fs: 4.2.11
 
   jszip@3.10.1:
     dependencies:
@@ -4798,9 +4794,7 @@ snapshots:
 
   reusify@1.1.0: {}
 
-  rollup@2.79.2:
-    optionalDependencies:
-      fsevents: 2.3.3
+  rollup@2.79.2: {}
 
   rollup@4.56.0:
     dependencies:
@@ -5091,7 +5085,6 @@ snapshots:
       rollup: 4.56.0
     optionalDependencies:
       '@types/node': 25.0.10
-      fsevents: 2.3.3
 
   vite@7.3.1(@types/node@25.0.10)(jiti@1.21.7)(yaml@2.8.2):
     dependencies:
@@ -5103,7 +5096,6 @@ snapshots:
       tinyglobby: 0.2.15
     optionalDependencies:
       '@types/node': 25.0.10
-      fsevents: 2.3.3
       jiti: 1.21.7
       yaml: 2.8.2
 

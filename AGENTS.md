@@ -1,4 +1,4 @@
-# bookmark-syncer 工作流程规范
+# marksync 工作流程规范
 
 本文件是本项目的代理工作规范，改编自通用《工作流程规范》。架构详情以 `REFACTORING.md` 为权威正文，本文件只引用其操作性红线。
 
@@ -6,7 +6,7 @@
 
 - 隐私优先的 WebDAV 书签同步浏览器扩展（Chrome / Firefox / Edge），支持增量同步与本地快照备份。
 - pnpm monorepo（`packageManager: pnpm@10.26.2`）：
-  - `packages/app`（`@bookmark-syncer/app`）：全部核心逻辑，DDD 分层（`infrastructure` / `core` / `application` / `components` / `background`），测试在 `tests/`，目录镜像 `src/` 分层。
+  - `packages/app`（`@marksync/app`）：全部核心逻辑，DDD 分层（`infrastructure` / `core` / `application` / `components` / `background`），测试在 `tests/`，目录镜像 `src/` 分层。
   - `apps/chrome-extension`、`apps/firefox-extension`：两个壳工程，仅入口与 manifest。
 - 技术栈：TypeScript（strict）+ React 19 + Vite 5 + Vitest 4 + Tailwind 3。
 - 当前目录**没有 .git 仓库**；`.github/` 配置在仓库重建后才生效。
@@ -56,7 +56,7 @@
 
 | 检查 | 命令 | 能证明的范围 |
 | --- | --- | --- |
-| 单元测试 | `pnpm test`（= `pnpm --filter @bookmark-syncer/app test`，Vitest） | 已执行用例覆盖的行为 |
+| 单元测试 | `pnpm test`（= `pnpm --filter @marksync/app test`，Vitest） | 已执行用例覆盖的行为 |
 | 构建 + 类型检查 | `pnpm build`（全量）；`pnpm build:chrome` / `pnpm build:firefox`（内含 tsc strict） | 指定环境能生成产物、类型一致 |
 | 开发运行 | `pnpm dev:chrome` / `pnpm dev:firefox` | 扩展在浏览器中的实际表现（人工检查） |
 | 打包 | `pnpm package`（Firefox 签名需 `.env` 凭证） | 发布产物可用 |

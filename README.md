@@ -2,21 +2,21 @@
   <img src="./packages/app/assets/icon.png" alt="Logo" width="80" height="80">
 </p>
 
-<h1 align="center">书签同步助手</h1>
+<h1 align="center">汇签</h1>
 
 <p align="center">
   跨浏览器书签同步工具，基于 WebDAV 协议的自托管方案。
 </p>
 
 <p align="center">
-  <a href="https://github.com/Yueby/bookmark-syncer/releases/latest">
-    <img src="https://img.shields.io/github/downloads/Yueby/bookmark-syncer/total?style=flat-square&logo=github" alt="Downloads">
+  <a href="https://github.com/1378944437/bookmark-syncer/releases/latest">
+    <img src="https://img.shields.io/github/downloads/1378944437/bookmark-syncer/total?style=flat-square&logo=github" alt="Downloads">
   </a>
-  <a href="https://github.com/Yueby/bookmark-syncer/releases/latest">
-    <img src="https://img.shields.io/github/v/release/Yueby/bookmark-syncer?style=flat-square&logo=github" alt="Release">
+  <a href="https://github.com/1378944437/bookmark-syncer/releases/latest">
+    <img src="https://img.shields.io/github/v/release/1378944437/bookmark-syncer?style=flat-square&logo=github" alt="Release">
   </a>
   <a href="./LICENSE">
-    <img src="https://img.shields.io/github/license/Yueby/bookmark-syncer?style=flat-square" alt="License">
+    <img src="https://img.shields.io/github/license/1378944437/bookmark-syncer?style=flat-square" alt="License">
   </a>
 </p>
 
@@ -63,7 +63,7 @@
 
 **最低版本要求：Firefox 140+**
 
-1. 下载最新版本的 `bookmark-syncer-firefox-vX.X.X.xpi`（已签名）
+1. 下载最新版本的 `marksync-firefox-vX.X.X.xpi`（已签名）
 2. 拖拽 `.xpi` 文件到 Firefox 窗口
 3. 点击「添加」按钮确认安装
 

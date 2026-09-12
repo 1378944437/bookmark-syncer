@@ -26,7 +26,7 @@ describe("notifySyncCompleted", () => {
       type: string;
       text: string;
     };
-    expect(message.type).toBe("bookmark-syncer:sync-completed");
+    expect(message.type).toBe("marksync:sync-completed");
     expect(message.text).toBeTruthy();
   });
 

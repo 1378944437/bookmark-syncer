@@ -9,7 +9,7 @@ import browser from "webextension-polyfill";
 import type { SyncResult } from "../core/sync";
 
 const BADGE_DURATION_MS = 2000;
-const SYNC_COMPLETED_MESSAGE = "bookmark-syncer:sync-completed";
+const SYNC_COMPLETED_MESSAGE = "marksync:sync-completed";
 
 let badgeTimer: ReturnType<typeof setTimeout> | null = null;
 

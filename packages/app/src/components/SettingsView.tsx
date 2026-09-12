@@ -317,7 +317,7 @@ function AboutPage({ onBack }: { onBack: () => void }) {
   const checkUpdate = async () => {
     setChecking(true)
     try {
-      const res = await fetch('https://api.github.com/repos/Yueby/bookmark-syncer/releases/latest')
+      const res = await fetch('https://api.github.com/repos/1378944437/bookmark-syncer/releases/latest')
       const data = await res.json()
       // GitHub release tag might be "v1.0.1", semver needs "1.0.1"
       const remoteVersion = data.tag_name?.replace(/^v/, '')
@@ -346,7 +346,7 @@ function AboutPage({ onBack }: { onBack: () => void }) {
       <SubPageHeader title={t('settings.about.title')} onBack={onBack} />
       <div className="space-y-4 pb-4">
         <div className="p-4 rounded-xl bg-secondary/30 text-center">
-          <h3 className="text-xl font-bold text-foreground">Bookmark Syncer</h3>
+          <h3 className="text-xl font-bold text-foreground">MarkSync</h3>
           <p className="text-sm text-muted-foreground mt-1">v{currentVersion}</p>
         </div>
         <div className="p-4 rounded-xl bg-secondary/30">
@@ -363,7 +363,7 @@ function AboutPage({ onBack }: { onBack: () => void }) {
         {updateAvailable ? (
           <Button
             className="w-full bg-green-600 hover:bg-green-700 text-white"
-            onClick={() => window.open(`https://github.com/Yueby/bookmark-syncer/releases/tag/${updateAvailable}`, '_blank')}
+            onClick={() => window.open(`https://github.com/1378944437/bookmark-syncer/releases/tag/${updateAvailable}`, '_blank')}
           >
             {t('settings.about.downloadNew', { version: updateAvailable })}
           </Button>
