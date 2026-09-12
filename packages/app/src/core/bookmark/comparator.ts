@@ -35,6 +35,12 @@ export function extractSignaturesWithHash(nodes: BookmarkNode[]): string[] {
 
 /**
  * 比对本地和云端是否一致
+ *
+ * 判定口径：书签多重集（URL+标题 的 hash）是否一致。
+ * 有意忽略顺序与文件夹排布——不同浏览器的层级/排序本就不同，
+ * 若按序比较，两端即使书签完全一样也永远无法判定"已同步"，
+ * 导致互相覆盖式同步（ping-pong）。文件夹结构差异属于设备本地偏好，
+ * 由覆盖拉取/推送按需搬运，不参与"是否需要同步"的判定
  */
 export async function compareWithCloud(
   localTree: BookmarkNode[],
@@ -52,22 +58,35 @@ export async function compareWithCloud(
     `[Comparator] Comparing signatures: local=${localSigs.length}, cloud=${cloudSigs.length}`,
   );
 
-  if (localSigs.length !== cloudSigs.length) {
-    console.log("[Comparator] Signature count differs");
+  // 只取书签签名（B|hash），组成多重集比较；文件夹签名（F|...）不参与
+  const toMultiset = (sigs: string[]): Map<string, number> => {
+    const multiset = new Map<string, number>();
+    for (const sig of sigs) {
+      if (sig.startsWith("B|")) {
+        multiset.set(sig, (multiset.get(sig) ?? 0) + 1);
+      }
+    }
+    return multiset;
+  };
+
+  const localMultiset = toMultiset(localSigs);
+  const cloudMultiset = toMultiset(cloudSigs);
+
+  if (localMultiset.size !== cloudMultiset.size) {
+    console.log(
+      `[Comparator] Bookmark multiset size differs: local=${localMultiset.size}, cloud=${cloudMultiset.size}`,
+    );
     return false;
   }
 
-  // 找出第一个不同的签名（用于调试）
-  for (let i = 0; i < localSigs.length; i++) {
-    if (localSigs[i] !== cloudSigs[i]) {
-      console.log(
-        `[Comparator] Signature differs at index ${i}:\nLocal: ${localSigs[i]}\nCloud: ${cloudSigs[i]}`,
-      );
+  for (const [sig, count] of localMultiset) {
+    if (cloudMultiset.get(sig) !== count) {
+      console.log(`[Comparator] Bookmark differs: ${sig} (local x${count})`);
       return false;
     }
   }
 
-  console.log("[Comparator] Signatures match");
+  console.log("[Comparator] Bookmark multisets match");
   return true;
 }
 

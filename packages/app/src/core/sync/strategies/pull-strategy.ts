@@ -61,9 +61,10 @@ export async function smartPull(
     // 0. 创建本地快照（下载前备份）
     console.log("[PullStrategy] Creating local snapshot before pull...");
     let currentTree: BookmarkNode[] = [];
+    let currentCount = 0;
     try {
       currentTree = await bookmarkRepository.getTree();
-      const currentCount = countBookmarks(currentTree);
+      currentCount = countBookmarks(currentTree);
       await snapshotManager.createSnapshot(
         currentTree,
         currentCount,
@@ -127,6 +128,20 @@ export async function smartPull(
       }
     } catch (error) {
       console.warn("[ThreeWay] Conflict detection failed:", error);
+    }
+
+    // 防呆：覆盖拉取前，若云端书签数远少于本地（不足一半且本地非空），
+    // 大概率是目录迁移未播种/云端异常，中止以保护本地书签。
+    // 确认要以云端为准时，请使用「云端备份」中的恢复功能（无此保护）
+    if (mode === "overwrite" && currentCount > 20 && cloudCount < currentCount / 2) {
+      console.error(
+        `[PullStrategy] Overwrite pull aborted: cloud (${cloudCount}) far below local (${currentCount})`,
+      );
+      return {
+        success: false,
+        action: "error",
+        message: `云端仅 ${cloudCount} 条，本地有 ${currentCount} 条，已中止覆盖拉取以防误覆盖；如确认以云端为准，请在「云端备份」中使用恢复功能`,
+      };
     }
 
     // 2. 恢复书签

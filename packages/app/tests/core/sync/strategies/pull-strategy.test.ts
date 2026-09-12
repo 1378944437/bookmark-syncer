@@ -139,6 +139,42 @@ beforeEach(() => {
 });
 
 describe("smartPull - 基本流程", () => {
+  it("云端数量远少于本地时中止覆盖拉取（防误覆盖保护）", async () => {
+    // 真实计数：本地 30 条、云端 5 条
+    mockCountBookmarks.mockImplementation((nodes: any[]) => {
+      let count = 0;
+      const walk = (ns: any[]) => {
+        for (const n of ns) {
+          if (n.url) count++;
+          if (n.children) walk(n.children);
+        }
+      };
+      walk(nodes);
+      return count;
+    });
+    mockGetTree.mockResolvedValueOnce(
+      Array.from({ length: 30 }, (_, i) => ({
+        title: `B${i}`,
+        url: `https://b${i}.com`,
+      })),
+    );
+    mockGetFileWithDedup.mockResolvedValueOnce(
+      JSON.stringify({
+        metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
+        data: Array.from({ length: 5 }, (_, i) => ({
+          title: `C${i}`,
+          url: `https://c${i}.com`,
+        })),
+      }),
+    );
+
+    const result = await smartPull(testConfig, "manual", "overwrite");
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("中止");
+    expect(mockRestoreFromBackup).not.toHaveBeenCalled();
+  });
+
   it("正常拉取（overwrite 模式）", async () => {
     const result = await smartPull(testConfig, "manual", "overwrite");
 

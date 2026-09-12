@@ -2,7 +2,7 @@
  * comparator.ts 测试
  * 测试书签树统计和签名提取逻辑
  */
-import { computeTreeHash, countBookmarks, extractSignaturesWithHash } from "@src/core/bookmark/comparator";
+import { compareWithCloud, computeTreeHash, countBookmarks, extractSignaturesWithHash } from "@src/core/bookmark/comparator";
 import type { BookmarkNode } from "@src/types";
 import { describe, expect, it, vi } from "vitest";
 
@@ -135,5 +135,57 @@ describe("computeTreeHash", () => {
     const before: BookmarkNode[] = [{ title: "F", children: [] }];
     const after: BookmarkNode[] = [{ title: "G", children: [] }];
     expect(await computeTreeHash(before)).not.toBe(await computeTreeHash(after));
+  });
+});
+
+describe("compareWithCloud（多重集口径）", () => {
+  const node = (title: string, url: string, hash: string): BookmarkNode => ({
+    title,
+    url,
+    hash,
+  });
+
+  it("相同书签、不同顺序/不同文件夹排布 → 视为一致", async () => {
+    const local: BookmarkNode[] = [
+      {
+        id: "1",
+        title: "Bar",
+        folderType: "bookmarks-bar",
+        children: [node("A", "https://a.com", "h1"), node("B", "https://b.com", "h2")],
+      },
+    ];
+    const cloud: BookmarkNode[] = [
+      {
+        id: "2",
+        title: "Other",
+        folderType: "other",
+        children: [node("B", "https://b.com", "h2"), node("A", "https://a.com", "h1")],
+      },
+    ];
+    expect(await compareWithCloud(local, cloud)).toBe(true);
+  });
+
+  it("云端多一条书签 → 不一致", async () => {
+    const local: BookmarkNode[] = [node("A", "https://a.com", "h1")];
+    const cloud: BookmarkNode[] = [
+      node("A", "https://a.com", "h1"),
+      node("B", "https://b.com", "h2"),
+    ];
+    expect(await compareWithCloud(local, cloud)).toBe(false);
+  });
+
+  it("同 URL 不同标题（hash 不同）→ 不一致", async () => {
+    const local: BookmarkNode[] = [node("A", "https://a.com", "h1")];
+    const cloud: BookmarkNode[] = [node("A2", "https://a.com", "h2")];
+    expect(await compareWithCloud(local, cloud)).toBe(false);
+  });
+
+  it("重复次数不同（本地 A×1、云端 A×2）→ 不一致", async () => {
+    const local: BookmarkNode[] = [node("A", "https://a.com", "h1")];
+    const cloud: BookmarkNode[] = [
+      node("A", "https://a.com", "h1"),
+      node("A2", "https://a.com", "h1"),
+    ];
+    expect(await compareWithCloud(local, cloud)).toBe(false);
   });
 });
