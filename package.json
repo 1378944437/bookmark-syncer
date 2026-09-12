@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "build": "pnpm build:chrome && pnpm build:firefox",
+    "test": "pnpm --filter @bookmark-syncer/app test",
     "build:chrome": "pnpm --filter @bookmark-syncer/chrome-extension build",
     "build:firefox": "pnpm --filter @bookmark-syncer/firefox-extension build",
     "dev:chrome": "pnpm --filter @bookmark-syncer/chrome-extension dev",
