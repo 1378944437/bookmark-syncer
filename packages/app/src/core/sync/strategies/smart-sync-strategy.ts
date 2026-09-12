@@ -6,6 +6,7 @@ import { acquireSyncLock, getLastSyncTime, getSyncState, releaseSyncLock, setSyn
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../../types";
 import { getE2ESettings, getSyncScope } from "../../../application/state-manager";
+import { E2EDecryptError, E2EPasswordRequiredError } from "../../../infrastructure/utils/crypto";
 import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
 import { fileManager } from "../../storage";
 import { queueManager } from "../../storage/queue-manager";
@@ -91,6 +92,14 @@ export async function smartSync(
         }
       }
     } catch (error) {
+      // 端到端加密的提示/解密错误不能当作「云端无备份」处理：
+      // 否则会走 Case A 用本机明文覆盖云端加密现场
+      if (
+        error instanceof E2EPasswordRequiredError ||
+        error instanceof E2EDecryptError
+      ) {
+        throw error;
+      }
       console.warn("[SmartSyncStrategy] No cloud data found:", error);
     }
 

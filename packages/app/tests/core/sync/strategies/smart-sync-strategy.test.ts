@@ -277,6 +277,24 @@ describe("smartSync - 分支决策", () => {
     expect(mockSmartPull).not.toHaveBeenCalled();
   });
 
+  it("云端加密提示错误不被吞掉：直接报错而非明文覆盖", async () => {
+    const { E2EPasswordRequiredError } = await import("@src/infrastructure/utils/crypto");
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz.enc",
+      lastModified: Date.now(),
+    });
+    mockGetFileWithDedup.mockRejectedValueOnce(
+      new E2EPasswordRequiredError("云端备份已启用端到端加密"),
+    );
+
+    const result = await smartSync(testConfig, "auto-sync");
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("端到端加密");
+    expect(mockSmartPush).not.toHaveBeenCalled();
+    expect(mockSmartPull).not.toHaveBeenCalled();
+  });
+
   it("首次同步需要用户选择", async () => {
     mockGetLatestBackupFile.mockResolvedValueOnce({
       path: "BookmarkSyncer/backup.json.gz",
