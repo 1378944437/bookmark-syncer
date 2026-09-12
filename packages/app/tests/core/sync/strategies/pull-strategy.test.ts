@@ -65,6 +65,7 @@ vi.mock("@src/core/bookmark", () => ({
     restoreFromBackup: mockRestoreFromBackup,
     mergeFromBackup: mockMergeFromBackup,
   },
+  computeTreeHash: vi.fn(async () => "tree-hash-stub"),
   countBookmarks: mockCountBookmarks,
 }));
 

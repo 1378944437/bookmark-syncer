@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   getSyncState: vi.fn(),
   smartPush: vi.fn(),
   smartPull: vi.fn(),
+  getTree: vi.fn(),
+  computeTreeHash: vi.fn(),
 }));
 
 vi.mock("@src/application/state-manager", () => ({
@@ -25,6 +27,13 @@ vi.mock("@src/core/sync", () => ({
   getSyncState: (...args: any[]) => mocks.getSyncState(...args),
   smartPush: (...args: any[]) => mocks.smartPush(...args),
   smartPull: (...args: any[]) => mocks.smartPull(...args),
+}));
+
+vi.mock("@src/core/bookmark", () => ({
+  bookmarkRepository: {
+    getTree: (...args: any[]) => mocks.getTree(...args),
+  },
+  computeTreeHash: (...args: any[]) => mocks.computeTreeHash(...args),
 }));
 
 import { executeAutoPull, executeUpload } from "@src/application/sync-executor";
@@ -217,6 +226,8 @@ describe("executeAutoPull", () => {
       },
     ]);
     mocks.getSyncState.mockResolvedValue(null);
+    mocks.getTree.mockResolvedValue([]);
+    mocks.computeTreeHash.mockResolvedValue("hash-a");
     mocks.smartPull.mockResolvedValue({
       success: true,
       action: "downloaded",
@@ -224,6 +235,36 @@ describe("executeAutoPull", () => {
     });
     vi.mocked(browser.storage.local.get).mockResolvedValue({});
     vi.mocked(browser.alarms.create).mockResolvedValue(undefined as any);
+  });
+
+  it("本地干净时覆盖拉取（让其他设备的删除能传播）", async () => {
+    mocks.getSyncState.mockResolvedValueOnce({
+      url: config.url,
+      time: 1,
+      localHash: "hash-a",
+    });
+    await executeAutoPull();
+    expect(mocks.smartPull).toHaveBeenCalledWith(config, "auto_sync", "overwrite");
+    expect(mocks.smartPush).not.toHaveBeenCalled();
+  });
+
+  it("本地有未同步修改时改为合并拉取，并把合并结果推上云端", async () => {
+    mocks.getSyncState.mockResolvedValueOnce({
+      url: config.url,
+      time: 1,
+      localHash: "stale-hash",
+    });
+    mocks.computeTreeHash.mockResolvedValueOnce("hash-a");
+    await executeAutoPull();
+    expect(mocks.smartPull).toHaveBeenCalledWith(config, "auto_sync", "merge");
+    expect(mocks.smartPush).toHaveBeenCalled();
+  });
+
+  it("无本地基线（旧版本状态）时按本地脏处理，走合并不覆盖", async () => {
+    mocks.getSyncState.mockResolvedValueOnce({ url: config.url, time: 1 });
+    await executeAutoPull();
+    expect(mocks.smartPull).toHaveBeenCalledWith(config, "auto_sync", "merge");
+    expect(mocks.smartPush).toHaveBeenCalled();
   });
 
   it("检测到云端更新时执行 pull", async () => {

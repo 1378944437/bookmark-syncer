@@ -25,6 +25,7 @@ export { assignHashToNode, assignHashes } from "./hash-calculator";
 // 树比对
 export {
     compareWithCloud,
+    computeTreeHash,
     countBookmarks,
     extractSignaturesWithHash
 } from "./comparator";

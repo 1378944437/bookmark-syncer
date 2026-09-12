@@ -97,6 +97,7 @@ vi.mock("@src/core/bookmark", () => ({
     createCloudBackup: mockCreateCloudBackup,
   },
   compareWithCloud: mockCompareWithCloud,
+  computeTreeHash: vi.fn(async () => "tree-hash-stub"),
   countBookmarks: mockCountBookmarks,
 }));
 

@@ -41,6 +41,13 @@ export interface SyncState {
    * 旧版本状态无此字段，比较时退化为旧逻辑（见 sync-basis.ts）
    */
   basis?: SyncBasis;
+
+  /**
+   * 本地树签名基线：最后一次同步完成时的本地树整体哈希。
+   * 拉取前用它判断本地是否存在未同步的修改；
+   * 旧版本状态无此字段，视为“本地可能有修改”，走不丢数据的安全分支
+   */
+  localHash?: string;
 }
 
 /**

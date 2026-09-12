@@ -5,12 +5,12 @@
 import { acquireSyncLock, getLastSyncTime, getSyncState, releaseSyncLock, setSyncState } from "../";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../../types";
-import { bookmarkRepository, compareWithCloud, countBookmarks } from "../../bookmark";
+import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks } from "../../bookmark";
 import { fileManager } from "../../storage";
 import { queueManager } from "../../storage/queue-manager";
 import type { CloudInfo, WebDAVConfig } from "../../storage/types";
 import type { SmartSyncResult } from "../types";
-import { isCloudNewerThanBasis } from "../utils/sync-basis";
+import { isCloudNewerThanBasis, isLocalDirty } from "../utils/sync-basis";
 import { smartPull } from "./pull-strategy";
 import { smartPush } from "./push-strategy";
 
@@ -142,7 +142,23 @@ export async function smartSync(
     // 5. 智能判断（传递锁给子策略，避免释放后重新获取的竞态窗口）
     // 时间基准：服务器记录的文件时间，与设备本地时钟无关
     if (isCloudNewerThanBasis(latest, syncState, config.url)) {
-      // 云端比本地新 → 拉取
+      // 云端比本地新 → 拉取。但先判断本地是否有未同步的修改：
+      // 有 → 绝不静默覆盖（否则本地未上传的新增/修改会被删掉），交给用户选择方向
+      const currentTreeHash = await computeTreeHash(localTree);
+      if (isLocalDirty(syncState, currentTreeHash)) {
+        console.warn(
+          "[SmartSyncStrategy] Cloud is newer AND local has unsynced changes, asking user",
+        );
+        return {
+          success: false,
+          action: "skipped",
+          message: "本地有未同步的修改，需要选择同步方向",
+          needsConflictResolution: true,
+          cloudInfo,
+        };
+      }
+
+      // 本地干净 → 覆盖拉取（保留删除传播能力）
       console.log("[SmartSyncStrategy] Cloud is newer, pulling...");
       const result = await smartPull(config, lockHolder, "overwrite", { skipLock: true });
       const elapsed = Date.now() - startTime;

@@ -20,6 +20,7 @@ const {
   mockGetFileWithDedup,
   mockSmartPush,
   mockSmartPull,
+  mockComputeTreeHash,
   mockBookmarkTree,
 } = vi.hoisted(() => {
   const tree = [{ title: "Test", url: "https://test.com" }];
@@ -44,6 +45,7 @@ const {
     mockGetLatestBackupFile: vi.fn(async () => null),
     mockParseBackupFileName: vi.fn(() => null),
     mockGetFileWithDedup: vi.fn(async () => null),
+    mockComputeTreeHash: vi.fn(async () => "tree-hash-stub"),
     mockSmartPush: vi.fn(async () => ({
       success: true,
       action: "uploaded" as const,
@@ -74,6 +76,7 @@ vi.mock("@src/infrastructure/http/webdav-client", () => ({
 vi.mock("@src/core/bookmark", () => ({
   bookmarkRepository: { getTree: mockGetTree },
   compareWithCloud: mockCompareWithCloud,
+  computeTreeHash: mockComputeTreeHash,
   countBookmarks: mockCountBookmarks,
 }));
 
@@ -154,8 +157,12 @@ describe("smartSync - 分支决策", () => {
     );
     mockCompareWithCloud.mockResolvedValueOnce(false);
     mockGetLastSyncTime.mockResolvedValueOnce(Date.now() - 60000);
-    // 无状态（未同步过）→ 云端数据视为更新
-    mockGetSyncState.mockResolvedValueOnce(null);
+    // 本地基线与当前树一致（干净）→ 允许覆盖拉取
+    mockGetSyncState.mockResolvedValueOnce({
+      url: testConfig.url,
+      time: 1,
+      localHash: "tree-hash-stub",
+    });
 
     await smartSync(testConfig, "auto-sync");
 
@@ -165,6 +172,58 @@ describe("smartSync - 分支决策", () => {
       "overwrite",
       { skipLock: true }
     );
+  });
+
+  it("云端更新且本地有未同步修改时，不静默覆盖，交给用户选择", async () => {
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz",
+      lastModified: Date.now(),
+    });
+    mockGetFileWithDedup.mockResolvedValueOnce(
+      JSON.stringify({
+        metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
+        data: [{ title: "Cloud", url: "https://cloud.com" }],
+      })
+    );
+    mockCompareWithCloud.mockResolvedValueOnce(false);
+    mockGetLastSyncTime.mockResolvedValueOnce(Date.now() - 60000);
+    // 基线与当前树哈希不一致 → 本地脏
+    mockGetSyncState.mockResolvedValueOnce({
+      url: testConfig.url,
+      time: 1,
+      localHash: "outdated-hash",
+    });
+    mockComputeTreeHash.mockResolvedValueOnce("current-hash");
+
+    const result = await smartSync(testConfig, "auto-sync");
+
+    expect(result.needsConflictResolution).toBe(true);
+    expect(mockSmartPull).not.toHaveBeenCalled();
+    expect(mockSmartPush).not.toHaveBeenCalled();
+  });
+
+  it("无本地基线（旧版本状态）时视为本地脏，不覆盖拉取", async () => {
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz",
+      lastModified: Date.now(),
+    });
+    mockGetFileWithDedup.mockResolvedValueOnce(
+      JSON.stringify({
+        metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
+        data: [{ title: "Cloud", url: "https://cloud.com" }],
+      })
+    );
+    mockCompareWithCloud.mockResolvedValueOnce(false);
+    mockGetLastSyncTime.mockResolvedValueOnce(Date.now() - 60000);
+    mockGetSyncState.mockResolvedValueOnce({
+      url: testConfig.url,
+      time: 1,
+    });
+
+    const result = await smartSync(testConfig, "auto-sync");
+
+    expect(result.needsConflictResolution).toBe(true);
+    expect(mockSmartPull).not.toHaveBeenCalled();
   });
 
   it("本地更新时调用 smartPush（skipLock: true）", async () => {

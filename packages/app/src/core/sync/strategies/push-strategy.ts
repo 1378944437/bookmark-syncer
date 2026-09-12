@@ -8,7 +8,7 @@ import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { compressText } from "../../../infrastructure/utils/compression";
 import { CloudBackup } from "../../../types";
 import { snapshotManager } from "../../backup";
-import { bookmarkRepository, compareWithCloud, countBookmarks } from "../../bookmark";
+import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks } from "../../bookmark";
 import type { WebDAVConfig } from "../../storage";
 import { fileManager, STORAGE_CONSTANTS } from "../../storage";
 import { cacheManager } from "../../storage/cache-manager";
@@ -158,6 +158,7 @@ export async function smartPush(
                 url: config.url,
                 type: "skip_identical",
                 basis: { mtime: latest.lastModified, filePath: latest.path },
+                localHash: await computeTreeHash(localTree),
               });
               return {
                 success: true,
@@ -322,6 +323,8 @@ export async function smartPush(
       url: config.url,
       type: "upload",
       basis,
+      // 记录上传时的本地树签名，作为下次拉取前脏检测的基准
+      localHash: await computeTreeHash(localTree),
     });
 
     const elapsed = Date.now() - startTime;

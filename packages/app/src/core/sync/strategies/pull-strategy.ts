@@ -6,7 +6,7 @@ import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../../types";
 import { holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
 import { snapshotManager } from "../../backup";
-import { bookmarkRepository, countBookmarks } from "../../bookmark";
+import { bookmarkRepository, computeTreeHash, countBookmarks } from "../../bookmark";
 import type { WebDAVConfig } from "../../storage";
 import { fileManager } from "../../storage";
 import { queueManager } from "../../storage/queue-manager";
@@ -111,12 +111,21 @@ export async function smartPull(
       await bookmarkRepository.mergeFromBackup(cloudData);
     }
 
-    // 3. 更新同步时间（基线 = 所拉取文件的服务器时间）
+    // 3. 记录本地基线（重新读取恢复后的实际树，作为下次拉取前脏检测的基准）
+    let localHash: string | undefined;
+    try {
+      localHash = await computeTreeHash(await bookmarkRepository.getTree());
+    } catch (error) {
+      console.warn("[PullStrategy] Failed to compute local baseline:", error);
+    }
+
+    // 4. 更新同步时间（基线 = 所拉取文件的服务器时间）
     await setSyncState({
       time: Date.now(),
       url: config.url,
       type: "download",
       basis: { mtime: latest.lastModified, filePath: latest.path },
+      localHash,
     });
 
     const elapsed = Date.now() - startTime;

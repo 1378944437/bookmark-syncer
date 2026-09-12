@@ -6,13 +6,14 @@ import { getWebDAVClient } from "../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../types";
 import { holdRestoringUntil, setIsRestoring } from "../../application/state-manager";
 import { snapshotManager } from "../backup";
-import { bookmarkRepository, countBookmarks } from "../bookmark";
+import { bookmarkRepository, computeTreeHash, countBookmarks } from "../bookmark";
 import { fileManager, STORAGE_CONSTANTS } from "../storage";
 import { cacheManager } from "../storage/cache-manager";
 import { queueManager } from "../storage/queue-manager";
 import type { CloudBackupFile, CloudInfo, WebDAVConfig } from "../storage/types";
 import { acquireSyncLock, releaseSyncLock } from "./lock-manager";
 import { setSyncState } from "./state-manager";
+import type { SyncBasis } from "./types";
 import type { SyncResult } from "./types";
 
 const DIR = STORAGE_CONSTANTS.BACKUP_DIR;
@@ -194,11 +195,31 @@ export async function restoreFromCloudBackup(
     console.log("[CloudOperations] Restoring bookmarks...");
     await bookmarkRepository.restoreFromBackup(cloudData);
 
-    // 3. 更新同步时间
+    // 3. 记录基线：本地树签名 + 服务器时间基线
+    // 时间基线取当前云端最新文件（即使恢复的是更早的备份），
+    // 避免下一次自动拉取立即用较新的备份覆盖用户刚恢复的状态
+    let localHash: string | undefined;
+    try {
+      localHash = await computeTreeHash(await bookmarkRepository.getTree());
+    } catch (error) {
+      console.warn("[CloudOperations] Failed to compute local baseline:", error);
+    }
+
+    let basis: SyncBasis | undefined;
+    try {
+      const latest = await fileManager.getLatestBackupFile(client);
+      if (latest) basis = { mtime: latest.lastModified, filePath: latest.path };
+    } catch (error) {
+      console.warn("[CloudOperations] Failed to resolve latest backup time:", error);
+    }
+
+    // 4. 更新同步时间
     await setSyncState({
       time: Date.now(),
       url: config.url,
       type: "restore",
+      basis,
+      localHash,
     });
 
     const elapsed = Date.now() - startTime;

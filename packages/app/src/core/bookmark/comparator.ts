@@ -2,6 +2,7 @@
  * 书签树比对工具
  * 用于检测本地和云端的差异
  */
+import { generateHash } from "../../infrastructure/utils/crypto";
 import type { BookmarkNode, CloudBackup } from "../../types";
 import { assignHashes } from "./hash-calculator";
 import { isSystemRootFolder } from "./normalizer";
@@ -68,6 +69,17 @@ export async function compareWithCloud(
 
   console.log("[Comparator] Signatures match");
   return true;
+}
+
+/**
+ * 计算书签树的整体签名哈希（用于检测本地是否有未同步的修改）
+ * 与 compareWithCloud 使用同一套签名规则，保证口径一致：
+ * 同一棵树算出的哈希相同，任何书签/文件夹内容变化都会改变哈希
+ */
+export async function computeTreeHash(nodes: BookmarkNode[]): Promise<string> {
+  const withHash = await assignHashes(nodes);
+  const signatures = extractSignaturesWithHash(withHash);
+  return generateHash(signatures.join("\n"), "tree-signature");
 }
 
 /**

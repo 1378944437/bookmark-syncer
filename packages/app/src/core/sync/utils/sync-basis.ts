@@ -37,3 +37,11 @@ export function isCloudNewerThanBasis(
     (latest.lastModified === basis.mtime && latest.path !== basis.filePath)
   );
 }
+
+/**
+ * 判断本地是否存在未同步的修改
+ * 基线缺失（旧版本状态 / 从未记录）时视为脏，让调用方走不丢数据的安全分支
+ */
+export function isLocalDirty(state: SyncState | null, currentTreeHash: string): boolean {
+  return !state?.localHash || state.localHash !== currentTreeHash;
+}

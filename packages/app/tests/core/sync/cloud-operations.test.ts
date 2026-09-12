@@ -16,9 +16,11 @@ const mocks = vi.hoisted(() => ({
   cacheBackupList: vi.fn(),
   getFileWithDedup: vi.fn(),
   parseBackupFileName: vi.fn(),
+  getLatestBackupFile: vi.fn(),
   createSnapshot: vi.fn(),
   getTree: vi.fn(),
   restoreFromBackup: vi.fn(),
+  computeTreeHash: vi.fn(),
   countBookmarks: vi.fn(() => 10),
   acquireSyncLock: vi.fn(),
   releaseSyncLock: vi.fn(),
@@ -54,6 +56,7 @@ vi.mock("@src/core/storage/queue-manager", () => ({
 vi.mock("@src/core/storage", () => ({
   fileManager: {
     parseBackupFileName: (...args: any[]) => mocks.parseBackupFileName(...args),
+    getLatestBackupFile: (...args: any[]) => mocks.getLatestBackupFile(...args),
   },
   STORAGE_CONSTANTS: {
     BACKUP_DIR: "BookmarkSyncer",
@@ -71,6 +74,7 @@ vi.mock("@src/core/bookmark", () => ({
     getTree: (...args: any[]) => mocks.getTree(...args),
     restoreFromBackup: (...args: any[]) => mocks.restoreFromBackup(...args),
   },
+  computeTreeHash: (...args: any[]) => mocks.computeTreeHash(...args),
   countBookmarks: (...args: any[]) => mocks.countBookmarks(...args),
 }));
 
@@ -211,6 +215,8 @@ describe("restoreFromCloudBackup", () => {
     mocks.acquireSyncLock.mockResolvedValue(true);
     mocks.releaseSyncLock.mockResolvedValue(undefined);
     mocks.getTree.mockResolvedValue(sampleTree);
+    mocks.computeTreeHash.mockResolvedValue("tree-hash-stub");
+    mocks.getLatestBackupFile.mockResolvedValue(null);
     mocks.createSnapshot.mockResolvedValue(1);
     mocks.getFileWithDedup.mockResolvedValue(JSON.stringify(sampleBackup));
     mocks.restoreFromBackup.mockResolvedValue(undefined);

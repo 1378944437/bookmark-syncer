@@ -3,7 +3,8 @@
  * 执行上传和拉取同步操作
  */
 import { getCloudBackupList, getSyncState, smartPull, smartPush } from "../core/sync";
-import { isCloudNewerThanBasis } from "../core/sync/utils/sync-basis";
+import { isCloudNewerThanBasis, isLocalDirty } from "../core/sync/utils/sync-basis";
+import { bookmarkRepository, computeTreeHash } from "../core/bookmark";
 import {
     LOCK_HOLDER_AUTO,
     POST_PULL_UPLOAD_SUPPRESSION_MS,
@@ -155,6 +156,29 @@ export async function executeAutoPull(): Promise<void> {
     console.log(
       `[SyncExecutor] Cloud update detected (${latest.totalCount} bookmarks from ${latest.browser || "unknown"})`,
     );
+
+    // 本地有未同步的修改时不能覆盖拉取（会删掉本地未上传的变化）：
+    // 改用合并拉取保住本地改动，再把合并结果推上云端；
+    // 本地干净时才覆盖拉取（让其他设备删除的书签能正常传播）
+    const currentTree = await bookmarkRepository.getTree();
+    const currentTreeHash = await computeTreeHash(currentTree);
+    if (isLocalDirty(syncState, currentTreeHash)) {
+      console.log(
+        "[SyncExecutor] Local has unsynced changes, merging instead of overwriting",
+      );
+      const mergeResult = await smartPull(config, LOCK_HOLDER_AUTO, "merge");
+
+      if (!mergeResult.success) {
+        console.warn(`[SyncExecutor] Merge pull failed: ${mergeResult.message}`);
+        return;
+      }
+
+      const pushResult = await smartPush(config, LOCK_HOLDER_AUTO);
+      console.log(
+        `[SyncExecutor] Post-merge upload: ${pushResult.action}: ${pushResult.message}`,
+      );
+      return;
+    }
 
     const pullResult = await smartPull(config, LOCK_HOLDER_AUTO, "overwrite");
 

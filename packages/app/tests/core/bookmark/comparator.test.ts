@@ -2,7 +2,7 @@
  * comparator.ts 测试
  * 测试书签树统计和签名提取逻辑
  */
-import { countBookmarks, extractSignaturesWithHash } from "@src/core/bookmark/comparator";
+import { computeTreeHash, countBookmarks, extractSignaturesWithHash } from "@src/core/bookmark/comparator";
 import type { BookmarkNode } from "@src/types";
 import { describe, expect, it, vi } from "vitest";
 
@@ -110,5 +110,30 @@ describe("extractSignaturesWithHash", () => {
 
   it("空数组返回空签名", () => {
     expect(extractSignaturesWithHash([])).toEqual([]);
+  });
+});
+
+describe("computeTreeHash", () => {
+  it("同一棵树两次计算结果一致", async () => {
+    const nodes: BookmarkNode[] = [
+      { title: "F", children: [{ title: "A", url: "https://a.com", hash: "h1" }] },
+    ];
+    expect(await computeTreeHash(nodes)).toBe(await computeTreeHash(nodes));
+  });
+
+  it("书签内容变化会改变哈希", async () => {
+    const before: BookmarkNode[] = [
+      { title: "F", children: [{ title: "A", url: "https://a.com", hash: "h1" }] },
+    ];
+    const after: BookmarkNode[] = [
+      { title: "F", children: [{ title: "A", url: "https://a.com", hash: "h2" }] },
+    ];
+    expect(await computeTreeHash(before)).not.toBe(await computeTreeHash(after));
+  });
+
+  it("文件夹结构变化会改变哈希", async () => {
+    const before: BookmarkNode[] = [{ title: "F", children: [] }];
+    const after: BookmarkNode[] = [{ title: "G", children: [] }];
+    expect(await computeTreeHash(before)).not.toBe(await computeTreeHash(after));
   });
 });
