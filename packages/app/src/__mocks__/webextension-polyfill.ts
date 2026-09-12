@@ -105,6 +105,10 @@ const browser = {
     setBadgeTextColor: vi.fn(async () => {}),
     setTitle: vi.fn(async () => {}),
   },
+  tabs: {
+    query: vi.fn(async () => []),
+    sendMessage: vi.fn(async () => undefined),
+  },
   runtime: {
     getManifest: vi.fn(() => ({ version: "1.0.0" })),
     sendMessage: vi.fn(async () => undefined),

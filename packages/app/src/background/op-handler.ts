@@ -11,7 +11,7 @@
 import browser from "webextension-polyfill";
 import type { BackgroundOpMessage } from "../application/background-ops";
 import { smartPull, smartPush, smartSync, restoreFromCloudBackup } from "../core/sync";
-import { flashSyncBadge } from "../application/sync-indicator";
+import { notifySyncCompleted } from "../application/sync-indicator";
 import type { SyncResult } from "../core/sync/types";
 import { getWebDAVClient } from "../infrastructure/http/webdav-client";
 
@@ -76,7 +76,7 @@ export function registerBackgroundOpHandler(): void {
     console.log(`[BackgroundOpHandler] Executing: ${typed.type}`);
     return dispatch(typed)
       .then((result) => {
-        // 手动同步成功后同样闪现完成角标
+        // 手动同步成功后同样给出完成提示
         const syncResult = result as SyncResult | { ok: boolean } | undefined;
         if (
           syncResult &&
@@ -84,7 +84,7 @@ export function registerBackgroundOpHandler(): void {
           "action" in syncResult &&
           syncResult.success
         ) {
-          flashSyncBadge((syncResult as SyncResult).action);
+          void notifySyncCompleted((syncResult as SyncResult).action);
         }
         return result;
       })
