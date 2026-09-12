@@ -4,7 +4,7 @@
  */
 import { getWebDAVClient } from "../../infrastructure/http/webdav-client";
 import { CloudBackup, type BookmarkNode } from "../../types";
-import { getMissingFolderFallback, holdRestoringUntil, setIsRestoring } from "../../application/state-manager";
+import { getMissingFolderFallback, holdRestoringUntil, setIsRestoring, saveLastRemoteDevice } from "../../application/state-manager";
 import { snapshotManager } from "../backup";
 import { bookmarkRepository, computeTreeHash, detectThreeWayConflicts, countBookmarks } from "../bookmark";
 import { loadSyncBaseline, saveSyncBaseline } from "./utils/sync-baseline";
@@ -49,6 +49,7 @@ export async function getCloudInfo(config: WebDAVConfig, forceRefresh = false): 
     totalCount: latest.totalCount,
     browser: latest.browser,
     browserVersion: undefined,
+    deviceTag: latest.deviceTag,
   };
 
   console.log(
@@ -102,6 +103,7 @@ export async function getCloudBackupList(config: WebDAVConfig, forceRefresh = fa
       totalCount: parsed?.count,
       browser: parsed?.browser,
       browserVersion: undefined, // 不再提供
+      deviceTag: parsed?.deviceTag,
     };
   });
 
@@ -184,6 +186,19 @@ export async function restoreFromCloudBackup(
     }
     const cloudCount = countBookmarks(cloudData.data);
     const cloudTime = cloudData.metadata?.timestamp || 0;
+
+    // 记录云端备份所属设备（面板显示「来自 XX」）
+    if (cloudData.metadata?.deviceId || cloudData.metadata?.deviceName) {
+      try {
+        await saveLastRemoteDevice({
+          deviceId: cloudData.metadata.deviceId,
+          deviceName: cloudData.metadata.deviceName,
+          time: Date.now(),
+        });
+      } catch {
+        // 记录失败不影响恢复
+      }
+    }
     
     // 从文件名解析浏览器信息
     const parsed = fileManager.parseBackupFileName(fileName);

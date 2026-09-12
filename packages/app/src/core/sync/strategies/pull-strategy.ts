@@ -4,9 +4,15 @@
  */
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup, type BookmarkNode } from "../../../types";
-import { getMissingFolderFallback, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
+import { getMissingFolderFallback, getThreeWayMergeEnabled, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
 import { snapshotManager } from "../../backup";
-import { bookmarkRepository, computeTreeHash, detectThreeWayConflicts, countBookmarks } from "../../bookmark";
+import {
+  bookmarkRepository,
+  computeTreeHash,
+  detectThreeWayConflicts,
+  countBookmarks,
+  mergeThreeWay,
+} from "../../bookmark";
 import { loadSyncBaseline, saveSyncBaseline } from "../utils/sync-baseline";
 import type { WebDAVConfig } from "../../storage";
 import { fileManager } from "../../storage";
@@ -126,8 +132,29 @@ export async function smartPull(
     // 2. 恢复书签
     console.log(`[PullStrategy] Restoring bookmarks (${mode} mode)...`);
     const missingFolderFallback = await getMissingFolderFallback();
+    let targetTree: BookmarkNode[] = cloudData.data;
     if (mode === "overwrite") {
-      await bookmarkRepository.restoreFromBackup(cloudData, { missingFolderFallback });
+      // 三树合并（实验）：以基线为参照自动取舍本地与云端的改动，结果交由既有恢复流程应用
+      const threeWayEnabled = await getThreeWayMergeEnabled();
+      if (threeWayEnabled) {
+        const baseline = await loadSyncBaseline(config.url);
+        if (baseline) {
+          const merged = mergeThreeWay(baseline.data, currentTree, cloudData.data);
+          targetTree = merged.tree;
+          console.log(
+            `[ThreeWay] merged: adoptedCloud=${merged.report.adoptedCloud}, keptLocal=${merged.report.keptLocal}, conflicts=${merged.report.conflicts}, deletedByCloud=${merged.report.deletedByCloud}`,
+          );
+          if (merged.report.conflicts > 0) {
+            console.warn(
+              "[ThreeWay] conflicts (dual-kept):",
+              JSON.stringify(merged.report.samples),
+            );
+          }
+        } else {
+          console.log("[ThreeWay] enabled but no baseline yet, falling back to overwrite");
+        }
+      }
+      await bookmarkRepository.restoreFromBackup(targetTree, { missingFolderFallback });
     } else {
       await bookmarkRepository.mergeFromBackup(cloudData, { missingFolderFallback });
     }

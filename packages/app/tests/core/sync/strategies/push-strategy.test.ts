@@ -76,6 +76,8 @@ vi.mock("@src/application/state-manager", () => ({
   getBackupFileInterval: mockGetBackupFileInterval,
   getLastBackupFileInfo: mockGetLastBackupFileInfo,
   saveLastBackupFileInfo: mockSaveLastBackupFileInfo,
+  getDeviceIdentity: vi.fn(async () => ({ deviceId: "testdevice123", deviceName: "测试设备" })),
+  saveLastRemoteDevice: vi.fn(async () => {}),
 }));
 
 vi.mock("@src/infrastructure/browser/info", () => ({

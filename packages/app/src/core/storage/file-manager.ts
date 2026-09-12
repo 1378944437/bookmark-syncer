@@ -24,15 +24,21 @@ export class FileManager {
    * @param browser 浏览器名称（如 "Chrome", "Edge", "Firefox"）
    * @param count 书签总数
    * @param revisionNumber 修订版本号（默认1）
+   * @param deviceTag 设备短标识（可选，多设备区分来源）
    * @returns 文件名（不含 .gz 扩展名）
-   * 
+   *
    * @example
    * generateBackupFileName("Edge", 157, 1)
    * // => "bookmarks_20260127_143052_edge_157_v1.json"
-   * generateBackupFileName("Edge", 157, 3)
-   * // => "bookmarks_20260127_143052_edge_157_v3.json"
+   * generateBackupFileName("Edge", 157, 1, "a1b2c3d4")
+   * // => "bookmarks_20260127_143052_edge_157_d-a1b2c3d4_v1.json"
    */
-  generateBackupFileName(browser: string, count: number, revisionNumber: number = 1): string {
+  generateBackupFileName(
+    browser: string,
+    count: number,
+    revisionNumber: number = 1,
+    deviceTag?: string,
+  ): string {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -43,8 +49,9 @@ export class FileManager {
 
     // 浏览器名称转为小写并移除空格
     const browserSlug = browser.toLowerCase().replace(/\s+/g, "");
+    const deviceSegment = deviceTag ? `_d-${deviceTag}` : "";
 
-    return `bookmarks_${year}${month}${day}_${hours}${minutes}${seconds}_${browserSlug}_${count}_v${revisionNumber}.json`;
+    return `bookmarks_${year}${month}${day}_${hours}${minutes}${seconds}_${browserSlug}_${count}${deviceSegment}_v${revisionNumber}.json`;
   }
 
   /**
@@ -58,16 +65,16 @@ export class FileManager {
     // 移除 .gz 扩展名
     const cleanFileName = fileName.replace(/\.gz$/, '');
     
-    // 解析格式: bookmarks_20260127_143052_edge_157_v3.json
+    // 解析格式: bookmarks_20260127_143052_edge_157_v3.json（_d-xxx 设备段可选）
     const match = cleanFileName.match(
-      /^bookmarks_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_([a-z]+)_(\d+)_v(\d+)\.json$/
+      /^bookmarks_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_([a-z]+)_(\d+)(?:_d-([a-z0-9]+))?_v(\d+)\.json$/
     );
-    
+
     if (!match) {
       return null;
     }
-    
-    const [, year, month, day, hours, minutes, seconds, browser, count, revision] = match;
+
+    const [, year, month, day, hours, minutes, seconds, browser, count, device, revision] = match;
     const timestamp = new Date(
       parseInt(year),
       parseInt(month) - 1,
@@ -82,6 +89,7 @@ export class FileManager {
       browser,
       count: parseInt(count),
       revisionNumber: parseInt(revision),
+      deviceTag: device || undefined,
     };
   }
 

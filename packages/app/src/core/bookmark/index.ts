@@ -34,6 +34,10 @@ export {
 export type { ConflictSample, ThreeWayReport } from "./three-way";
 export { detectThreeWayConflicts } from "./three-way";
 
+// 三树合并（三方合并第 2 步）
+export type { ThreeWayMergeOptions, ThreeWayMergeReport, ThreeWayMergeSample } from "./three-way-merger";
+export { mergeThreeWay } from "./three-way-merger";
+
 // 树合并与同步
 export {
     buildGlobalIndex, createChildren, mergeNodes

@@ -118,6 +118,59 @@ export async function getMissingFolderFallback(): Promise<boolean> {
   return result.missing_folder_fallback === true;
 }
 
+/**
+ * 三树合并（实验）开关：拉取时以基线为参照自动取舍本地与云端的改动。
+ * 默认关闭——关闭时保持原行为（脏→合并拉取+推送；干净→覆盖拉取）
+ */
+export async function getThreeWayMergeEnabled(): Promise<boolean> {
+  const result = await browser.storage.local.get('three_way_merge_enabled');
+  return result.three_way_merge_enabled === true;
+}
+
+export interface DeviceIdentity {
+  deviceId: string;
+  deviceName: string;
+}
+
+/**
+ * 获取设备身份：deviceId 首次调用时生成并持久化；
+ * deviceName 为用户设置的备注（设置页可改，默认空，展示时回退浏览器名）
+ */
+export async function getDeviceIdentity(): Promise<DeviceIdentity> {
+  const result = await browser.storage.local.get(['device_id', 'device_name']);
+  let deviceId = result.device_id as string | undefined;
+  if (!deviceId) {
+    deviceId =
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `dev-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    await browser.storage.local.set({ device_id: deviceId });
+  }
+  const deviceName = (result.device_name as string) || "";
+  return { deviceId, deviceName };
+}
+
+export interface RemoteDeviceInfo {
+  deviceId?: string;
+  deviceName?: string;
+  time: number;
+}
+
+const LAST_REMOTE_DEVICE_KEY = 'last_remote_device';
+
+/**
+ * 记录最近一次从云端读到的备份所属设备（推送预检/恢复时捕获），
+ * 供面板显示「云端数据来自 XX」，无需额外下载
+ */
+export async function saveLastRemoteDevice(info: RemoteDeviceInfo): Promise<void> {
+  await browser.storage.local.set({ [LAST_REMOTE_DEVICE_KEY]: info });
+}
+
+export async function getLastRemoteDevice(): Promise<RemoteDeviceInfo | null> {
+  const result = await browser.storage.local.get(LAST_REMOTE_DEVICE_KEY);
+  return (result[LAST_REMOTE_DEVICE_KEY] as RemoteDeviceInfo | undefined) || null;
+}
+
 /** 上次定时同步检查的时间戳存储键 */
 const LAST_SCHEDULED_CHECK_KEY = 'last_scheduled_check';
 

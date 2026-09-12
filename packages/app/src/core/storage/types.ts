@@ -32,6 +32,8 @@ export interface CloudBackupFile {
   totalCount?: number;
   browser?: string;
   browserVersion?: string;
+  /** 设备短标识（文件名 _d-xxx 段，设备标识功能） */
+  deviceTag?: string;
 }
 
 /**
@@ -43,6 +45,8 @@ export interface CloudInfo {
   totalCount?: number;
   browser?: string;
   browserVersion?: string;
+  /** 设备短标识 */
+  deviceTag?: string;
 }
 
 /**
@@ -73,6 +77,8 @@ export interface BackupFileMetadata {
   browser: string;
   count: number;
   revisionNumber: number;
+  /** 设备短标识（可选段，v1.2.x 起写入） */
+  deviceTag?: string;
 }
 
 /**

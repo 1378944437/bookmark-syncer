@@ -135,3 +135,6 @@ export function initializeAutoSync(): void {
 
 // 导出定时同步相关函数
 export { resetScheduledSync, startScheduledSync, stopScheduledSync, updateScheduledSync } from "./scheduler";
+
+// 导出设备身份（设置页展示/编辑设备备注）
+export { getDeviceIdentity } from "./state-manager";

@@ -79,6 +79,9 @@ vi.mock("@src/core/bookmark", () => ({
     localAdded: 0,
     cloudAdded: 0,
   })),
+  mergeThreeWay: vi.fn(() => ({ tree: [], report: {
+    adoptedCloud: 0, keptLocal: 0, conflicts: 0, deletedByCloud: 0, samples: [],
+  } })),
   countBookmarks: mockCountBookmarks,
 }));
 

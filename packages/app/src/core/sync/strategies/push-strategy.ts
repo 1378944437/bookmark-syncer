@@ -2,7 +2,7 @@
  * 推送策略
  * 智能上传：检查内容差异，只有真正有变化时才上传
  */
-import { getBackupFileInterval, getLastBackupFileInfo, saveLastBackupFileInfo } from "../../../application/state-manager";
+import { getBackupFileInterval, getLastBackupFileInfo, getDeviceIdentity, saveLastBackupFileInfo, saveLastRemoteDevice } from "../../../application/state-manager";
 import { getBrowserInfo, isSameBrowser } from "../../../infrastructure/browser/info";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { compressText } from "../../../infrastructure/utils/compression";
@@ -100,6 +100,19 @@ export async function smartPush(
           }
           const cloudCount = countBookmarks(cloudData.data);
 
+          // 记录云端备份所属设备（面板显示「来自 XX」，无需额外下载）
+          if (cloudData.metadata?.deviceId || cloudData.metadata?.deviceName) {
+            try {
+              await saveLastRemoteDevice({
+                deviceId: cloudData.metadata.deviceId,
+                deviceName: cloudData.metadata.deviceName,
+                time: Date.now(),
+              });
+            } catch {
+              // 记录失败不影响同步
+            }
+          }
+
           console.log(
             `[PushStrategy] Cloud: ${cloudCount} bookmarks (${new Date(latest.lastModified).toISOString()})`,
           );
@@ -193,7 +206,13 @@ export async function smartPush(
 
     // 3. 执行上传 - 判断是否需要创建新文件
     console.log("[PushStrategy] Uploading to cloud...");
-    const backup = await bookmarkRepository.createCloudBackup();
+    const identity = await getDeviceIdentity();
+    const browserInfo = getBrowserInfo();
+    const deviceTag = identity.deviceId.replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase();
+    const backup = await bookmarkRepository.createCloudBackup({
+      deviceId: identity.deviceId,
+      deviceName: identity.deviceName || browserInfo.name,
+    });
 
     // 验证 backup 数据完整性
     if (!backup || !backup.data || !backup.metadata) {
@@ -224,8 +243,7 @@ export async function smartPush(
     let revisionNumber = 1;
     let isNewFile = true;
 
-    // 获取当前书签数量和浏览器信息
-    const browserInfo = getBrowserInfo();
+    // 获取当前书签数量（浏览器信息已在上方获取）
     const bookmarkCount = countBookmarks(backup.data);
     
     // 记录需要在上传后清理的旧文件路径
@@ -238,9 +256,10 @@ export async function smartPush(
       
       // 生成新文件名（书签数量会更新）
       targetFileName = fileManager.generateBackupFileName(
-        browserInfo.name, 
+        browserInfo.name,
         bookmarkCount,
-        lastBackupInfo.revisionNumber + 1  // 保持修订号递增
+        lastBackupInfo.revisionNumber + 1, // 保持修订号递增
+        deviceTag
       );
       targetFilePath = `${DIR}/${targetFileName}`;
       revisionNumber = lastBackupInfo.revisionNumber + 1;
@@ -250,9 +269,10 @@ export async function smartPush(
       // 时间窗口外：创建新文件
       console.log("[PushStrategy] Time window expired, creating new backup file");
       targetFileName = fileManager.generateBackupFileName(
-        browserInfo.name, 
+        browserInfo.name,
         bookmarkCount,
-        1 // 初始修订号
+        1, // 初始修订号
+        deviceTag
       );
       targetFilePath = `${DIR}/${targetFileName}`;
       revisionNumber = 1;

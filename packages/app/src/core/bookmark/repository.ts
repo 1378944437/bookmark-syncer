@@ -38,9 +38,12 @@ export class BookmarkRepository {
 
   /**
    * 创建云端备份
-   * 包含元数据和完整的书签树（带 hash）
+   * 包含元数据和完整的书签树（带 hash）；identity 为设备标识（可选）
    */
-  async createCloudBackup(): Promise<CloudBackup> {
+  async createCloudBackup(identity?: {
+    deviceId?: string;
+    deviceName?: string;
+  }): Promise<CloudBackup> {
     const tree = await this.getTree();
 
     // 为所有节点分配 Hash（动态计算）
@@ -49,6 +52,8 @@ export class BookmarkRepository {
     const metadata: BookmarkMetadata = {
       timestamp: Date.now(),
       clientVersion: "2.0.0-hash", // Hash 版本
+      ...(identity?.deviceId ? { deviceId: identity.deviceId } : {}),
+      ...(identity?.deviceName ? { deviceName: identity.deviceName } : {}),
     };
 
     return { metadata, data: treeWithHash };

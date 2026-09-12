@@ -1,6 +1,8 @@
 export interface BookmarkMetadata {
   timestamp: number; // 精确时间戳（毫秒）
   clientVersion: string; // 扩展版本号
+  deviceId?: string; // 产生该备份的设备标识（设备标识功能）
+  deviceName?: string; // 设备名称（用户可设置备注，如「客厅电脑」）
 }
 
 export interface BookmarkNode {
