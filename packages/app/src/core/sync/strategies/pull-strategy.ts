@@ -3,10 +3,11 @@
  * 智能下载：拉取云端数据并恢复到本地
  */
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
-import { CloudBackup } from "../../../types";
+import { CloudBackup, type BookmarkNode } from "../../../types";
 import { getMissingFolderFallback, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
 import { snapshotManager } from "../../backup";
-import { bookmarkRepository, computeTreeHash, countBookmarks } from "../../bookmark";
+import { bookmarkRepository, computeTreeHash, detectThreeWayConflicts, countBookmarks } from "../../bookmark";
+import { loadSyncBaseline, saveSyncBaseline } from "../utils/sync-baseline";
 import type { WebDAVConfig } from "../../storage";
 import { fileManager } from "../../storage";
 import { queueManager } from "../../storage/queue-manager";
@@ -53,8 +54,9 @@ export async function smartPull(
 
     // 0. 创建本地快照（下载前备份）
     console.log("[PullStrategy] Creating local snapshot before pull...");
+    let currentTree: BookmarkNode[] = [];
     try {
-      const currentTree = await bookmarkRepository.getTree();
+      currentTree = await bookmarkRepository.getTree();
       const currentCount = countBookmarks(currentTree);
       await snapshotManager.createSnapshot(
         currentTree,
@@ -103,6 +105,24 @@ export async function smartPull(
       `[PullStrategy] Cloud: ${cloudCount} bookmarks from ${cloudBrowser} (${new Date(cloudTime).toISOString()})`,
     );
 
+    // 三方合并第 1 步：只检测并记录冲突，行为与合并结果完全不变
+    try {
+      const baseline = await loadSyncBaseline(config.url);
+      const report = detectThreeWayConflicts(baseline?.data ?? null, currentTree, cloudData.data);
+      if (report.conflictCount > 0 || report.deleteVsChange > 0 || report.changeVsCloudDelete > 0) {
+        console.warn(
+          "[ThreeWay] Sync conflicts detected (current behavior: last push wins):",
+          JSON.stringify(report),
+        );
+      } else {
+        console.log(
+          `[ThreeWay] No conflicts (cloudChanged=${report.cloudChanged}, localChanged=${report.localChanged}, localAdded=${report.localAdded}, cloudAdded=${report.cloudAdded})`,
+        );
+      }
+    } catch (error) {
+      console.warn("[ThreeWay] Conflict detection failed:", error);
+    }
+
     // 2. 恢复书签
     console.log(`[PullStrategy] Restoring bookmarks (${mode} mode)...`);
     const missingFolderFallback = await getMissingFolderFallback();
@@ -112,10 +132,12 @@ export async function smartPull(
       await bookmarkRepository.mergeFromBackup(cloudData, { missingFolderFallback });
     }
 
-    // 3. 记录本地基线（重新读取恢复后的实际树，作为下次拉取前脏检测的基准）
+    // 3. 记录基线：本地树签名（脏检测用）+ 完整基线树（三方合并用）
     let localHash: string | undefined;
     try {
-      localHash = await computeTreeHash(await bookmarkRepository.getTree());
+      const restoredTree = await bookmarkRepository.getTree();
+      localHash = await computeTreeHash(restoredTree);
+      await saveSyncBaseline(config.url, restoredTree);
     } catch (error) {
       console.warn("[PullStrategy] Failed to compute local baseline:", error);
     }

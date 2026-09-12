@@ -3,10 +3,11 @@
  * 获取云端信息、备份列表、恢复指定备份
  */
 import { getWebDAVClient } from "../../infrastructure/http/webdav-client";
-import { CloudBackup } from "../../types";
+import { CloudBackup, type BookmarkNode } from "../../types";
 import { getMissingFolderFallback, holdRestoringUntil, setIsRestoring } from "../../application/state-manager";
 import { snapshotManager } from "../backup";
-import { bookmarkRepository, computeTreeHash, countBookmarks } from "../bookmark";
+import { bookmarkRepository, computeTreeHash, detectThreeWayConflicts, countBookmarks } from "../bookmark";
+import { loadSyncBaseline, saveSyncBaseline } from "./utils/sync-baseline";
 import { fileManager, STORAGE_CONSTANTS } from "../storage";
 import { cacheManager } from "../storage/cache-manager";
 import { queueManager } from "../storage/queue-manager";
@@ -150,8 +151,9 @@ export async function restoreFromCloudBackup(
 
     // 0. 创建本地快照（恢复前备份）
     console.log("[CloudOperations] Creating local snapshot before restore...");
+    let currentTree: BookmarkNode[] = [];
     try {
-      const currentTree = await bookmarkRepository.getTree();
+      currentTree = await bookmarkRepository.getTree();
       const currentCount = countBookmarks(currentTree);
       await snapshotManager.createSnapshot(
         currentTree,
@@ -191,17 +193,36 @@ export async function restoreFromCloudBackup(
       `[CloudOperations] Restoring ${cloudCount} bookmarks from ${cloudBrowser} (${new Date(cloudTime).toISOString()})`,
     );
 
+    // 三方合并第 1 步：只检测并记录冲突，行为与恢复结果完全不变
+    try {
+      const baseline = await loadSyncBaseline(config.url);
+      const report = detectThreeWayConflicts(baseline?.data ?? null, currentTree, cloudData.data);
+      if (report.conflictCount > 0 || report.deleteVsChange > 0 || report.changeVsCloudDelete > 0) {
+        console.warn(
+          "[ThreeWay] Sync conflicts detected (current behavior: last push wins):",
+          JSON.stringify(report),
+        );
+      } else {
+        console.log(
+          `[ThreeWay] No conflicts (cloudChanged=${report.cloudChanged}, localChanged=${report.localChanged})`,
+        );
+      }
+    } catch (error) {
+      console.warn("[ThreeWay] Conflict detection failed:", error);
+    }
+
     // 2. 恢复书签
     console.log("[CloudOperations] Restoring bookmarks...");
     const missingFolderFallback = await getMissingFolderFallback();
     await bookmarkRepository.restoreFromBackup(cloudData, { missingFolderFallback });
 
-    // 3. 记录基线：本地树签名 + 服务器时间基线
+    // 3. 记录基线：本地树签名 + 服务器时间基线 + 完整基线树（三方合并用）
     // 时间基线取当前云端最新文件（即使恢复的是更早的备份），
     // 避免下一次自动拉取立即用较新的备份覆盖用户刚恢复的状态
     let localHash: string | undefined;
     try {
       localHash = await computeTreeHash(await bookmarkRepository.getTree());
+      await saveSyncBaseline(config.url, cloudData.data);
     } catch (error) {
       console.warn("[CloudOperations] Failed to compute local baseline:", error);
     }

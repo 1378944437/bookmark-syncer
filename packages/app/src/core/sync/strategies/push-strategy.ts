@@ -16,6 +16,7 @@ import { queueManager } from "../../storage/queue-manager";
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
 import { getSyncState, setSyncState } from "../state-manager";
 import { isCloudNewerThanBasis } from "../utils/sync-basis";
+import { saveSyncBaseline } from "../utils/sync-baseline";
 import { CloudDataError, type SyncBasis } from "../types";
 import type { SyncResult } from "../types";
 
@@ -157,7 +158,7 @@ export async function smartPush(
               // 继续执行上传，创建新备份
             } else {
               console.log("[PushStrategy] Content identical, skipping upload");
-              // 内容相同，只更新同步时间
+              // 内容相同，只更新同步时间；基线同步刷新（本地==云端）
               await setSyncState({
                 time: Date.now(),
                 url: config.url,
@@ -165,6 +166,11 @@ export async function smartPush(
                 basis: { mtime: latest.lastModified, filePath: latest.path },
                 localHash: await computeTreeHash(localTree),
               });
+              try {
+                await saveSyncBaseline(config.url, cloudData.data);
+              } catch (error) {
+                console.warn("[PushStrategy] Failed to save sync baseline:", error);
+              }
               return {
                 success: true,
                 action: "skipped",
@@ -333,6 +339,13 @@ export async function smartPush(
       // 记录上传时的本地树签名，作为下次拉取前脏检测的基准
       localHash: await computeTreeHash(localTree),
     });
+
+    // 保存完整同步基线（三方合并第 1 步：基线=本次上传的树）
+    try {
+      await saveSyncBaseline(config.url, localTree);
+    } catch (error) {
+      console.warn("[PushStrategy] Failed to save sync baseline:", error);
+    }
 
     const elapsed = Date.now() - startTime;
     console.log(`[PushStrategy] Push completed in ${elapsed}ms`);

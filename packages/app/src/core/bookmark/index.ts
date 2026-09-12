@@ -30,6 +30,10 @@ export {
     extractSignaturesWithHash
 } from "./comparator";
 
+// 三方对比检测（三方合并第 1 步）
+export type { ConflictSample, ThreeWayReport } from "./three-way";
+export { detectThreeWayConflicts } from "./three-way";
+
 // 树合并与同步
 export {
     buildGlobalIndex, createChildren, mergeNodes
