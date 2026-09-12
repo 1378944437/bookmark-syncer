@@ -10,6 +10,7 @@ import { fileManager } from "../../storage";
 import { queueManager } from "../../storage/queue-manager";
 import type { CloudInfo, WebDAVConfig } from "../../storage/types";
 import type { SmartSyncResult } from "../types";
+import { CloudDataError } from "../types";
 import { isCloudNewerThanBasis, isLocalDirty } from "../utils/sync-basis";
 import { smartPull } from "./pull-strategy";
 import { smartPush } from "./push-strategy";
@@ -61,11 +62,11 @@ export async function smartSync(
             cloudData = JSON.parse(json) as CloudBackup;
           } catch {
             console.error("[SmartSyncStrategy] Cloud data is corrupted");
-            throw new Error("云端备份数据格式损坏，无法解析");
+            throw new CloudDataError("云端备份数据格式损坏，无法解析");
           }
           if (!cloudData.data || !Array.isArray(cloudData.data)) {
             console.error("[SmartSyncStrategy] Cloud data structure invalid");
-            throw new Error("云端备份数据结构无效");
+            throw new CloudDataError("云端备份数据结构无效");
           }
           
           // 从文件名解析浏览器信息

@@ -308,3 +308,33 @@ describe("smartPush - 云端更新阻止自动上传", () => {
     expect(mockClient.putFile).not.toHaveBeenCalled();
   });
 });
+
+describe("smartPush - 云端数据损坏时中止", () => {
+  it("云端 JSON 损坏时不继续上传（防止覆盖云端现场）", async () => {
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz",
+      lastModified: Date.now(),
+    });
+    mockGetFileWithDedup.mockResolvedValueOnce("this is not json !!!");
+
+    const result = await smartPush(testConfig, "auto-sync");
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("损坏");
+    expect(mockClient.putFile).not.toHaveBeenCalled();
+  });
+
+  it("云端结构无效时不继续上传", async () => {
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz",
+      lastModified: Date.now(),
+    });
+    mockGetFileWithDedup.mockResolvedValueOnce(
+      JSON.stringify({ metadata: { timestamp: 1 }, data: "not-an-array" })
+    );
+
+    const result = await smartPush(testConfig, "auto-sync");
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("无效");
+    expect(mockClient.putFile).not.toHaveBeenCalled();
+  });
+});

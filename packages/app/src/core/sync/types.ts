@@ -12,6 +12,17 @@ export interface SyncResult {
 }
 
 /**
+ * 云端备份数据损坏或结构无效
+ * 与网络错误区分：预检发现数据损坏时不允许“继续上传覆盖”，必须向上抛出中止
+ */
+export class CloudDataError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CloudDataError";
+  }
+}
+
+/**
  * 同步基线（服务器时间基准）
  * 方向判断只使用服务器记录的文件时间，设备本地时钟不参与比较
  */

@@ -15,7 +15,8 @@ import { cacheManager } from "../../storage/cache-manager";
 import { queueManager } from "../../storage/queue-manager";
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
 import { getSyncState, setSyncState } from "../state-manager";
-import { isCloudNewerThanBasis, type SyncBasis } from "../utils/sync-basis";
+import { isCloudNewerThanBasis } from "../utils/sync-basis";
+import { CloudDataError, type SyncBasis } from "../types";
 import type { SyncResult } from "../types";
 
 const DIR = STORAGE_CONSTANTS.BACKUP_DIR;
@@ -90,7 +91,11 @@ export async function smartPush(
             cloudData = JSON.parse(cloudJson) as CloudBackup;
           } catch {
             console.error("[PushStrategy] Cloud data is corrupted, skipping comparison");
-            throw new Error("云端备份数据格式损坏，无法解析");
+            throw new CloudDataError("云端备份数据格式损坏，无法解析");
+          }
+          if (!cloudData.data || !Array.isArray(cloudData.data)) {
+            console.error("[PushStrategy] Cloud data structure invalid");
+            throw new CloudDataError("云端备份数据结构无效");
           }
           const cloudCount = countBookmarks(cloudData.data);
 
@@ -174,8 +179,10 @@ export async function smartPush(
         console.log("[PushStrategy] No cloud backup found, first upload");
       }
     } catch (error) {
+      // 云端数据损坏属于契约问题：继续上传会用本地数据覆盖云端现场，必须中止
+      if (error instanceof CloudDataError) throw error;
       console.warn("[PushStrategy] Failed to check cloud state:", error);
-      // 云端文件不存在或无法获取，继续上传
+      // 云端文件不存在或网络故障，继续上传
     }
 
     // 3. 执行上传 - 判断是否需要创建新文件
