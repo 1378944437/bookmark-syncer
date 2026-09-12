@@ -121,20 +121,58 @@ describe("computeTreeHash", () => {
     expect(await computeTreeHash(nodes)).toBe(await computeTreeHash(nodes));
   });
 
-  it("书签内容变化会改变哈希", async () => {
+  it("书签改名会改变哈希", async () => {
     const before: BookmarkNode[] = [
       { title: "F", children: [{ title: "A", url: "https://a.com", hash: "h1" }] },
     ];
     const after: BookmarkNode[] = [
-      { title: "F", children: [{ title: "A", url: "https://a.com", hash: "h2" }] },
+      { title: "F", children: [{ title: "A2", url: "https://a.com", hash: "h2" }] },
     ];
     expect(await computeTreeHash(before)).not.toBe(await computeTreeHash(after));
   });
 
-  it("文件夹结构变化会改变哈希", async () => {
+  it("书签增删会改变哈希", async () => {
+    const before: BookmarkNode[] = [
+      { title: "F", children: [{ title: "A", url: "https://a.com", hash: "h1" }] },
+    ];
+    const after: BookmarkNode[] = [
+      { title: "F", children: [{ title: "A", url: "https://a.com", hash: "h1" }, { title: "B", url: "https://b.com", hash: "h2" }] },
+    ];
+    expect(await computeTreeHash(before)).not.toBe(await computeTreeHash(after));
+  });
+
+  it("顺序重排不改变哈希（重排不是修改）", async () => {
+    const a: BookmarkNode[] = [
+      { title: "F", children: [
+        { title: "A", url: "https://a.com", hash: "h1" },
+        { title: "B", url: "https://b.com", hash: "h2" },
+      ] },
+    ];
+    const b: BookmarkNode[] = [
+      { title: "F", children: [
+        { title: "B", url: "https://b.com", hash: "h2" },
+        { title: "A", url: "https://a.com", hash: "h1" },
+      ] },
+    ];
+    expect(await computeTreeHash(a)).toBe(await computeTreeHash(b));
+  });
+
+  it("书签在文件夹间移动不改变哈希（排布不是修改）", async () => {
+    const before: BookmarkNode[] = [
+      { title: "F1", children: [{ title: "A", url: "https://a.com", hash: "h1" }] },
+      { title: "F2", children: [] },
+    ];
+    const after: BookmarkNode[] = [
+      { title: "F1", children: [] },
+      { title: "F2", children: [{ title: "A", url: "https://a.com", hash: "h1" }] },
+    ];
+    expect(await computeTreeHash(before)).toBe(await computeTreeHash(after));
+  });
+
+  it("空文件夹增删/改名不改变哈希", async () => {
     const before: BookmarkNode[] = [{ title: "F", children: [] }];
     const after: BookmarkNode[] = [{ title: "G", children: [] }];
-    expect(await computeTreeHash(before)).not.toBe(await computeTreeHash(after));
+    expect(await computeTreeHash(before)).toBe(await computeTreeHash(after));
   });
 });
 

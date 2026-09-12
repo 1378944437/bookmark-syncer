@@ -92,12 +92,15 @@ export async function compareWithCloud(
 
 /**
  * 计算书签树的整体签名哈希（用于检测本地是否有未同步的修改）
- * 与 compareWithCloud 使用同一套签名规则，保证口径一致：
- * 同一棵树算出的哈希相同，任何书签/文件夹内容变化都会改变哈希
+ * 口径与 compareWithCloud 一致：只看书签多重集（排序后哈希），
+ * 顺序、文件夹排布、空文件夹的变化不改变哈希——
+ * 重排不是「修改」，不应触发冲突判定
  */
 export async function computeTreeHash(nodes: BookmarkNode[]): Promise<string> {
   const withHash = await assignHashes(nodes);
-  const signatures = extractSignaturesWithHash(withHash);
+  const signatures = extractSignaturesWithHash(withHash)
+    .filter((sig) => sig.startsWith("B|"))
+    .sort();
   return generateHash(signatures.join("\n"), "tree-signature");
 }
 
