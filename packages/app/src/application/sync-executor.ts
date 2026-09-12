@@ -10,7 +10,7 @@ import {
     LOCK_HOLDER_AUTO,
     POST_PULL_UPLOAD_SUPPRESSION_MS,
 } from "./constants";
-import { getThreeWayMergeEnabled, getIsRestoring, getWebDAVConfig } from "./state-manager";
+import { getIsRestoring, getWebDAVConfig } from "./state-manager";
 
 /**
  * 执行上传同步 (Push)
@@ -158,21 +158,6 @@ export async function executeAutoPull(): Promise<void> {
     console.log(
       `[SyncExecutor] Cloud update detected (${latest.totalCount} bookmarks from ${latest.browser || "unknown"})`,
     );
-
-    // 三树合并（实验）开启：拉取内部自动取舍本地/云端改动，再把合并结果推回云端
-    const threeWayEnabled = await getThreeWayMergeEnabled();
-    if (threeWayEnabled) {
-      const pullResult = await smartPull(config, LOCK_HOLDER_AUTO, "overwrite");
-      if (!pullResult.success) {
-        console.warn(`[SyncExecutor] Three-way pull failed: ${pullResult.message}`);
-        return;
-      }
-      const pushResult = await smartPush(config, LOCK_HOLDER_AUTO);
-      console.log(
-        `[SyncExecutor] Post-three-way upload: ${pushResult.action}: ${pushResult.message}`,
-      );
-      return;
-    }
 
     // 本地有未同步的修改时不能覆盖拉取（会删掉本地未上传的变化）：
     // 改用合并拉取保住本地改动，再把合并结果推上云端；

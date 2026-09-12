@@ -5,14 +5,8 @@
 import { acquireSyncLock, getLastSyncTime, getSyncState, releaseSyncLock, setSyncState } from "../";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../../types";
-import { getSyncScope, getThreeWayMergeEnabled } from "../../../application/state-manager";
-import {
-  bookmarkRepository,
-  compareWithCloud,
-  computeTreeHash,
-  countBookmarks,
-  filterTreeByScope,
-} from "../../bookmark";
+import { getSyncScope } from "../../../application/state-manager";
+import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
 import { fileManager } from "../../storage";
 import { queueManager } from "../../storage/queue-manager";
 import type { CloudInfo, WebDAVConfig } from "../../storage/types";
@@ -155,30 +149,19 @@ export async function smartSync(
     // 时间基准：服务器记录的文件时间，与设备本地时钟无关
     if (isCloudNewerThanBasis(latest, syncState, config.url)) {
       // 云端比本地新 → 拉取。但先判断本地是否有未同步的修改：
-      // 有 → 三树合并开启时自动取舍（真冲突双保留）；关闭时交给用户选择方向
+      // 有 → 绝不静默覆盖（否则本地未上传的新增/修改会被删掉），交给用户选择方向
       const currentTreeHash = await computeTreeHash(filterTreeByScope(localTree, syncScope));
       if (isLocalDirty(syncState, currentTreeHash)) {
-        const threeWayEnabled = await getThreeWayMergeEnabled();
-        if (!threeWayEnabled) {
-          console.warn(
-            "[SmartSyncStrategy] Cloud is newer AND local has unsynced changes, asking user",
-          );
-          return {
-            success: false,
-            action: "skipped",
-            message: "本地有未同步的修改，需要选择同步方向",
-            needsConflictResolution: true,
-            cloudInfo,
-          };
-        }
-
-        console.log("[SmartSyncStrategy] Three-way merge enabled, auto-resolving");
-        const pullResult = await smartPull(config, lockHolder, "overwrite", { skipLock: true });
-        if (!pullResult.success) {
-          return { ...pullResult, cloudInfo };
-        }
-        const pushResult = await smartPush(config, lockHolder, { skipLock: true });
-        return { ...pushResult, cloudInfo };
+        console.warn(
+          "[SmartSyncStrategy] Cloud is newer AND local has unsynced changes, asking user",
+        );
+        return {
+          success: false,
+          action: "skipped",
+          message: "本地有未同步的修改，需要选择同步方向",
+          needsConflictResolution: true,
+          cloudInfo,
+        };
       }
 
       // 本地干净 → 覆盖拉取（保留删除传播能力）

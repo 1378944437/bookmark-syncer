@@ -3,6 +3,7 @@
  * 智能上传：检查内容差异，只有真正有变化时才上传
  */
 import { getBackupFileInterval, getLastBackupFileInfo, getDeviceIdentity, getSyncScope, saveLastBackupFileInfo, saveLastRemoteDevice } from "../../../application/state-manager";
+
 import { getBrowserInfo, isSameBrowser } from "../../../infrastructure/browser/info";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { compressText } from "../../../infrastructure/utils/compression";
@@ -16,7 +17,6 @@ import { queueManager } from "../../storage/queue-manager";
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
 import { getSyncState, setSyncState } from "../state-manager";
 import { isCloudNewerThanBasis } from "../utils/sync-basis";
-import { saveSyncBaseline } from "../utils/sync-baseline";
 import { CloudDataError, type SyncBasis } from "../types";
 import type { SyncResult } from "../types";
 
@@ -174,7 +174,7 @@ export async function smartPush(
               // 继续执行上传，创建新备份
             } else {
               console.log("[PushStrategy] Content identical, skipping upload");
-              // 内容相同，只更新同步时间；基线同步刷新（本地==云端）
+              // 内容相同，只更新同步时间
               await setSyncState({
                 time: Date.now(),
                 url: config.url,
@@ -182,11 +182,6 @@ export async function smartPush(
                 basis: { mtime: latest.lastModified, filePath: latest.path },
                 localHash: await computeTreeHash(scopedLocalTree),
               });
-              try {
-                await saveSyncBaseline(config.url, filterTreeByScope(cloudData.data, syncScope));
-              } catch (error) {
-                console.warn("[PushStrategy] Failed to save sync baseline:", error);
-              }
               return {
                 success: true,
                 action: "skipped",
@@ -364,13 +359,6 @@ export async function smartPush(
       // 记录上传时的本地树签名（按同步范围过滤），作为下次拉取前脏检测的基准
       localHash: await computeTreeHash(scopedLocalTree),
     });
-
-    // 保存完整同步基线（三方合并第 1 步：基线=本次上传的树）
-    try {
-      await saveSyncBaseline(config.url, localTree);
-    } catch (error) {
-      console.warn("[PushStrategy] Failed to save sync baseline:", error);
-    }
 
     const elapsed = Date.now() - startTime;
     console.log(`[PushStrategy] Push completed in ${elapsed}ms`);

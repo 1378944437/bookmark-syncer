@@ -4,7 +4,6 @@
 import { __resetMockStore } from "@src/__mocks__/webextension-polyfill";
 import {
   getDeviceIdentity,
-  getThreeWayMergeEnabled,
 } from "@src/application/state-manager";
 import browser from "webextension-polyfill";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -29,16 +28,5 @@ describe("getDeviceIdentity", () => {
     expect((await getDeviceIdentity()).deviceName).toBe("");
     await browser.storage.local.set({ device_name: "客厅电脑" });
     expect((await getDeviceIdentity()).deviceName).toBe("客厅电脑");
-  });
-});
-
-describe("getThreeWayMergeEnabled", () => {
-  it("默认关闭", async () => {
-    expect(await getThreeWayMergeEnabled()).toBe(false);
-  });
-
-  it("可被设置开启", async () => {
-    await browser.storage.local.set({ three_way_merge_enabled: true });
-    expect(await getThreeWayMergeEnabled()).toBe(true);
   });
 });

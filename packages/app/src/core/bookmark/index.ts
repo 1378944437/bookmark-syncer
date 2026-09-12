@@ -30,14 +30,6 @@ export {
     extractSignaturesWithHash
 } from "./comparator";
 
-// 三方对比检测（三方合并第 1 步）
-export type { ConflictSample, ThreeWayReport } from "./three-way";
-export { detectThreeWayConflicts } from "./three-way";
-
-// 三树合并（三方合并第 2 步）
-export type { ThreeWayMergeOptions, ThreeWayMergeReport, ThreeWayMergeSample } from "./three-way-merger";
-export { mergeThreeWay } from "./three-way-merger";
-
 // 同步范围
 export type { SyncScope, SyncScopeKey } from "./sync-scope";
 export { DEFAULT_SYNC_SCOPE, filterTreeByScope, hasAnyScopeEnabled, normalizeSyncScope, SYNC_SCOPE_KEYS } from "./sync-scope";

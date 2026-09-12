@@ -120,15 +120,6 @@ export async function getMissingFolderFallback(): Promise<boolean> {
 }
 
 /**
- * 三树合并（实验）开关：拉取时以基线为参照自动取舍本地与云端的改动。
- * 默认关闭——关闭时保持原行为（脏→合并拉取+推送；干净→覆盖拉取）
- */
-export async function getThreeWayMergeEnabled(): Promise<boolean> {
-  const result = await browser.storage.local.get('three_way_merge_enabled');
-  return result.three_way_merge_enabled === true;
-}
-
-/**
  * 同步范围（每台设备独立）：参与同步的系统文件夹。
  * 默认仅书签栏；范围外的文件夹完全不参与同步，内容保留在本地
  */

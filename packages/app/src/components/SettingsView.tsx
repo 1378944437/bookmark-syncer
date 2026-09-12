@@ -188,7 +188,6 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
   const [scheduledSyncInterval, setScheduledSyncInterval] = useStorage('scheduled_sync_interval', 30)
   const [backupFileInterval, setBackupFileInterval] = useStorage('backup_file_interval', 1)
   const [missingFolderFallback, setMissingFolderFallback] = useStorage('missing_folder_fallback', false)
-  const [threeWayMergeEnabled, setThreeWayMergeEnabled] = useStorage('three_way_merge_enabled', false)
   const [deviceName, setDeviceName] = useStorage('device_name', '')
   const [deviceIdShort, setDeviceIdShort] = useState('')
   const [syncScope, setSyncScope] = useStorage<SyncScope>('sync_scope', {
@@ -316,23 +315,6 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
               type="checkbox"
               checked={missingFolderFallback}
               onChange={(e) => setMissingFolderFallback(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
-          </label>
-        </div>
-
-        {/* 三树合并（实验） */}
-        <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/30">
-          <div>
-            <Label className="text-foreground">{t('settings.sync.threeWay')}</Label>
-            <p className="text-xs text-muted-foreground max-w-[70%]">{t('settings.sync.threeWayDesc')}</p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={threeWayMergeEnabled}
-              onChange={(e) => setThreeWayMergeEnabled(e.target.checked)}
               className="sr-only peer"
             />
             <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />

@@ -4,17 +4,14 @@
  */
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup, type BookmarkNode } from "../../../types";
-import { getMissingFolderFallback, getSyncScope, getThreeWayMergeEnabled, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
+import { getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
 import { snapshotManager } from "../../backup";
 import {
   bookmarkRepository,
   computeTreeHash,
-  detectThreeWayConflicts,
   countBookmarks,
   filterTreeByScope,
-  mergeThreeWay,
 } from "../../bookmark";
-import { loadSyncBaseline, saveSyncBaseline } from "../utils/sync-baseline";
 import type { WebDAVConfig } from "../../storage";
 import { fileManager } from "../../storage";
 import { queueManager } from "../../storage/queue-manager";
@@ -117,29 +114,7 @@ export async function smartPull(
       `[PullStrategy] Cloud: ${cloudCount} bookmarks from ${cloudBrowser} (${new Date(cloudTime).toISOString()})`,
     );
 
-    // 三方合并第 1 步：只检测并记录冲突，行为与合并结果完全不变
-    try {
-      const baseline = await loadSyncBaseline(config.url);
-      const scopedBaseline = baseline?.data ? filterTreeByScope(baseline.data, syncScope) : null;
-      const scopedLocal = filterTreeByScope(currentTree, syncScope);
-      const report = detectThreeWayConflicts(scopedBaseline, scopedLocal, cloudData.data);
-      if (report.conflictCount > 0 || report.deleteVsChange > 0 || report.changeVsCloudDelete > 0) {
-        console.warn(
-          "[ThreeWay] Sync conflicts detected (current behavior: last push wins):",
-          JSON.stringify(report),
-        );
-      } else {
-        console.log(
-          `[ThreeWay] No conflicts (cloudChanged=${report.cloudChanged}, localChanged=${report.localChanged}, localAdded=${report.localAdded}, cloudAdded=${report.cloudAdded})`,
-        );
-      }
-    } catch (error) {
-      console.warn("[ThreeWay] Conflict detection failed:", error);
-    }
-
-    // 防呆：覆盖拉取前，若云端书签数远少于本地（不足一半且本地非空），
-    // 大概率是目录迁移未播种/云端异常，中止以保护本地书签。
-    // 确认要以云端为准时，请使用「云端备份」中的恢复功能（无此保护）
+    // 三方合并相关内容已移除：覆盖拉取直接应用云端（按同步范围过滤）数据
     const scopedLocalCount = countBookmarks(filterTreeByScope(currentTree, syncScope));
     if (mode === "overwrite" && scopedLocalCount > 20 && cloudCount < scopedLocalCount / 2) {
       console.error(
@@ -155,43 +130,17 @@ export async function smartPull(
     // 2. 恢复书签
     console.log(`[PullStrategy] Restoring bookmarks (${mode} mode)...`);
     const missingFolderFallback = (await getMissingFolderFallback()) && syncScope.other;
-    let targetTree: BookmarkNode[] = cloudData.data;
     if (mode === "overwrite") {
-      // 三树合并（实验）：以基线为参照自动取舍本地与云端的改动，结果交由既有恢复流程应用
-      const threeWayEnabled = await getThreeWayMergeEnabled();
-      if (threeWayEnabled) {
-        const baseline = await loadSyncBaseline(config.url);
-        if (baseline) {
-          const merged = mergeThreeWay(
-            baseline.data ? filterTreeByScope(baseline.data, syncScope) : baseline.data,
-            filterTreeByScope(currentTree, syncScope),
-            cloudData.data,
-          );
-          targetTree = merged.tree;
-          console.log(
-            `[ThreeWay] merged: adoptedCloud=${merged.report.adoptedCloud}, keptLocal=${merged.report.keptLocal}, conflicts=${merged.report.conflicts}, deletedByCloud=${merged.report.deletedByCloud}`,
-          );
-          if (merged.report.conflicts > 0) {
-            console.warn(
-              "[ThreeWay] conflicts (dual-kept):",
-              JSON.stringify(merged.report.samples),
-            );
-          }
-        } else {
-          console.log("[ThreeWay] enabled but no baseline yet, falling back to overwrite");
-        }
-      }
-      await bookmarkRepository.restoreFromBackup(targetTree, { missingFolderFallback });
+      await bookmarkRepository.restoreFromBackup(cloudData, { missingFolderFallback });
     } else {
       await bookmarkRepository.mergeFromBackup(cloudData, { missingFolderFallback });
     }
 
-    // 3. 记录基线：本地树签名（脏检测用）+ 完整基线树（三方合并用），均按同步范围过滤
+    // 3. 记录本地树签名（按同步范围过滤，供脏检测使用）
     let localHash: string | undefined;
     try {
       const restoredTree = filterTreeByScope(await bookmarkRepository.getTree(), syncScope);
       localHash = await computeTreeHash(restoredTree);
-      await saveSyncBaseline(config.url, restoredTree);
     } catch (error) {
       console.warn("[PullStrategy] Failed to compute local baseline:", error);
     }

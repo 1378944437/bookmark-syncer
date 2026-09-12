@@ -171,8 +171,6 @@ export const dictionary: Record<string, string> = {
   "settings.sync.scope_other": "Other bookmarks",
   "settings.sync.scope_mobile": "Mobile bookmarks",
   "settings.sync.scopeAllOff": "Keep at least one folder in scope",
-  "settings.sync.threeWay": "Three-way merge (experimental)",
-  "settings.sync.threeWayDesc": "Resolve local vs cloud changes against the last-synced baseline: deletions propagate, edits don't overwrite each other, true conflicts keep both copies. Off by default",
   "settings.sync.deviceSection": "Device identity",
   "settings.sync.deviceId": "Device ID",
   "settings.sync.deviceName": "Device name (remark)",

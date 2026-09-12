@@ -67,22 +67,6 @@ vi.mock("@src/core/bookmark", () => ({
   },
   computeTreeHash: vi.fn(async () => "tree-hash-stub"),
   filterTreeByScope: vi.fn((tree: any[]) => tree),
-  detectThreeWayConflicts: vi.fn(() => ({
-    baselineCount: 0,
-    localCount: 0,
-    cloudCount: 0,
-    cloudChanged: 0,
-    localChanged: 0,
-    conflictCount: 0,
-    conflicts: [],
-    deleteVsChange: 0,
-    changeVsCloudDelete: 0,
-    localAdded: 0,
-    cloudAdded: 0,
-  })),
-  mergeThreeWay: vi.fn(() => ({ tree: [], report: {
-    adoptedCloud: 0, keptLocal: 0, conflicts: 0, deletedByCloud: 0, samples: [],
-  } })),
   countBookmarks: mockCountBookmarks,
 }));
 

@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   getWebDAVConfig: vi.fn(),
   getCloudBackupList: vi.fn(),
   getSyncState: vi.fn(),
-  getThreeWayMergeEnabled: vi.fn(),
   smartPush: vi.fn(),
   smartPull: vi.fn(),
   getTree: vi.fn(),
@@ -21,7 +20,6 @@ vi.mock("@src/application/state-manager", () => ({
   getIsRestoring: (...args: any[]) => mocks.getIsRestoring(...args),
   setIsRestoring: (...args: any[]) => mocks.setIsRestoring(...args),
   getWebDAVConfig: (...args: any[]) => mocks.getWebDAVConfig(...args),
-  getThreeWayMergeEnabled: (...args: any[]) => mocks.getThreeWayMergeEnabled(...args),
 }));
 
 vi.mock("@src/core/sync", () => ({
@@ -56,7 +54,6 @@ describe("executeUpload", () => {
     });
     mocks.getCloudBackupList.mockResolvedValue([]);
     mocks.getSyncState.mockResolvedValue(null);
-    mocks.getThreeWayMergeEnabled.mockResolvedValue(false);
     mocks.smartPush.mockResolvedValue({
       success: true,
       action: "uploaded",
@@ -229,7 +226,6 @@ describe("executeAutoPull", () => {
       },
     ]);
     mocks.getSyncState.mockResolvedValue(null);
-    mocks.getThreeWayMergeEnabled.mockResolvedValue(false);
     mocks.getTree.mockResolvedValue([]);
     mocks.computeTreeHash.mockResolvedValue("hash-a");
     mocks.smartPull.mockResolvedValue({
@@ -239,18 +235,6 @@ describe("executeAutoPull", () => {
     });
     vi.mocked(browser.storage.local.get).mockResolvedValue({});
     vi.mocked(browser.alarms.create).mockResolvedValue(undefined as any);
-  });
-
-  it("三树合并开启时拉取后自动推送（不再走脏/净分支）", async () => {
-    mocks.getThreeWayMergeEnabled.mockResolvedValue(true);
-    mocks.getSyncState.mockResolvedValueOnce({
-      url: config.url,
-      time: 1,
-      localHash: "stale-hash",
-    });
-    await executeAutoPull();
-    expect(mocks.smartPull).toHaveBeenCalledWith(config, "auto_sync", "overwrite");
-    expect(mocks.smartPush).toHaveBeenCalled();
   });
 
   it("本地干净时覆盖拉取（让其他设备的删除能传播）", async () => {

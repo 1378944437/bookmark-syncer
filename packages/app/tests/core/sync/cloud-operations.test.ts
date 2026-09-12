@@ -76,19 +76,6 @@ vi.mock("@src/core/bookmark", () => ({
   },
   computeTreeHash: (...args: any[]) => mocks.computeTreeHash(...args),
   filterTreeByScope: vi.fn((tree: any[]) => tree),
-  detectThreeWayConflicts: vi.fn(() => ({
-    baselineCount: 0,
-    localCount: 0,
-    cloudCount: 0,
-    cloudChanged: 0,
-    localChanged: 0,
-    conflictCount: 0,
-    conflicts: [],
-    deleteVsChange: 0,
-    changeVsCloudDelete: 0,
-    localAdded: 0,
-    cloudAdded: 0,
-  })),
   countBookmarks: (...args: any[]) => mocks.countBookmarks(...args),
 }));
 

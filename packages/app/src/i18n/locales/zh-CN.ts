@@ -171,8 +171,6 @@ export const dictionary: Record<string, string> = {
   "settings.sync.scope_other": "其他书签",
   "settings.sync.scope_mobile": "移动设备书签",
   "settings.sync.scopeAllOff": "至少保留一个同步范围",
-  "settings.sync.threeWay": "三树合并（实验）",
-  "settings.sync.threeWayDesc": "同步时参照上次同步状态自动取舍本地与云端的改动：删除可传播、修改不互覆、真冲突双保留不丢数据。默认关闭",
   "settings.sync.deviceSection": "设备标识",
   "settings.sync.deviceId": "设备 ID",
   "settings.sync.deviceName": "设备名称（备注）",
