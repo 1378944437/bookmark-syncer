@@ -5,6 +5,7 @@
 import browser from "webextension-polyfill";
 import type { LastBackupFileInfo } from "../core/storage/types";
 import { STORAGE_CONSTANTS } from "../core/storage/types";
+import { normalizeSyncScope, type SyncScope } from "../core/bookmark/sync-scope";
 import { RESET_RESTORING_DELAY_MS, RESTORING_KEY, RESTORING_TIMEOUT_MS } from "./constants";
 
 type RestoringState = {
@@ -125,6 +126,15 @@ export async function getMissingFolderFallback(): Promise<boolean> {
 export async function getThreeWayMergeEnabled(): Promise<boolean> {
   const result = await browser.storage.local.get('three_way_merge_enabled');
   return result.three_way_merge_enabled === true;
+}
+
+/**
+ * 同步范围（每台设备独立）：参与同步的系统文件夹。
+ * 默认仅书签栏；范围外的文件夹完全不参与同步，内容保留在本地
+ */
+export async function getSyncScope(): Promise<SyncScope> {
+  const result = await browser.storage.local.get('sync_scope');
+  return normalizeSyncScope(result.sync_scope as Partial<SyncScope> | undefined);
 }
 
 export interface DeviceIdentity {

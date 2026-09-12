@@ -4,13 +4,14 @@
  */
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup, type BookmarkNode } from "../../../types";
-import { getMissingFolderFallback, getThreeWayMergeEnabled, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
+import { getMissingFolderFallback, getSyncScope, getThreeWayMergeEnabled, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
 import { snapshotManager } from "../../backup";
 import {
   bookmarkRepository,
   computeTreeHash,
   detectThreeWayConflicts,
   countBookmarks,
+  filterTreeByScope,
   mergeThreeWay,
 } from "../../bookmark";
 import { loadSyncBaseline, saveSyncBaseline } from "../utils/sync-baseline";
@@ -57,6 +58,8 @@ export async function smartPull(
     await setIsRestoring(true);
 
     const client = getWebDAVClient(config);
+    // 同步范围（每台设备独立）：范围外系统文件夹不参与本次拉取
+    const syncScope = await getSyncScope();
 
     // 0. 创建本地快照（下载前备份）
     console.log("[PullStrategy] Creating local snapshot before pull...");
@@ -100,6 +103,8 @@ export async function smartPull(
       console.error("[PullStrategy] Cloud data structure invalid: missing or non-array data");
       return { success: false, action: "error", message: "云端备份数据结构无效" };
     }
+    // 应用同步范围：范围外系统文件夹不参与恢复
+    cloudData.data = filterTreeByScope(cloudData.data, syncScope);
     const cloudCount = countBookmarks(cloudData.data);
     const cloudTime = cloudData.metadata?.timestamp || 0;
     
@@ -115,7 +120,9 @@ export async function smartPull(
     // 三方合并第 1 步：只检测并记录冲突，行为与合并结果完全不变
     try {
       const baseline = await loadSyncBaseline(config.url);
-      const report = detectThreeWayConflicts(baseline?.data ?? null, currentTree, cloudData.data);
+      const scopedBaseline = baseline?.data ? filterTreeByScope(baseline.data, syncScope) : null;
+      const scopedLocal = filterTreeByScope(currentTree, syncScope);
+      const report = detectThreeWayConflicts(scopedBaseline, scopedLocal, cloudData.data);
       if (report.conflictCount > 0 || report.deleteVsChange > 0 || report.changeVsCloudDelete > 0) {
         console.warn(
           "[ThreeWay] Sync conflicts detected (current behavior: last push wins):",
@@ -133,20 +140,21 @@ export async function smartPull(
     // 防呆：覆盖拉取前，若云端书签数远少于本地（不足一半且本地非空），
     // 大概率是目录迁移未播种/云端异常，中止以保护本地书签。
     // 确认要以云端为准时，请使用「云端备份」中的恢复功能（无此保护）
-    if (mode === "overwrite" && currentCount > 20 && cloudCount < currentCount / 2) {
+    const scopedLocalCount = countBookmarks(filterTreeByScope(currentTree, syncScope));
+    if (mode === "overwrite" && scopedLocalCount > 20 && cloudCount < scopedLocalCount / 2) {
       console.error(
-        `[PullStrategy] Overwrite pull aborted: cloud (${cloudCount}) far below local (${currentCount})`,
+        `[PullStrategy] Overwrite pull aborted: cloud (${cloudCount}) far below local (${scopedLocalCount})`,
       );
       return {
         success: false,
         action: "error",
-        message: `云端仅 ${cloudCount} 条，本地有 ${currentCount} 条，已中止覆盖拉取以防误覆盖；如确认以云端为准，请在「云端备份」中使用恢复功能`,
+        message: `云端仅 ${cloudCount} 条，本地有 ${scopedLocalCount} 条，已中止覆盖拉取以防误覆盖；如确认以云端为准，请在「云端备份」中使用恢复功能`,
       };
     }
 
     // 2. 恢复书签
     console.log(`[PullStrategy] Restoring bookmarks (${mode} mode)...`);
-    const missingFolderFallback = await getMissingFolderFallback();
+    const missingFolderFallback = (await getMissingFolderFallback()) && syncScope.other;
     let targetTree: BookmarkNode[] = cloudData.data;
     if (mode === "overwrite") {
       // 三树合并（实验）：以基线为参照自动取舍本地与云端的改动，结果交由既有恢复流程应用
@@ -154,7 +162,11 @@ export async function smartPull(
       if (threeWayEnabled) {
         const baseline = await loadSyncBaseline(config.url);
         if (baseline) {
-          const merged = mergeThreeWay(baseline.data, currentTree, cloudData.data);
+          const merged = mergeThreeWay(
+            baseline.data ? filterTreeByScope(baseline.data, syncScope) : baseline.data,
+            filterTreeByScope(currentTree, syncScope),
+            cloudData.data,
+          );
           targetTree = merged.tree;
           console.log(
             `[ThreeWay] merged: adoptedCloud=${merged.report.adoptedCloud}, keptLocal=${merged.report.keptLocal}, conflicts=${merged.report.conflicts}, deletedByCloud=${merged.report.deletedByCloud}`,
@@ -174,10 +186,10 @@ export async function smartPull(
       await bookmarkRepository.mergeFromBackup(cloudData, { missingFolderFallback });
     }
 
-    // 3. 记录基线：本地树签名（脏检测用）+ 完整基线树（三方合并用）
+    // 3. 记录基线：本地树签名（脏检测用）+ 完整基线树（三方合并用），均按同步范围过滤
     let localHash: string | undefined;
     try {
-      const restoredTree = await bookmarkRepository.getTree();
+      const restoredTree = filterTreeByScope(await bookmarkRepository.getTree(), syncScope);
       localHash = await computeTreeHash(restoredTree);
       await saveSyncBaseline(config.url, restoredTree);
     } catch (error) {

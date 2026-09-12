@@ -5,8 +5,14 @@
 import { acquireSyncLock, getLastSyncTime, getSyncState, releaseSyncLock, setSyncState } from "../";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../../types";
-import { getThreeWayMergeEnabled } from "../../../application/state-manager";
-import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks } from "../../bookmark";
+import { getSyncScope, getThreeWayMergeEnabled } from "../../../application/state-manager";
+import {
+  bookmarkRepository,
+  compareWithCloud,
+  computeTreeHash,
+  countBookmarks,
+  filterTreeByScope,
+} from "../../bookmark";
 import { fileManager } from "../../storage";
 import { queueManager } from "../../storage/queue-manager";
 import type { CloudInfo, WebDAVConfig } from "../../storage/types";
@@ -97,9 +103,13 @@ export async function smartSync(
       return await smartPush(config, lockHolder, { skipLock: true });
     }
 
-    // 3. 比对内容
+    // 3. 比对内容（双方均按同步范围过滤后再比较）
     console.log("[SmartSyncStrategy] Comparing local and cloud...");
-    const isIdentical = await compareWithCloud(localTree, cloudData);
+    const syncScope = await getSyncScope();
+    const isIdentical = await compareWithCloud(
+      filterTreeByScope(localTree, syncScope),
+      filterTreeByScope(cloudData.data, syncScope),
+    );
 
     if (isIdentical) {
       console.log("[SmartSyncStrategy] Content identical, no sync needed");
@@ -146,7 +156,7 @@ export async function smartSync(
     if (isCloudNewerThanBasis(latest, syncState, config.url)) {
       // 云端比本地新 → 拉取。但先判断本地是否有未同步的修改：
       // 有 → 三树合并开启时自动取舍（真冲突双保留）；关闭时交给用户选择方向
-      const currentTreeHash = await computeTreeHash(localTree);
+      const currentTreeHash = await computeTreeHash(filterTreeByScope(localTree, syncScope));
       if (isLocalDirty(syncState, currentTreeHash)) {
         const threeWayEnabled = await getThreeWayMergeEnabled();
         if (!threeWayEnabled) {

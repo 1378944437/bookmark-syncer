@@ -77,6 +77,7 @@ vi.mock("@src/core/bookmark", () => ({
   bookmarkRepository: { getTree: mockGetTree },
   compareWithCloud: mockCompareWithCloud,
   computeTreeHash: mockComputeTreeHash,
+  filterTreeByScope: vi.fn((tree: any[]) => tree),
   countBookmarks: mockCountBookmarks,
 }));
 

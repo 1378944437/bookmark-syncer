@@ -75,6 +75,7 @@ vi.mock("@src/core/bookmark", () => ({
     restoreFromBackup: (...args: any[]) => mocks.restoreFromBackup(...args),
   },
   computeTreeHash: (...args: any[]) => mocks.computeTreeHash(...args),
+  filterTreeByScope: vi.fn((tree: any[]) => tree),
   detectThreeWayConflicts: vi.fn(() => ({
     baselineCount: 0,
     localCount: 0,

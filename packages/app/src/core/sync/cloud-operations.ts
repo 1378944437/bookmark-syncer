@@ -4,9 +4,15 @@
  */
 import { getWebDAVClient } from "../../infrastructure/http/webdav-client";
 import { CloudBackup, type BookmarkNode } from "../../types";
-import { getMissingFolderFallback, holdRestoringUntil, setIsRestoring, saveLastRemoteDevice } from "../../application/state-manager";
+import { getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring, saveLastRemoteDevice } from "../../application/state-manager";
 import { snapshotManager } from "../backup";
-import { bookmarkRepository, computeTreeHash, detectThreeWayConflicts, countBookmarks } from "../bookmark";
+import {
+  bookmarkRepository,
+  computeTreeHash,
+  detectThreeWayConflicts,
+  countBookmarks,
+  filterTreeByScope,
+} from "../bookmark";
 import { loadSyncBaseline, saveSyncBaseline } from "./utils/sync-baseline";
 import { fileManager, STORAGE_CONSTANTS } from "../storage";
 import { cacheManager } from "../storage/cache-manager";
@@ -184,8 +190,12 @@ export async function restoreFromCloudBackup(
       console.error("[CloudOperations] Backup data is corrupted, cannot parse");
       return { success: false, action: "error", message: "备份数据格式损坏" };
     }
-    const cloudCount = countBookmarks(cloudData.data);
     const cloudTime = cloudData.metadata?.timestamp || 0;
+
+    // 应用同步范围：范围外系统文件夹不参与恢复
+    const syncScope = await getSyncScope();
+    cloudData.data = filterTreeByScope(cloudData.data, syncScope);
+    const scopedCloudCount = countBookmarks(cloudData.data);
 
     // 记录云端备份所属设备（面板显示「来自 XX」）
     if (cloudData.metadata?.deviceId || cloudData.metadata?.deviceName) {
@@ -205,13 +215,18 @@ export async function restoreFromCloudBackup(
     const cloudBrowser = parsed?.browser || "unknown";
 
     console.log(
-      `[CloudOperations] Restoring ${cloudCount} bookmarks from ${cloudBrowser} (${new Date(cloudTime).toISOString()})`,
+      `[CloudOperations] Restoring ${scopedCloudCount} bookmarks (scoped) from ${cloudBrowser} (${new Date(cloudTime).toISOString()})`,
     );
 
     // 三方合并第 1 步：只检测并记录冲突，行为与恢复结果完全不变
     try {
       const baseline = await loadSyncBaseline(config.url);
-      const report = detectThreeWayConflicts(baseline?.data ?? null, currentTree, cloudData.data);
+      const scopedBaseline = baseline?.data ? filterTreeByScope(baseline.data, syncScope) : null;
+      const report = detectThreeWayConflicts(
+        scopedBaseline,
+        filterTreeByScope(currentTree, syncScope),
+        cloudData.data,
+      );
       if (report.conflictCount > 0 || report.deleteVsChange > 0 || report.changeVsCloudDelete > 0) {
         console.warn(
           "[ThreeWay] Sync conflicts detected (current behavior: last push wins):",
@@ -228,7 +243,7 @@ export async function restoreFromCloudBackup(
 
     // 2. 恢复书签
     console.log("[CloudOperations] Restoring bookmarks...");
-    const missingFolderFallback = await getMissingFolderFallback();
+    const missingFolderFallback = (await getMissingFolderFallback()) && syncScope.other;
     await bookmarkRepository.restoreFromBackup(cloudData, { missingFolderFallback });
 
     // 3. 记录基线：本地树签名 + 服务器时间基线 + 完整基线树（三方合并用）

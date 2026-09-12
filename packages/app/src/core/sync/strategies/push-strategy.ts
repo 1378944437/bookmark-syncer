@@ -2,13 +2,13 @@
  * 推送策略
  * 智能上传：检查内容差异，只有真正有变化时才上传
  */
-import { getBackupFileInterval, getLastBackupFileInfo, getDeviceIdentity, saveLastBackupFileInfo, saveLastRemoteDevice } from "../../../application/state-manager";
+import { getBackupFileInterval, getLastBackupFileInfo, getDeviceIdentity, getSyncScope, saveLastBackupFileInfo, saveLastRemoteDevice } from "../../../application/state-manager";
 import { getBrowserInfo, isSameBrowser } from "../../../infrastructure/browser/info";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { compressText } from "../../../infrastructure/utils/compression";
 import { CloudBackup } from "../../../types";
 import { snapshotManager } from "../../backup";
-import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks } from "../../bookmark";
+import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
 import type { WebDAVConfig } from "../../storage";
 import { fileManager, STORAGE_CONSTANTS } from "../../storage";
 import { cacheManager } from "../../storage/cache-manager";
@@ -58,6 +58,9 @@ export async function smartPush(
     // 1. 获取本地书签
     console.log("[PushStrategy] Getting local bookmarks...");
     const localTree = await bookmarkRepository.getTree();
+    // 同步范围（每台设备独立）：范围外系统文件夹不参与本次上传与比较
+    const syncScope = await getSyncScope();
+    const scopedLocalTree = filterTreeByScope(localTree, syncScope);
     const localCount = countBookmarks(localTree);
     console.log(`[PushStrategy] Local: ${localCount} bookmarks`);
 
@@ -146,11 +149,11 @@ export async function smartPush(
             }
           }
 
-          // 比对内容
+          // 比对内容（双方均按同步范围过滤后再比较）
           console.log("[PushStrategy] Comparing content...");
           const isIdentical = await compareWithCloud(
-            localTree,
-            cloudData,
+            scopedLocalTree,
+            { ...cloudData, data: filterTreeByScope(cloudData.data, syncScope) },
           );
 
           if (isIdentical) {
@@ -177,10 +180,10 @@ export async function smartPush(
                 url: config.url,
                 type: "skip_identical",
                 basis: { mtime: latest.lastModified, filePath: latest.path },
-                localHash: await computeTreeHash(localTree),
+                localHash: await computeTreeHash(scopedLocalTree),
               });
               try {
-                await saveSyncBaseline(config.url, cloudData.data);
+                await saveSyncBaseline(config.url, filterTreeByScope(cloudData.data, syncScope));
               } catch (error) {
                 console.warn("[PushStrategy] Failed to save sync baseline:", error);
               }
@@ -213,6 +216,8 @@ export async function smartPush(
       deviceId: identity.deviceId,
       deviceName: identity.deviceName || browserInfo.name,
     });
+    // 应用同步范围：范围外系统文件夹不上传
+    backup.data = filterTreeByScope(backup.data, syncScope);
 
     // 验证 backup 数据完整性
     if (!backup || !backup.data || !backup.metadata) {
@@ -356,8 +361,8 @@ export async function smartPush(
       url: config.url,
       type: "upload",
       basis,
-      // 记录上传时的本地树签名，作为下次拉取前脏检测的基准
-      localHash: await computeTreeHash(localTree),
+      // 记录上传时的本地树签名（按同步范围过滤），作为下次拉取前脏检测的基准
+      localHash: await computeTreeHash(scopedLocalTree),
     });
 
     // 保存完整同步基线（三方合并第 1 步：基线=本次上传的树）

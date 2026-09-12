@@ -78,6 +78,7 @@ vi.mock("@src/application/state-manager", () => ({
   saveLastBackupFileInfo: mockSaveLastBackupFileInfo,
   getDeviceIdentity: vi.fn(async () => ({ deviceId: "testdevice123", deviceName: "测试设备" })),
   saveLastRemoteDevice: vi.fn(async () => {}),
+  getSyncScope: vi.fn(async () => ({ "bookmarks-bar": true, other: false, mobile: false })),
 }));
 
 vi.mock("@src/infrastructure/browser/info", () => ({
@@ -100,6 +101,7 @@ vi.mock("@src/core/bookmark", () => ({
   },
   compareWithCloud: mockCompareWithCloud,
   computeTreeHash: vi.fn(async () => "tree-hash-stub"),
+  filterTreeByScope: vi.fn((tree: any[]) => tree),
   countBookmarks: mockCountBookmarks,
 }));
 

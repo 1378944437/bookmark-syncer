@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Clock, Globe, Info, Link2, Loader2, RefreshC
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { updateScheduledSync, getDeviceIdentity } from '../application'
+import { SYNC_SCOPE_KEYS, type SyncScope } from '../core/bookmark'
 import { smartPushInBackground, webdavTestInBackground } from '../application/background-ops'
 import { useI18n, writeLanguageSetting, type LanguageSetting } from '../i18n'
 import { useStorage } from '../hooks/useStorage'
@@ -190,6 +191,20 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
   const [threeWayMergeEnabled, setThreeWayMergeEnabled] = useStorage('three_way_merge_enabled', false)
   const [deviceName, setDeviceName] = useStorage('device_name', '')
   const [deviceIdShort, setDeviceIdShort] = useState('')
+  const [syncScope, setSyncScope] = useStorage<SyncScope>('sync_scope', {
+    'bookmarks-bar': true,
+    other: false,
+    mobile: false,
+  })
+
+  // 同步范围：至少保留一项，防止“全关”导致同步静默失效
+  const updateSyncScope = (key: keyof SyncScope, value: boolean) => {
+    if (!value && !SYNC_SCOPE_KEYS.some((k) => k !== key && syncScope[k])) {
+      toast.error(t('settings.sync.scopeAllOff'))
+      return
+    }
+    setSyncScope({ ...syncScope, [key]: value })
+  }
 
   // 监听定时同步配置变化，立即更新 Alarm
   useEffect(() => {
@@ -227,6 +242,27 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
             />
             <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
           </label>
+        </div>
+
+        {/* 同步范围 */}
+        <div className="p-4 rounded-xl bg-secondary/30 space-y-3">
+          <div>
+            <Label className="text-foreground">{t('settings.sync.scopeSection')}</Label>
+            <p className="text-xs text-muted-foreground">{t('settings.sync.scopeHint')}</p>
+          </div>
+          {SYNC_SCOPE_KEYS.map((key) => (
+            <label key={key} className="flex items-center justify-between cursor-pointer">
+              <span className="text-sm text-foreground">
+                {t(`settings.sync.scope_${key.replace(/-/g, '_')}`)}
+              </span>
+              <input
+                type="checkbox"
+                checked={syncScope[key]}
+                onChange={(e) => updateSyncScope(key, e.target.checked)}
+                className="w-4 h-4 accent-primary"
+              />
+            </label>
+          ))}
         </div>
 
         {/* 定时同步 */}

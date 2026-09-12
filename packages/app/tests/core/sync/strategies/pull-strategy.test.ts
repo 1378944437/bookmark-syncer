@@ -66,6 +66,7 @@ vi.mock("@src/core/bookmark", () => ({
     mergeFromBackup: mockMergeFromBackup,
   },
   computeTreeHash: vi.fn(async () => "tree-hash-stub"),
+  filterTreeByScope: vi.fn((tree: any[]) => tree),
   detectThreeWayConflicts: vi.fn(() => ({
     baselineCount: 0,
     localCount: 0,

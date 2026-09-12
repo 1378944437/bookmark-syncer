@@ -38,6 +38,10 @@ export { detectThreeWayConflicts } from "./three-way";
 export type { ThreeWayMergeOptions, ThreeWayMergeReport, ThreeWayMergeSample } from "./three-way-merger";
 export { mergeThreeWay } from "./three-way-merger";
 
+// 同步范围
+export type { SyncScope, SyncScopeKey } from "./sync-scope";
+export { DEFAULT_SYNC_SCOPE, filterTreeByScope, hasAnyScopeEnabled, normalizeSyncScope, SYNC_SCOPE_KEYS } from "./sync-scope";
+
 // 树合并与同步
 export {
     buildGlobalIndex, createChildren, mergeNodes
