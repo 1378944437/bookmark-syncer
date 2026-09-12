@@ -79,6 +79,7 @@ vi.mock("@src/application/state-manager", () => ({
   getDeviceIdentity: vi.fn(async () => ({ deviceId: "testdevice123", deviceName: "测试设备" })),
   saveLastRemoteDevice: vi.fn(async () => {}),
   getSyncScope: vi.fn(async () => ({ "bookmarks-bar": true, other: false, mobile: false })),
+  getE2ESettings: vi.fn(async () => ({ enabled: false, passphrase: "" })),
 }));
 
 vi.mock("@src/infrastructure/browser/info", () => ({
@@ -339,6 +340,43 @@ describe("smartPush - 云端数据损坏时中止", () => {
     const result = await smartPush(testConfig, "auto-sync");
     expect(result.success).toBe(false);
     expect(result.message).toContain("无效");
+    expect(mockClient.putFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("smartPush - 端到端加密", () => {
+  it("加密开启时上传 .enc 加密备份（内容可用密码解回）", async () => {
+    const sm = await import("@src/application/state-manager");
+    vi.mocked(sm.getE2ESettings).mockResolvedValueOnce({
+      enabled: true,
+      passphrase: "test-pass",
+    });
+    const { decryptText } = await import("@src/infrastructure/utils/crypto");
+
+    const result = await smartPush(testConfig, "manual");
+
+    expect(result.success).toBe(true);
+    expect(mockClient.putFile).toHaveBeenCalledTimes(1);
+    const [uploadPath, uploadContent] = vi.mocked(mockClient.putFile).mock
+      .calls[0] as [string, string];
+    expect(uploadPath).toContain(".enc");
+    expect(await decryptText(uploadContent, "test-pass")).toMatch(/^compressed_/);
+  });
+
+  it("云端已加密且本设备未开启时中止上传并提示开启", async () => {
+    const { E2EPasswordRequiredError } = await import("@src/infrastructure/utils/crypto");
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz.enc",
+      lastModified: Date.now(),
+    });
+    mockGetFileWithDedup.mockRejectedValueOnce(
+      new E2EPasswordRequiredError("云端备份已启用端到端加密"),
+    );
+
+    const result = await smartPush(testConfig, "manual");
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("端到端加密");
     expect(mockClient.putFile).not.toHaveBeenCalled();
   });
 });

@@ -57,6 +57,11 @@ vi.mock("@src/core/storage", () => ({
   fileManager: {
     parseBackupFileName: (...args: any[]) => mocks.parseBackupFileName(...args),
     getLatestBackupFile: (...args: any[]) => mocks.getLatestBackupFile(...args),
+    isBackupFile: vi.fn(
+      (name: string) =>
+        name.startsWith("bookmarks_") &&
+        (name.endsWith(".json.gz") || name.endsWith(".json.gz.enc")),
+    ),
   },
   STORAGE_CONSTANTS: {
     BACKUP_DIR: "BookmarkSyncer",

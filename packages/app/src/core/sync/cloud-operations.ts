@@ -4,7 +4,7 @@
  */
 import { getWebDAVClient } from "../../infrastructure/http/webdav-client";
 import { CloudBackup, type BookmarkNode } from "../../types";
-import { getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring, saveLastRemoteDevice } from "../../application/state-manager";
+import { getE2ESettings, getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring, saveLastRemoteDevice } from "../../application/state-manager";
 import { snapshotManager } from "../backup";
 import {
   bookmarkRepository,
@@ -86,10 +86,8 @@ export async function getCloudBackupList(config: WebDAVConfig, forceRefresh = fa
   const client = getWebDAVClient(config);
   const files = await client.listFiles(DIR);
 
-  // 过滤出备份文件（只支持 .json.gz 格式）
-  const backupFiles = files.filter(
-    (file) => file.name.startsWith("bookmarks_") && file.name.endsWith(".json.gz")
-  );
+  // 过滤出备份文件（.json.gz 与端到端加密的 .json.gz.enc）
+  const backupFiles = files.filter((file) => fileManager.isBackupFile(file.name));
 
   // 按最后修改时间排序（最新的在前）
   backupFiles.sort((a, b) => b.lastModified - a.lastModified);
@@ -171,9 +169,12 @@ export async function restoreFromCloudBackup(
       // 快照创建失败不影响恢复
     }
 
-    // 直接下载备份文件（带去重保护）
+    // 直接下载备份文件（带去重保护；.enc 备份需本机密码解密，未开启时队列层抛出开启提示）
     console.log("[CloudOperations] Downloading backup...");
-    const json = await queueManager.getFileWithDedup(client, backupPath);
+    const e2e = await getE2ESettings();
+    const json = await queueManager.getFileWithDedup(client, backupPath, {
+      passphrase: e2e.enabled ? e2e.passphrase : undefined,
+    });
     if (!json) {
       console.error("[CloudOperations] Restore aborted: failed to read backup file");
       return { success: false, action: "error", message: "无法读取备份文件" };

@@ -62,8 +62,8 @@ export class FileManager {
    * @returns 解析结果，如果无法解析则返回 null
    */
   parseBackupFileName(fileName: string): BackupFileMetadata | null {
-    // 移除 .gz 扩展名
-    const cleanFileName = fileName.replace(/\.gz$/, '');
+    // 移除加密与压缩扩展名（.json.gz.enc → .json.gz）
+    const cleanFileName = fileName.replace(/\.enc$/, "").replace(/\.gz$/, "");
     
     // 解析格式: bookmarks_20260127_143052_edge_157_v3.json（_d-xxx 设备段可选）
     const match = cleanFileName.match(
@@ -99,7 +99,10 @@ export class FileManager {
    * @returns 是否为备份文件
    */
   isBackupFile(fileName: string): boolean {
-    return fileName.startsWith("bookmarks_") && fileName.endsWith(".json.gz");
+    return (
+      fileName.startsWith("bookmarks_") &&
+      (fileName.endsWith(".json.gz") || fileName.endsWith(".json.gz.enc"))
+    );
   }
 
   /**

@@ -133,4 +133,35 @@ describe("QueueManager", () => {
     expect(files).toContain("/backup/a.json.gz");
     expect(files).toContain("/backup/b.json.gz");
   });
+  describe("端到端加密 .enc 备份", () => {
+    it("用密码解密后正常解压", async () => {
+      const { encryptText } = await import("@src/infrastructure/utils/crypto");
+      const client = createMockClient(await encryptText("compressed_data", "pw"));
+      const resultPromise = manager.getFileWithDedup(client, "/backup/file.json.gz.enc", {
+        passphrase: "pw",
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(await resultPromise).toBe("decompressed_compressed_data");
+    });
+
+    it("缺少密码时提示开启端到端加密", async () => {
+      const { encryptText } = await import("@src/infrastructure/utils/crypto");
+      const client = createMockClient(await encryptText("compressed_data", "pw"));
+      const promise = manager.getFileWithDedup(client, "/backup/file.json.gz.enc");
+      const assertion = expect(promise).rejects.toThrow("端到端加密");
+      await vi.advanceTimersByTimeAsync(0);
+      await assertion;
+    });
+
+    it("密码错误时解密失败", async () => {
+      const { encryptText } = await import("@src/infrastructure/utils/crypto");
+      const client = createMockClient(await encryptText("compressed_data", "pw"));
+      const promise = manager.getFileWithDedup(client, "/backup/file.json.gz.enc", {
+        passphrase: "wrong",
+      });
+      const assertion = expect(promise).rejects.toThrow("解密失败");
+      await vi.advanceTimersByTimeAsync(0);
+      await assertion;
+    });
+  });
 });

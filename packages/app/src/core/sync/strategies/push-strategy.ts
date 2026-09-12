@@ -2,11 +2,12 @@
  * 推送策略
  * 智能上传：检查内容差异，只有真正有变化时才上传
  */
-import { getBackupFileInterval, getLastBackupFileInfo, getDeviceIdentity, getSyncScope, saveLastBackupFileInfo, saveLastRemoteDevice } from "../../../application/state-manager";
+import { getBackupFileInterval, getDeviceIdentity, getE2ESettings, getLastBackupFileInfo, getSyncScope, saveLastBackupFileInfo, saveLastRemoteDevice } from "../../../application/state-manager";
 
 import { getBrowserInfo, isSameBrowser } from "../../../infrastructure/browser/info";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { compressText } from "../../../infrastructure/utils/compression";
+import { encryptText, E2EDecryptError, E2EPasswordRequiredError } from "../../../infrastructure/utils/crypto";
 import { CloudBackup } from "../../../types";
 import { snapshotManager } from "../../backup";
 import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
@@ -85,10 +86,13 @@ export async function smartPush(
 
     // 2. 获取云端最新备份并比对
     console.log("[PushStrategy] Checking cloud state...");
+    const e2e = await getE2ESettings();
     try {
       const latest = await fileManager.getLatestBackupFile(client);
       if (latest) {
-        const cloudJson = await queueManager.getFileWithDedup(client, latest.path);
+        const cloudJson = await queueManager.getFileWithDedup(client, latest.path, {
+          passphrase: e2e.enabled ? e2e.passphrase : undefined,
+        });
         if (cloudJson) {
           let cloudData: CloudBackup;
           try {
@@ -196,8 +200,15 @@ export async function smartPush(
         console.log("[PushStrategy] No cloud backup found, first upload");
       }
     } catch (error) {
-      // 云端数据损坏属于契约问题：继续上传会用本地数据覆盖云端现场，必须中止
-      if (error instanceof CloudDataError) throw error;
+      // 端到端加密相关：未输入密码或密码不一致时必须中止，
+      // 不得用明文（或另一把密钥的密文）覆盖云端现场
+      if (
+        error instanceof E2EPasswordRequiredError ||
+        error instanceof E2EDecryptError ||
+        error instanceof CloudDataError
+      ) {
+        throw error;
+      }
       console.warn("[PushStrategy] Failed to check cloud state:", error);
       // 云端文件不存在或网络故障，继续上传
     }
@@ -279,20 +290,32 @@ export async function smartPush(
       isNewFile = true;
     }
 
-    // 准备文件内容（强制压缩）
+    // 准备文件内容（强制压缩；开启端到端加密时先压缩后加密）
     const backupJson = JSON.stringify(backup);
-    
+
     console.log("[PushStrategy] Compressing backup...");
     const startCompress = Date.now();
-    const fileContent = await compressText(backupJson);
+    const compressed = await compressText(backupJson);
     const compressTime = Date.now() - startCompress;
-    const compressionRatio = Math.round((fileContent.length / backupJson.length) * 100);
-    console.log(`[PushStrategy] Compression: ${backupJson.length} → ${fileContent.length} bytes (${compressionRatio}%) in ${compressTime}ms`);
-    
-    // 添加 .gz 扩展名
-    const finalFileName = targetFileName.endsWith('.gz') ? targetFileName : targetFileName + '.gz';
-    if (!targetFilePath.endsWith('.gz')) {
-      targetFilePath = targetFilePath + '.gz';
+    console.log(`[PushStrategy] Compression: ${backupJson.length} → ${compressed.length} bytes in ${compressTime}ms`);
+
+    let fileContent: string = compressed;
+    let finalFileName = targetFileName.endsWith(".gz") ? targetFileName : targetFileName + ".gz";
+    if (!targetFilePath.endsWith(".gz")) {
+      targetFilePath = targetFilePath + ".gz";
+    }
+    if (e2e.enabled) {
+      if (!e2e.passphrase) {
+        return {
+          success: false,
+          action: "error",
+          message: "端到端加密已开启但密码缺失，请在设置中重新输入密码",
+        };
+      }
+      console.log("[PushStrategy] Encrypting backup (E2E)...");
+      fileContent = await encryptText(fileContent, e2e.passphrase);
+      finalFileName = finalFileName + ".enc";
+      targetFilePath = targetFilePath + ".enc";
     }
 
     console.log(`[PushStrategy] ${isNewFile ? 'Creating new backup' : 'Overwriting existing backup'}: ${finalFileName} (revision ${revisionNumber})`);

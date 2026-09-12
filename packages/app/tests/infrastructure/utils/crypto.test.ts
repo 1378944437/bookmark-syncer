@@ -2,7 +2,13 @@
  * crypto.ts 测试
  * 测试 SHA-256 哈希生成
  */
-import { generateHash } from "@src/infrastructure/utils/crypto";
+import {
+  decryptText,
+  encryptText,
+  E2EDecryptError,
+  E2EPasswordRequiredError,
+  generateHash,
+} from "@src/infrastructure/utils/crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // 使用 Node.js 内置 crypto 为测试环境提供 Web Crypto API
@@ -63,5 +69,38 @@ describe("generateHash", () => {
     const h3 = await generateHash("https://a.com", "title");
     const h4 = await generateHash("https://a.com|title", "");
     expect(h3).not.toBe(h4);
+  });
+});
+
+describe("端到端加密 encryptText/decryptText", () => {
+  const passphrase = "test-passphrase-123";
+
+  it("加解密回环（含中文）", async () => {
+    const plain = "hello 汇签 bookmarks";
+    const payload = await encryptText(plain, passphrase);
+    expect(payload).not.toContain(plain);
+    expect(await decryptText(payload, passphrase)).toBe(plain);
+  });
+
+  it("相同明文两次加密产生不同密文（随机盐/IV）", async () => {
+    const p1 = await encryptText("secret", passphrase);
+    const p2 = await encryptText("secret", passphrase);
+    expect(p1).not.toBe(p2);
+  });
+
+  it("错误密码抛出 E2EDecryptError", async () => {
+    const payload = await encryptText("secret", passphrase);
+    await expect(decryptText(payload, "wrong-passphrase")).rejects.toThrow("密码");
+  });
+
+  it("篡改密文抛出 E2EDecryptError", async () => {
+    const payload = await encryptText("secret", passphrase);
+    await expect(decryptText(payload.slice(0, -4) + "AAAA", passphrase)).rejects.toThrow(
+      E2EDecryptError,
+    );
+  });
+
+  it("空密码加密抛出 E2EPasswordRequiredError", async () => {
+    await expect(encryptText("secret", "")).rejects.toThrow(E2EPasswordRequiredError);
   });
 });

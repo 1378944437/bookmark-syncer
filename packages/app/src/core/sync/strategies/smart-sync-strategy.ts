@@ -5,7 +5,7 @@
 import { acquireSyncLock, getLastSyncTime, getSyncState, releaseSyncLock, setSyncState } from "../";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../../types";
-import { getSyncScope } from "../../../application/state-manager";
+import { getE2ESettings, getSyncScope } from "../../../application/state-manager";
 import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
 import { fileManager } from "../../storage";
 import { queueManager } from "../../storage/queue-manager";
@@ -57,7 +57,11 @@ export async function smartSync(
     try {
       latest = await fileManager.getLatestBackupFile(client);
       if (latest) {
-        const json = await queueManager.getFileWithDedup(client, latest.path);
+        // .enc 备份需本机密码解密；未开启时队列层抛出开启提示
+        const e2e = await getE2ESettings();
+        const json = await queueManager.getFileWithDedup(client, latest.path, {
+          passphrase: e2e.enabled ? e2e.passphrase : undefined,
+        });
         if (json) {
           try {
             cloudData = JSON.parse(json) as CloudBackup;

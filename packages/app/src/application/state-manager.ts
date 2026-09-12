@@ -128,6 +128,31 @@ export async function getSyncScope(): Promise<SyncScope> {
   return normalizeSyncScope(result.sync_scope as Partial<SyncScope> | undefined);
 }
 
+export interface E2ESettings {
+  enabled: boolean;
+  passphrase: string;
+}
+
+/**
+ * 端到端加密设置：密码只保存在本设备（storage.local），不上传云端。
+ * 所有设备需输入相同密码才能互相解密备份
+ */
+export async function getE2ESettings(): Promise<E2ESettings> {
+  const result = await browser.storage.local.get(['e2e_enabled', 'e2e_passphrase']);
+  return {
+    enabled: result.e2e_enabled === true,
+    passphrase: (result.e2e_passphrase as string) || "",
+  };
+}
+
+export async function saveE2ESettings(settings: E2ESettings): Promise<void> {
+  await browser.storage.local.set({
+    e2e_enabled: settings.enabled,
+    // 关闭时清除本地密码；已上传的加密备份仍需原密码才能恢复
+    e2e_passphrase: settings.enabled ? settings.passphrase : "",
+  });
+}
+
 export interface DeviceIdentity {
   deviceId: string;
   deviceName: string;

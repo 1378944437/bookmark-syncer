@@ -4,7 +4,7 @@
  */
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup, type BookmarkNode } from "../../../types";
-import { getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
+import { getE2ESettings, getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
 import { snapshotManager } from "../../backup";
 import {
   bookmarkRepository,
@@ -83,7 +83,11 @@ export async function smartPull(
       return { success: false, action: "error", message: "云端无备份数据" };
     }
     
-    const json = await queueManager.getFileWithDedup(client, latest.path);
+    // 端到端加密：.enc 备份需要本机密码解密；未开启时队列层会抛出开启提示
+    const e2e = await getE2ESettings();
+    const json = await queueManager.getFileWithDedup(client, latest.path, {
+      passphrase: e2e.enabled ? e2e.passphrase : undefined,
+    });
     if (!json) {
       console.error("[PullStrategy] Pull aborted: failed to read backup file");
       return { success: false, action: "error", message: "无法读取云端备份" };

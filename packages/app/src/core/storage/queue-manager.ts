@@ -4,6 +4,7 @@
  * 提供超时保护和队列状态管理
  */
 import type { IWebDAVClient } from "../../infrastructure/http/webdav-client";
+import { decryptText, E2EPasswordRequiredError } from "../../infrastructure/utils/crypto";
 import { decompressText } from "../../infrastructure/utils/compression";
 import { STORAGE_CONSTANTS } from "./types";
 
@@ -23,14 +24,16 @@ export class QueueManager {
   /**
    * 带去重的文件下载
    * 如果同一文件正在下载，会复用现有的下载 Promise
-   * 
+   *
    * @param client WebDAV 客户端
    * @param path 文件路径
-   * @returns 文件内容
+   * @param opts.passphrase 端到端加密密码（.enc 备份必需，缺失时抛出提示开启的错误）
+   * @returns 文件内容（已解密解压的 JSON 字符串）
    */
   async getFileWithDedup(
     client: IWebDAVClient,
     path: string,
+    opts?: { passphrase?: string },
   ): Promise<string> {
     // 如果正在下载，返回同一个 Promise
     if (this.downloadQueue.has(path)) {
@@ -58,15 +61,28 @@ export class QueueManager {
       client.getFile(path),
       timeoutPromise,
     ]).then(async (content) => {
-      // 所有文件都必须是 .gz 压缩格式，自动解压
-      if (!path.endsWith('.gz')) {
+      // 端到端加密的备份：先解密再解压；本设备未配置密码时提示开启
+      let raw = content;
+      if (path.endsWith(".enc")) {
+        if (!opts?.passphrase) {
+          throw new E2EPasswordRequiredError(
+            "云端备份已启用端到端加密：请在本设备 设置 → 同步设置 中开启端到端加密并输入相同密码",
+          );
+        }
+        console.log(`[QueueManager] Decrypting file: ${path}`);
+        raw = await decryptText(content, opts.passphrase);
+      }
+
+      // 所有备份必须是 .gz 压缩格式（.enc 内层仍为 .gz），自动解压
+      const gzPath = path.replace(/\.enc$/, "");
+      if (!gzPath.endsWith(".gz")) {
         throw new Error(`不支持的文件格式：${path}（必须是 .gz 压缩文件）`);
       }
-      
+
       console.log(`[QueueManager] Decompressing file: ${path}`);
       try {
-        const decompressed = await decompressText(content);
-        console.log(`[QueueManager] Decompression: ${content.length} → ${decompressed.length} bytes`);
+        const decompressed = await decompressText(raw);
+        console.log(`[QueueManager] Decompression: ${raw.length} → ${decompressed.length} bytes`);
         return decompressed;
       } catch (error) {
         console.error("[QueueManager] Decompression failed:", error);

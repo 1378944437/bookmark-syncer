@@ -190,6 +190,9 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
   const [missingFolderFallback, setMissingFolderFallback] = useStorage('missing_folder_fallback', false)
   const [deviceName, setDeviceName] = useStorage('device_name', '')
   const [deviceIdShort, setDeviceIdShort] = useState('')
+  const [e2eEnabled, setE2eEnabled] = useStorage('e2e_enabled', false)
+  const [e2ePassphrase, setE2ePassphrase] = useStorage('e2e_passphrase', '')
+  const [e2eConfirm, setE2eConfirm] = useState('')
   const [syncScope, setSyncScope] = useStorage<SyncScope>('sync_scope', {
     'bookmarks-bar': true,
     other: false,
@@ -221,6 +224,16 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     getDeviceIdentity().then((d) => setDeviceIdShort(d.deviceId.slice(0, 8)))
   }, [])
+
+  // 端到端加密开关：开启时要求密码至少 8 位且两次输入一致
+  const onE2eToggle = (next: boolean) => {
+    if (next && (e2ePassphrase.length < 8 || e2ePassphrase !== e2eConfirm)) {
+      toast.error(t('settings.sync.e2eNeedValidPassword'))
+      return
+    }
+    setE2eEnabled(next)
+    toast.success(t(next ? 'settings.sync.e2eOnToast' : 'settings.sync.e2eOffToast'))
+  }
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -337,6 +350,46 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
               onChange={(e) => setDeviceName(e.target.value)}
               placeholder={t('settings.sync.deviceNamePlaceholder')}
             />
+          </div>
+        </div>
+
+        {/* 端到端加密 */}
+        <div className="p-4 rounded-xl bg-secondary/30 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-foreground">{t('settings.sync.e2eSection')}</Label>
+              <p className="text-xs text-muted-foreground max-w-[70%]">{t('settings.sync.e2eDesc')}</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={e2eEnabled}
+                onChange={(e) => onE2eToggle(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+            </label>
+          </div>
+          <div className="space-y-2">
+            <div>
+              <Label className="text-muted-foreground">{t('settings.sync.e2ePassword')}</Label>
+              <Input
+                type="password"
+                value={e2ePassphrase}
+                onChange={(e) => setE2ePassphrase(e.target.value)}
+                placeholder={t('settings.sync.e2ePasswordPlaceholder')}
+              />
+            </div>
+            <div>
+              <Label className="text-muted-foreground">{t('settings.sync.e2eConfirm')}</Label>
+              <Input
+                type="password"
+                value={e2eConfirm}
+                onChange={(e) => setE2eConfirm(e.target.value)}
+                placeholder={t('settings.sync.e2eConfirmPlaceholder')}
+              />
+            </div>
+            <p className="text-xs text-amber-500">{t('settings.sync.e2eWarn')}</p>
           </div>
         </div>
 
