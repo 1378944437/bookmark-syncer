@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Clock, Globe, Info, Link2, Loader2, RefreshCw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { updateScheduledSync } from '../application'
+import { updateScheduledSync, getDeviceIdentity } from '../application'
 import { smartPushInBackground, webdavTestInBackground } from '../application/background-ops'
 import { useI18n, writeLanguageSetting, type LanguageSetting } from '../i18n'
 import { useStorage } from '../hooks/useStorage'
@@ -187,6 +187,9 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
   const [scheduledSyncInterval, setScheduledSyncInterval] = useStorage('scheduled_sync_interval', 30)
   const [backupFileInterval, setBackupFileInterval] = useStorage('backup_file_interval', 1)
   const [missingFolderFallback, setMissingFolderFallback] = useStorage('missing_folder_fallback', false)
+  const [threeWayMergeEnabled, setThreeWayMergeEnabled] = useStorage('three_way_merge_enabled', false)
+  const [deviceName, setDeviceName] = useStorage('device_name', '')
+  const [deviceIdShort, setDeviceIdShort] = useState('')
 
   // 监听定时同步配置变化，立即更新 Alarm
   useEffect(() => {
@@ -199,6 +202,11 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
     };
     updateAlarm();
   }, [scheduledSyncEnabled, scheduledSyncInterval])
+
+  // 设备标识：首次访问时生成并持久化，这里只取前 8 位用于展示
+  useEffect(() => {
+    getDeviceIdentity().then((d) => setDeviceIdShort(d.deviceId.slice(0, 8)))
+  }, [])
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -276,6 +284,42 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
             />
             <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
           </label>
+        </div>
+
+        {/* 三树合并（实验） */}
+        <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/30">
+          <div>
+            <Label className="text-foreground">{t('settings.sync.threeWay')}</Label>
+            <p className="text-xs text-muted-foreground max-w-[70%]">{t('settings.sync.threeWayDesc')}</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={threeWayMergeEnabled}
+              onChange={(e) => setThreeWayMergeEnabled(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+          </label>
+        </div>
+
+        {/* 设备标识 */}
+        <div className="p-4 rounded-xl bg-secondary/30 space-y-3">
+          <div>
+            <Label className="text-foreground">{t('settings.sync.deviceSection')}</Label>
+            <p className="text-xs text-muted-foreground">
+              {t('settings.sync.deviceId')}: <span className="font-mono">{deviceIdShort || '········'}</span>
+            </p>
+          </div>
+          <div>
+            <Label className="text-muted-foreground">{t('settings.sync.deviceName')}</Label>
+            <Input
+              type="text"
+              value={deviceName}
+              onChange={(e) => setDeviceName(e.target.value)}
+              placeholder={t('settings.sync.deviceNamePlaceholder')}
+            />
+          </div>
         </div>
 
         {/* 备份文件间隔 */}

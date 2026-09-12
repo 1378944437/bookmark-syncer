@@ -41,6 +41,7 @@ export function SyncView() {
   const [password] = useStorage('webdav_password', '')
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [syncState] = useStorage<{ time: number; url: string; type: string } | null>('syncState', null)
+  const [lastRemoteDevice] = useStorage<{ deviceId?: string; deviceName?: string; time: number } | null>('last_remote_device', null)
   const isOnline = useOnlineStatus()
   
   const [localCount, setLocalCount] = useState(0)
@@ -542,6 +543,7 @@ export function SyncView() {
                         <span className="text-[10px] text-muted-foreground">
                              {t('sync.cloudUpdatedAt', { time: new Date(cloudMeta.time).toLocaleString() })}
                              {cloudMeta.device ? ` (${cloudMeta.device})` : ''}
+                             {lastRemoteDevice?.deviceName ? ` · ${lastRemoteDevice.deviceName}` : ''}
                         </span>
                     )}
                 </div>
