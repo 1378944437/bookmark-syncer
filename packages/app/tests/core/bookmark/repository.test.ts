@@ -3,6 +3,7 @@
  * 测试书签仓储层的 createCloudBackup 和 restoreFromBackup
  */
 import { BookmarkRepository } from "@src/core/bookmark/repository";
+import { mergeNodes } from "@src/core/bookmark/merger";
 import type { BookmarkNode, CloudBackup } from "@src/types";
 import browser from "webextension-polyfill";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -165,6 +166,43 @@ describe("BookmarkRepository", () => {
     it("无效的备份格式抛出错误", async () => {
       const badBackup = { metadata: {}, data: null } as unknown as CloudBackup;
       await expect(repo.restoreFromBackup(badBackup)).rejects.toThrow("备份数据格式无效");
+    });
+
+    it("缺失文件夹兜底开启时，把无匹配文件夹的内容合并到其他书签", async () => {
+      const mobileFolder: BookmarkNode = {
+        id: "3",
+        title: "Mobile Bookmarks",
+        folderType: "mobile", // 本地只有 bookmarks-bar 和 other，没有 mobile
+        children: [{ id: "30", title: "Mobile Site", url: "https://m.example.com" }],
+      };
+      const backup: CloudBackup = {
+        metadata: { timestamp: Date.now(), clientVersion: "2.0.0" },
+        data: [{ id: "0", title: "", children: [mobileFolder] }],
+      };
+
+      await repo.restoreFromBackup(backup, { missingFolderFallback: true });
+
+      expect(mergeNodes).toHaveBeenCalledWith(
+        "2", // 本地 other 文件夹的 id
+        mobileFolder.children,
+      );
+    });
+
+    it("默认（兜底关闭）时跳过无匹配的文件夹", async () => {
+      const mobileFolder: BookmarkNode = {
+        id: "3",
+        title: "Mobile Bookmarks",
+        folderType: "mobile",
+        children: [{ id: "30", title: "Mobile Site", url: "https://m.example.com" }],
+      };
+      const backup: CloudBackup = {
+        metadata: { timestamp: Date.now(), clientVersion: "2.0.0" },
+        data: [{ id: "0", title: "", children: [mobileFolder] }],
+      };
+
+      await repo.restoreFromBackup(backup);
+
+      expect(mergeNodes).not.toHaveBeenCalled();
     });
   });
 

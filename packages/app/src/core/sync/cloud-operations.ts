@@ -4,7 +4,7 @@
  */
 import { getWebDAVClient } from "../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../types";
-import { holdRestoringUntil, setIsRestoring } from "../../application/state-manager";
+import { getMissingFolderFallback, holdRestoringUntil, setIsRestoring } from "../../application/state-manager";
 import { snapshotManager } from "../backup";
 import { bookmarkRepository, computeTreeHash, countBookmarks } from "../bookmark";
 import { fileManager, STORAGE_CONSTANTS } from "../storage";
@@ -193,7 +193,8 @@ export async function restoreFromCloudBackup(
 
     // 2. 恢复书签
     console.log("[CloudOperations] Restoring bookmarks...");
-    await bookmarkRepository.restoreFromBackup(cloudData);
+    const missingFolderFallback = await getMissingFolderFallback();
+    await bookmarkRepository.restoreFromBackup(cloudData, { missingFolderFallback });
 
     // 3. 记录基线：本地树签名 + 服务器时间基线
     // 时间基线取当前云端最新文件（即使恢复的是更早的备份），

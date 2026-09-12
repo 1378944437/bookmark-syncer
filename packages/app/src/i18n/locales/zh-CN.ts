@@ -163,6 +163,8 @@ export const dictionary: Record<string, string> = {
   "settings.sync.scheduledDesc": "定期检查云端更新",
   "settings.sync.interval": "同步间隔（分钟）",
   "settings.sync.intervalHint": "建议 15-60 分钟，最小 1 分钟，最大 1440 分钟",
+  "settings.sync.missingFolderFallback": "缺失文件夹兜底",
+  "settings.sync.missingFolderFallbackDesc": "云端存在本设备没有的系统文件夹时，把其中书签合并到「其他书签」（只增不删；在拥有该文件夹的设备上可能出现两份）",
   "settings.sync.backupInterval": "备份文件间隔（分钟）",
   "settings.sync.minute1": "1 分钟",
   "settings.sync.minute5": "5 分钟（推荐）",

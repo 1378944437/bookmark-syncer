@@ -10,6 +10,19 @@ import { buildGlobalIndex, createChildren, deleteUnprocessedNodes, mergeNodes, s
 import { findMatchingSystemFolder, hasCrossBrowserMapping, annotateSystemFolders } from "./normalizer";
 
 /**
+ * 恢复选项
+ */
+export interface RestoreOptions {
+  /**
+   * 缺失文件夹兜底：云端存在本设备没有的系统文件夹（如该设备没有「移动设备书签」）时，
+   * 把其中书签合并到本地「其他书签」（只增不删）。
+   * 注意：这些书签随后会被推送回云端（位于「其他书签」），
+   * 在拥有该文件夹的设备上会出现两份（原位置 + 其他书签）
+   */
+  missingFolderFallback?: boolean;
+}
+
+/**
  * 书签仓储类
  * 封装所有书签相关的业务逻辑
  */
@@ -44,7 +57,10 @@ export class BookmarkRepository {
   /**
    * 从备份恢复（使用全局索引 + 三阶段同步）
    */
-  async restoreFromBackup(backup: CloudBackup | BookmarkNode[]): Promise<void> {
+  async restoreFromBackup(
+    backup: CloudBackup | BookmarkNode[],
+    options?: RestoreOptions,
+  ): Promise<void> {
     const startTime = Date.now();
     console.log("[BookmarkRepository] Starting restore from backup...");
 
@@ -128,9 +144,24 @@ export class BookmarkRepository {
         );
       } else {
         // 有映射但找不到匹配的本地文件夹
-        console.warn(
-          `[BookmarkRepository] No matching system folder found for ${backupChild.title}`,
-        );
+        if (options?.missingFolderFallback && backupChild.children?.length) {
+          // 兜底：合并进本地「其他书签」（只增不删，不会动其他书签已有内容）
+          const otherFolder = localChildren.find((l) => l.folderType === "other");
+          if (otherFolder?.id) {
+            console.warn(
+              `[BookmarkRepository] No local folder for "${backupChild.folderType ?? backupChild.title}", merging ${backupChild.children.length} items into "other" (fallback)`,
+            );
+            await mergeNodes(otherFolder.id, backupChild.children);
+          } else {
+            console.warn(
+              `[BookmarkRepository] No matching system folder for ${backupChild.title} and no "other" folder to fall back to`,
+            );
+          }
+        } else {
+          console.warn(
+            `[BookmarkRepository] No matching system folder found for ${backupChild.title}`,
+          );
+        }
       }
     }
 
@@ -179,7 +210,10 @@ export class BookmarkRepository {
   /**
    * 合并备份（只添加不存在的）
    */
-  async mergeFromBackup(backup: CloudBackup | BookmarkNode[]): Promise<void> {
+  async mergeFromBackup(
+    backup: CloudBackup | BookmarkNode[],
+    options?: RestoreOptions,
+  ): Promise<void> {
     let tree: BookmarkNode[];
 
     if (Array.isArray(backup)) {
@@ -220,6 +254,19 @@ export class BookmarkRepository {
         const folderName = targetFolder.title || child.title;
         console.log(`[BookmarkRepository] Merging folder: ${folderName} (${child.children.length} items)`);
         await mergeNodes(targetFolder.id, child.children);
+      } else if (options?.missingFolderFallback && child.children?.length) {
+        // 兜底：合并进本地「其他书签」
+        const otherFolder = localRoot.children.find((l) => l.folderType === "other");
+        if (otherFolder?.id) {
+          console.warn(
+            `[BookmarkRepository] Merging ${child.children.length} items from missing folder into "other" (fallback)`,
+          );
+          await mergeNodes(otherFolder.id, child.children);
+        } else {
+          console.warn(
+            `[BookmarkRepository] No matching system folder for ${child.title} and no "other" folder to fall back to`,
+          );
+        }
       } else {
         // 有映射但找不到匹配的本地文件夹
         console.warn(

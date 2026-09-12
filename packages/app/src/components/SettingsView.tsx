@@ -186,6 +186,7 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
   const [scheduledSyncEnabled, setScheduledSyncEnabled] = useStorage('scheduled_sync_enabled', false)
   const [scheduledSyncInterval, setScheduledSyncInterval] = useStorage('scheduled_sync_interval', 30)
   const [backupFileInterval, setBackupFileInterval] = useStorage('backup_file_interval', 1)
+  const [missingFolderFallback, setMissingFolderFallback] = useStorage('missing_folder_fallback', false)
 
   // 监听定时同步配置变化，立即更新 Alarm
   useEffect(() => {
@@ -259,6 +260,23 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
             </p>
           </div>
         )}
+
+        {/* 缺失文件夹兜底 */}
+        <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/30">
+          <div>
+            <Label className="text-foreground">{t('settings.sync.missingFolderFallback')}</Label>
+            <p className="text-xs text-muted-foreground max-w-[70%]">{t('settings.sync.missingFolderFallbackDesc')}</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={missingFolderFallback}
+              onChange={(e) => setMissingFolderFallback(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+          </label>
+        </div>
 
         {/* 备份文件间隔 */}
         <div className="space-y-2 p-4 rounded-xl bg-secondary/30">

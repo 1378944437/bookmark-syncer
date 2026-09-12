@@ -163,6 +163,8 @@ export const dictionary: Record<string, string> = {
   "settings.sync.scheduledDesc": "Check for cloud updates periodically",
   "settings.sync.interval": "Sync interval (minutes)",
   "settings.sync.intervalHint": "Recommended 15–60 min, min 1, max 1440",
+  "settings.sync.missingFolderFallback": "Missing folder fallback",
+  "settings.sync.missingFolderFallbackDesc": "Merge bookmarks from cloud folders this device doesn't have into \"Other bookmarks\" (add-only; they may appear twice on devices that have the folder)",
   "settings.sync.backupInterval": "Backup file interval (minutes)",
   "settings.sync.minute1": "1 minute",
   "settings.sync.minute5": "5 minutes (recommended)",

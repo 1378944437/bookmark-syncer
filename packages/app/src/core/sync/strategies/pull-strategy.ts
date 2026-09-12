@@ -4,7 +4,7 @@
  */
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../../types";
-import { holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
+import { getMissingFolderFallback, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
 import { snapshotManager } from "../../backup";
 import { bookmarkRepository, computeTreeHash, countBookmarks } from "../../bookmark";
 import type { WebDAVConfig } from "../../storage";
@@ -105,10 +105,11 @@ export async function smartPull(
 
     // 2. 恢复书签
     console.log(`[PullStrategy] Restoring bookmarks (${mode} mode)...`);
+    const missingFolderFallback = await getMissingFolderFallback();
     if (mode === "overwrite") {
-      await bookmarkRepository.restoreFromBackup(cloudData);
+      await bookmarkRepository.restoreFromBackup(cloudData, { missingFolderFallback });
     } else {
-      await bookmarkRepository.mergeFromBackup(cloudData);
+      await bookmarkRepository.mergeFromBackup(cloudData, { missingFolderFallback });
     }
 
     // 3. 记录本地基线（重新读取恢复后的实际树，作为下次拉取前脏检测的基准）

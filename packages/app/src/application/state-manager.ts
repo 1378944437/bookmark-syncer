@@ -109,6 +109,15 @@ export async function getBackupFileInterval(): Promise<number> {
   return (result.backup_file_interval as number) || 1; // 默认1分钟
 }
 
+/**
+ * 缺失文件夹兜底开关：本地缺少云端系统文件夹时，
+ * 把其中书签合并到本地「其他书签」（只增不删）。默认关闭
+ */
+export async function getMissingFolderFallback(): Promise<boolean> {
+  const result = await browser.storage.local.get('missing_folder_fallback');
+  return result.missing_folder_fallback === true;
+}
+
 /** 上次定时同步检查的时间戳存储键 */
 const LAST_SCHEDULED_CHECK_KEY = 'last_scheduled_check';
 
