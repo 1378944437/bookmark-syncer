@@ -9,14 +9,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/1378944437/bookmark-syncer/releases/latest">
-    <img src="https://img.shields.io/github/downloads/1378944437/bookmark-syncer/total?style=flat-square&logo=github" alt="Downloads">
+  <a href="https://github.com/1378944437/marksync/releases/latest">
+    <img src="https://img.shields.io/github/downloads/1378944437/marksync/total?style=flat-square&logo=github" alt="Downloads">
   </a>
-  <a href="https://github.com/1378944437/bookmark-syncer/releases/latest">
-    <img src="https://img.shields.io/github/v/release/1378944437/bookmark-syncer?style=flat-square&logo=github" alt="Release">
+  <a href="https://github.com/1378944437/marksync/releases/latest">
+    <img src="https://img.shields.io/github/v/release/1378944437/marksync?style=flat-square&logo=github" alt="Release">
   </a>
   <a href="./LICENSE">
-    <img src="https://img.shields.io/github/license/1378944437/bookmark-syncer?style=flat-square" alt="License">
+    <img src="https://img.shields.io/github/license/1378944437/marksync?style=flat-square" alt="License">
   </a>
 </p>
 
