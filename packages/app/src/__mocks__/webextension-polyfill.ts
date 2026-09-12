@@ -70,6 +70,10 @@ const browser = {
         }
       }),
     },
+    onChanged: {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    },
   },
   bookmarks: {
     getTree: vi.fn(async () => []),
@@ -94,6 +98,12 @@ const browser = {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     },
+  },
+  action: {
+    setBadgeText: vi.fn(async () => {}),
+    setBadgeBackgroundColor: vi.fn(async () => {}),
+    setBadgeTextColor: vi.fn(async () => {}),
+    setTitle: vi.fn(async () => {}),
   },
   runtime: {
     getManifest: vi.fn(() => ({ version: "1.0.0" })),

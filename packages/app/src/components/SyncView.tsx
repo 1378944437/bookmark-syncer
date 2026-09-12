@@ -71,6 +71,19 @@ export function SyncView() {
     return () => { if (msgTimerRef.current) clearTimeout(msgTimerRef.current) }
   }, [])
 
+  // 后台同步完成时弹出轻提示（面板打开期间可见；自动消失，不打断操作）
+  const lastSeenSyncTimeRef = useRef<number | null>(null)
+  useEffect(() => {
+    const time = syncState?.time
+    if (!time) return
+    const previous = lastSeenSyncTimeRef.current
+    lastSeenSyncTimeRef.current = time
+    // 首次加载已有状态不提示，只对“面板打开期间新完成”的同步提示
+    if (previous !== null && time !== previous && syncState?.type !== 'skip_identical') {
+      toast.success(t('sync.toast.completed'), { duration: 2000 })
+    }
+  }, [syncState?.time, syncState?.type, t])
+
   const isConfigured = !!webdavUrl
 
   const loadCounts = async (signal?: { aborted: boolean }) => {

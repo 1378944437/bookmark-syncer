@@ -5,6 +5,7 @@
 import { getCloudBackupList, getSyncState, smartPull, smartPush } from "../core/sync";
 import { isCloudNewerThanBasis, isLocalDirty } from "../core/sync/utils/sync-basis";
 import { bookmarkRepository, computeTreeHash } from "../core/bookmark";
+import { flashSyncBadge } from "./sync-indicator";
 import {
     LOCK_HOLDER_AUTO,
     POST_PULL_UPLOAD_SUPPRESSION_MS,
@@ -89,6 +90,7 @@ export async function executeUpload(): Promise<void> {
 
     if (result.success) {
       console.log(`[SyncExecutor] Upload ${result.action}: ${result.message}`);
+      flashSyncBadge(result.action);
     } else {
       console.warn(`[SyncExecutor] Upload failed: ${result.message}`);
     }
@@ -184,6 +186,7 @@ export async function executeAutoPull(): Promise<void> {
 
     if (pullResult.success) {
       console.log(`[SyncExecutor] Pull ${pullResult.action}: ${pullResult.message}`);
+      flashSyncBadge(pullResult.action);
     } else {
       console.warn(`[SyncExecutor] Pull failed: ${pullResult.message}`);
     }

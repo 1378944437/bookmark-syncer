@@ -43,6 +43,7 @@ export const dictionary: Record<string, string> = {
 
   // ─── Toast ───
   "sync.toast.backgroundHint": "操作在后台进行，关闭面板后仍会继续完成",
+  "sync.toast.completed": "同步完成",
   "sync.toast.restoreSuccess": "恢复成功",
   "sync.toast.restoredBookmarks": "已恢复书签",
   "sync.toast.restoredMergedBookmarks": "已恢复并合并书签",

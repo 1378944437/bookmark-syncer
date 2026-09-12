@@ -11,6 +11,8 @@
 import browser from "webextension-polyfill";
 import type { BackgroundOpMessage } from "../application/background-ops";
 import { smartPull, smartPush, smartSync, restoreFromCloudBackup } from "../core/sync";
+import { flashSyncBadge } from "../application/sync-indicator";
+import type { SyncResult } from "../core/sync/types";
 import { getWebDAVClient } from "../infrastructure/http/webdav-client";
 
 /** 防止重复注册（模块可能被多个入口引入） */
@@ -72,14 +74,28 @@ export function registerBackgroundOpHandler(): void {
     }
 
     console.log(`[BackgroundOpHandler] Executing: ${typed.type}`);
-    return dispatch(typed).catch((error) => {
-      console.error(`[BackgroundOpHandler] ${typed.type} failed:`, error);
-      return {
-        success: false,
-        action: "error",
-        message: (error as Error).message || "后台操作失败",
-      };
-    });
+    return dispatch(typed)
+      .then((result) => {
+        // 手动同步成功后同样闪现完成角标
+        const syncResult = result as SyncResult | { ok: boolean } | undefined;
+        if (
+          syncResult &&
+          typeof syncResult === "object" &&
+          "action" in syncResult &&
+          syncResult.success
+        ) {
+          flashSyncBadge((syncResult as SyncResult).action);
+        }
+        return result;
+      })
+      .catch((error) => {
+        console.error(`[BackgroundOpHandler] ${typed.type} failed:`, error);
+        return {
+          success: false,
+          action: "error",
+          message: (error as Error).message || "后台操作失败",
+        };
+      });
   });
 
   console.log("[BackgroundOpHandler] Message handler registered");

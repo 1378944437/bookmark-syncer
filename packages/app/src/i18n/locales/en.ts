@@ -43,6 +43,7 @@ export const dictionary: Record<string, string> = {
 
   // ─── Toasts ───
   "sync.toast.backgroundHint": "Running in the background — safe to close this panel",
+  "sync.toast.completed": "Sync complete",
   "sync.toast.restoreSuccess": "Restore succeeded",
   "sync.toast.restoredBookmarks": "Bookmarks restored",
   "sync.toast.restoredMergedBookmarks": "Bookmarks restored and merged",
