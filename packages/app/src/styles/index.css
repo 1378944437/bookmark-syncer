@@ -74,6 +74,13 @@
   body, html, #root {
     @apply h-full w-full bg-background text-foreground antialiased;
   }
+
+  /* 弹窗圆角：Chromium 移动端（如 Quetta）的弹窗框架不自动圆角，
+     由页面自绘；overflow-hidden 防止子元素撑出直角 */
+  html, body, #root {
+    border-radius: 12px;
+    overflow: hidden;
+  }
 }
 
 /* ===== Component Styles ===== */
