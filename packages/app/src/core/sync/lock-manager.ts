@@ -12,7 +12,8 @@ export class SyncLockManager {
   /**
    * 记录当前实例获取的 lockId
    * 用于释放时精确验证，防止意外释放其他操作持有的锁
-   * 注意：MV3 Service Worker 重启后此值会丢失，release 有降级逻辑
+   * 注意：release 必须能对上本实例 acquire 时记录的 lockId；
+   * 内存值丢失（如同 holder 的新操作已抢锁）时一律不释放，交给超时兜底
    */
   private activeLockId: string | null = null;
 
@@ -77,8 +78,10 @@ export class SyncLockManager {
 
   /**
    * 释放同步锁
-   * 验证 holder 和 lockId 双重匹配，防止意外释放其他操作的锁
-   * 降级逻辑：如果 activeLockId 不可用（如 SW 重启后），仅验证 holder
+   * 必须同时匹配 holder 和本实例 acquire 时记录的 lockId。
+   * lockId 缺失时不释放：真正持锁的操作一定在自己实例内 acquire 过
+   * （MV3 中操作随 SW 终止而中止，不会有"SW 重启后继续跑的旧操作"来释放锁），
+   * 误释放同 holder 新操作刚获取的锁比锁晚 5 分钟自动过期更危险
    */
   async release(holder: string): Promise<void> {
     try {
@@ -99,12 +102,11 @@ export class SyncLockManager {
         return;
       }
 
-      // 精确验证 lockId（如果可用）
-      if (this.activeLockId && existingLock.lockId !== this.activeLockId) {
+      // 精确验证 lockId（必须存在且匹配）
+      if (!this.activeLockId || existingLock.lockId !== this.activeLockId) {
         console.warn(
-          `[SyncLockManager] LockId mismatch: expected ${this.activeLockId.slice(-8)}, got ${existingLock.lockId.slice(-8)}. Another "${holder}" operation may have acquired a new lock.`,
+          `[SyncLockManager] LockId mismatch or missing (expected ${this.activeLockId?.slice(-8) ?? "none"}, got ${existingLock.lockId.slice(-8)}). Not releasing; lock will expire by timeout.`,
         );
-        // 不释放：同一个 holder 的另一个操作已经获取了新锁
         this.activeLockId = null;
         return;
       }

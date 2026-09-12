@@ -88,6 +88,21 @@ describe("SyncLockManager", () => {
     expect(afterRelease["sync_lock"]).toBeDefined();
   });
 
+  it("内存 lockId 丢失时即使 holder 匹配也不释放（交给超时兜底）", async () => {
+    const browser = (await import("webextension-polyfill")).default;
+    // 直接在存储中放置一把锁，模拟本实例未 acquire 过（activeLockId 为 null）
+    await browser.storage.local.set({
+      sync_lock: { holder: "auto-sync", timestamp: Date.now(), lockId: "external_lock_id" },
+    });
+
+    const manager = new SyncLockManager();
+    await manager.release("auto-sync");
+
+    // 锁仍然存在：不能因为 holder 名字相同就误释放（可能是同 holder 新操作刚获取的锁）
+    const afterRelease = await browser.storage.local.get("sync_lock");
+    expect(afterRelease["sync_lock"]).toBeDefined();
+  });
+
   it("正常获取后正常释放", async () => {
     const manager = new SyncLockManager();
     await manager.acquire("manual");
