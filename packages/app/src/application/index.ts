@@ -4,7 +4,7 @@
  */
 import browser from "webextension-polyfill";
 import { registerBookmarkListeners } from "./bookmark-monitor";
-import { registerAlarmListener } from "./scheduler";
+import { maybeRunScheduledSync, registerAlarmListener, registerConfigWatcher } from "./scheduler";
 import { getWebDAVConfig } from "./state-manager";
 import { executeAutoPull } from "./sync-executor";
 
@@ -124,6 +124,12 @@ export async function checkCloudOnStartup(): Promise<void> {
 export function initializeAutoSync(): void {
   registerBookmarkListeners();
   registerAlarmListener();
+  registerConfigWatcher();
+  // 每次 SW 唤醒都做一次到期对账：
+  // - 闹钟丢失或周期与配置不符 → 重建
+  // - 距上次定时检查已超过配置间隔 → 补跑一次定时同步
+  // 这样定时同步不再单纯依赖 Chrome 闹钟的准时性
+  void maybeRunScheduledSync();
   console.log("[AutoSync] Initialization complete");
 }
 

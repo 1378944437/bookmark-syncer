@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   executeAutoPull: vi.fn(),
   registerBookmarkListeners: vi.fn(),
   registerAlarmListener: vi.fn(),
+  maybeRunScheduledSync: vi.fn(),
+  registerConfigWatcher: vi.fn(),
 }));
 
 vi.mock("@src/application/state-manager", () => ({
@@ -26,6 +28,8 @@ vi.mock("@src/application/bookmark-monitor", () => ({
 
 vi.mock("@src/application/scheduler", () => ({
   registerAlarmListener: (...args: any[]) => mocks.registerAlarmListener(...args),
+  maybeRunScheduledSync: (...args: any[]) => mocks.maybeRunScheduledSync(...args),
+  registerConfigWatcher: (...args: any[]) => mocks.registerConfigWatcher(...args),
 }));
 
 import {

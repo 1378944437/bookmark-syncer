@@ -8,6 +8,9 @@ export const LOCK_HOLDER_AUTO = "auto_sync";
 /** 定时同步闹钟名称 */
 export const ALARM_NAME = "scheduledSync";
 
+/** 定时同步到期判断的宽限毫秒数：闹钟按整点触发时 now-last 会略小于间隔 */
+export const SCHEDULED_CHECK_GRACE_MS = 5000;
+
 /** 防抖闹钟名称 */
 export const DEBOUNCE_ALARM = "autoSyncDebounce";
 

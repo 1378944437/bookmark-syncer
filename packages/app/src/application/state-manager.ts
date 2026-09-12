@@ -109,6 +109,24 @@ export async function getBackupFileInterval(): Promise<number> {
   return (result.backup_file_interval as number) || 1; // 默认1分钟
 }
 
+/** 上次定时同步检查的时间戳存储键 */
+const LAST_SCHEDULED_CHECK_KEY = 'last_scheduled_check';
+
+/**
+ * 获取上次定时同步检查时间（0 表示从未检查）
+ */
+export async function getLastScheduledCheck(): Promise<number> {
+  const result = await browser.storage.local.get(LAST_SCHEDULED_CHECK_KEY);
+  return (result[LAST_SCHEDULED_CHECK_KEY] as number) || 0;
+}
+
+/**
+ * 记录定时同步检查时间
+ */
+export async function setLastScheduledCheck(time: number): Promise<void> {
+  await browser.storage.local.set({ [LAST_SCHEDULED_CHECK_KEY]: time });
+}
+
 /**
  * 获取最后备份文件信息
  */

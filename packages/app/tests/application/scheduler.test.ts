@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getWebDAVConfig: vi.fn(),
   setIsRestoring: vi.fn(),
+  getLastScheduledCheck: vi.fn(),
+  setLastScheduledCheck: vi.fn(),
   executeAutoPull: vi.fn(),
   handleDebounceAlarm: vi.fn(),
 }));
@@ -14,6 +16,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@src/application/state-manager", () => ({
   getWebDAVConfig: (...args: any[]) => mocks.getWebDAVConfig(...args),
   setIsRestoring: (...args: any[]) => mocks.setIsRestoring(...args),
+  getLastScheduledCheck: (...args: any[]) => mocks.getLastScheduledCheck(...args),
+  setLastScheduledCheck: (...args: any[]) => mocks.setLastScheduledCheck(...args),
 }));
 
 vi.mock("@src/application/sync-executor", () => ({
@@ -25,6 +29,7 @@ vi.mock("@src/application/bookmark-monitor", () => ({
 }));
 
 import {
+  maybeRunScheduledSync,
   registerAlarmListener,
   resetScheduledSync,
   startScheduledSync,
@@ -43,6 +48,8 @@ describe("scheduler", () => {
       scheduledSyncEnabled: true,
       scheduledSyncInterval: 30,
     });
+    mocks.getLastScheduledCheck.mockResolvedValue(0);
+    mocks.setLastScheduledCheck.mockResolvedValue(undefined);
     mocks.executeAutoPull.mockResolvedValue(undefined);
     mocks.setIsRestoring.mockResolvedValue(undefined);
     mocks.handleDebounceAlarm.mockResolvedValue(undefined);
@@ -148,6 +155,40 @@ describe("scheduler", () => {
       });
       await resetScheduledSync();
       expect(browser.alarms.clear).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── maybeRunScheduledSync ───
+
+  describe("maybeRunScheduledSync", () => {
+    it("从未检查过（视为到期）时执行定时同步并记录检查时间", async () => {
+      await maybeRunScheduledSync();
+      expect(mocks.executeAutoPull).toHaveBeenCalledTimes(1);
+      expect(mocks.setLastScheduledCheck).toHaveBeenCalledWith(expect.any(Number));
+    });
+
+    it("未到期时跳过执行，只对账闹钟", async () => {
+      mocks.getLastScheduledCheck.mockResolvedValueOnce(Date.now() - 60 * 1000); // 1 分钟前，间隔 30 分钟
+      await maybeRunScheduledSync();
+      expect(mocks.executeAutoPull).not.toHaveBeenCalled();
+      // 闹钟缺失时仍会被对账重建
+      expect(browser.alarms.get).toHaveBeenCalledWith(ALARM_NAME);
+    });
+
+    it("超过间隔时执行定时同步", async () => {
+      mocks.getLastScheduledCheck.mockResolvedValueOnce(Date.now() - 31 * 60 * 1000);
+      await maybeRunScheduledSync();
+      expect(mocks.executeAutoPull).toHaveBeenCalledTimes(1);
+    });
+
+    it("定时同步禁用时只清闹钟不执行同步", async () => {
+      mocks.getWebDAVConfig.mockResolvedValueOnce({
+        scheduledSyncEnabled: false,
+        scheduledSyncInterval: 30,
+      });
+      await maybeRunScheduledSync();
+      expect(browser.alarms.clear).toHaveBeenCalledWith(ALARM_NAME);
+      expect(mocks.executeAutoPull).not.toHaveBeenCalled();
     });
   });
 

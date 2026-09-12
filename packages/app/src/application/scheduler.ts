@@ -4,56 +4,84 @@
  */
 import browser from "webextension-polyfill";
 import { handleDebounceAlarm } from "./bookmark-monitor";
-import { ALARM_NAME, DEBOUNCE_ALARM } from "./constants";
-import { getWebDAVConfig } from "./state-manager";
+import { ALARM_NAME, DEBOUNCE_ALARM, SCHEDULED_CHECK_GRACE_MS } from "./constants";
+import {
+  getLastScheduledCheck,
+  getWebDAVConfig,
+  setLastScheduledCheck,
+} from "./state-manager";
 import { executeAutoPull } from "./sync-executor";
 
+/** 是否已有一次到期检查在执行中（同一 SW 实例内去重，跨实例由同步锁保护） */
+let scheduledCheckInFlight = false;
+
 /**
- * 启动定时同步
- * 根据配置创建周期性的云端检查任务
+ * 确保定时闹钟与配置一致（存在且周期正确则不动，否则重建）
+ * 闹钟可能因弹窗关闭竞态丢失（设置页先 clear 后 create，中途弹窗销毁则只剩 clear），
+ * 每次对账时修复，不依赖“创建时一定成功”
  */
-export async function startScheduledSync(): Promise<void> {
+async function ensureScheduledAlarm(intervalMinutes: number): Promise<void> {
+  const existingAlarm = await browser.alarms.get(ALARM_NAME);
+  if (existingAlarm && existingAlarm.periodInMinutes === intervalMinutes) {
+    return;
+  }
+  await browser.alarms.clear(ALARM_NAME);
+  await browser.alarms.create(ALARM_NAME, {
+    periodInMinutes: intervalMinutes,
+    when: Date.now() + intervalMinutes * 60 * 1000,
+  });
+}
+
+/**
+ * 到期则执行一次定时同步检查（闹钟触发和 Service Worker 任意唤醒都走这里）
+ *
+ * 不直接信任闹钟的准时性：Chrome 可能推迟闹钟，且闹钟可能在设置竞态中丢失。
+ * 以「上次检查时间 + 间隔」判断是否到期，闹钟只作为兜底唤醒手段——
+ * 书签变化、防抖闹钟等任何唤醒都会顺带补上错过的定时同步
+ */
+export async function maybeRunScheduledSync(): Promise<void> {
+  if (scheduledCheckInFlight) return;
+  scheduledCheckInFlight = true;
   try {
     const { scheduledSyncEnabled, scheduledSyncInterval } =
       await getWebDAVConfig();
 
     if (!scheduledSyncEnabled) {
-      const cleared = await browser.alarms.clear(ALARM_NAME);
-      if (cleared) {
-        console.log("[Scheduler] Scheduled sync disabled and alarm cleared");
-      }
+      await browser.alarms.clear(ALARM_NAME);
       return;
     }
 
-    // 检查是否已存在同名 Alarm
-    const existingAlarm = await browser.alarms.get(ALARM_NAME);
+    const intervalMinutes = Math.max(1, scheduledSyncInterval);
+    const intervalMs = intervalMinutes * 60 * 1000;
+    const last = await getLastScheduledCheck();
+    const now = Date.now();
 
-    if (existingAlarm) {
-      // 如果已存在且周期一致，则不重置（防止无限推迟首次触发）
-      if (existingAlarm.periodInMinutes === scheduledSyncInterval) {
-        console.log(
-          `[Scheduler] Scheduled sync already running (${scheduledSyncInterval}min)`,
-        );
-        return;
-      }
-      // 如果周期变了，清除旧的并创建新的
-      await browser.alarms.clear(ALARM_NAME);
-      console.log("[Scheduler] Scheduled sync interval changed, recreating alarm");
+    if (last && now - last < intervalMs - SCHEDULED_CHECK_GRACE_MS) {
+      // 未到期：只对账闹钟，不执行同步
+      await ensureScheduledAlarm(intervalMinutes);
+      return;
     }
 
-    // 创建周期性定时器（首次触发设为 1 分钟后，后续按周期执行）
-    const FIRST_TRIGGER_DELAY_MS = 60 * 1000; // 1 分钟
-    await browser.alarms.create(ALARM_NAME, {
-      periodInMinutes: scheduledSyncInterval,
-      when: Date.now() + FIRST_TRIGGER_DELAY_MS,
-    });
-
+    // 到期：先记录检查时间再执行，避免失败时高频重试
+    await setLastScheduledCheck(now);
+    await ensureScheduledAlarm(intervalMinutes);
     console.log(
-      `[Scheduler] Scheduled sync started (first in 1min, then every ${scheduledSyncInterval}min)`,
+      `[Scheduler] Scheduled sync due (last: ${last ? new Date(last).toISOString() : "never"}, interval: ${intervalMinutes}min)`,
     );
+    await executeAutoPull();
   } catch (error) {
-    console.error("[Scheduler] Failed to start scheduled sync:", error);
+    console.error("[Scheduler] Scheduled sync check failed:", error);
+  } finally {
+    scheduledCheckInFlight = false;
   }
+}
+
+/**
+ * 启动定时同步（安装/浏览器启动时调用）
+ * 实际对账逻辑统一在 maybeRunScheduledSync 中
+ */
+export async function startScheduledSync(): Promise<void> {
+  await maybeRunScheduledSync();
 }
 
 /**
@@ -73,55 +101,28 @@ export async function stopScheduledSync(): Promise<void> {
 }
 
 /**
- * 处理定时闹钟触发
+ * 处理定时闹钟触发（兜底唤醒通道）
  */
 async function handleScheduledAlarm(alarm: browser.Alarms.Alarm): Promise<void> {
   if (alarm.name !== ALARM_NAME) return;
 
-  console.log("[Scheduler] Scheduled sync triggered");
+  console.log("[Scheduler] Scheduled sync alarm triggered");
 
-  // 再次检查开关状态，确保即使用户关闭了开关但 Alarm 还没清除时也不会运行
-  const { scheduledSyncEnabled } = await getWebDAVConfig();
-  if (!scheduledSyncEnabled) {
-    console.log("[Scheduler] Scheduled sync disabled, skipping");
-    await browser.alarms.clear(ALARM_NAME);
-    return;
-  }
-
-  await executeAutoPull();
+  // 到期判断与执行统一走 maybeRunScheduledSync
+  await maybeRunScheduledSync();
 }
 
 /**
  * 更新定时同步配置
- * 用于设置页面保存配置时调用
+ * 用于设置页面保存配置时调用；后台的 storage.onChanged 监听也会调用
  */
 export async function updateScheduledSync(): Promise<void> {
-  try {
-    const { scheduledSyncEnabled, scheduledSyncInterval } =
-      await getWebDAVConfig();
-
-    if (scheduledSyncEnabled) {
-      // 清除旧的并创建新的
-      await browser.alarms.clear(ALARM_NAME);
-      await browser.alarms.create(ALARM_NAME, {
-        periodInMinutes: scheduledSyncInterval,
-        when: Date.now() + scheduledSyncInterval * 60 * 1000,
-      });
-      console.log(
-        `[Scheduler] Scheduled sync updated (every ${scheduledSyncInterval}min)`,
-      );
-    } else {
-      await browser.alarms.clear(ALARM_NAME);
-      console.log("[Scheduler] Scheduled sync disabled");
-    }
-  } catch (error) {
-    console.error("[Scheduler] Failed to update scheduled sync:", error);
-  }
+  await maybeRunScheduledSync();
 }
 
 /**
  * 重置定时同步计时器
- * 在手动同步成功后调用，避免手动同步和定时同步重复触发
+ * 在手动同步成功后调用：把下次自动检查推迟一个完整周期，避免紧跟着重复检查
  */
 export async function resetScheduledSync(): Promise<void> {
   try {
@@ -133,19 +134,37 @@ export async function resetScheduledSync(): Promise<void> {
       return;
     }
 
+    const intervalMinutes = Math.max(1, scheduledSyncInterval);
+    // 记录本次手动同步时间，防止唤醒式检查立即重复执行
+    await setLastScheduledCheck(Date.now());
     // 清除当前的定时器并创建新的，重新开始计时
     await browser.alarms.clear(ALARM_NAME);
     await browser.alarms.create(ALARM_NAME, {
-      periodInMinutes: scheduledSyncInterval,
-      when: Date.now() + scheduledSyncInterval * 60 * 1000,
+      periodInMinutes: intervalMinutes,
+      when: Date.now() + intervalMinutes * 60 * 1000,
     });
-    
+
     console.log(
-      `[Scheduler] Scheduled sync timer reset (next trigger in ${scheduledSyncInterval}min)`,
+      `[Scheduler] Scheduled sync timer reset (next trigger in ${intervalMinutes}min)`,
     );
   } catch (error) {
     console.error("[Scheduler] Failed to reset scheduled sync:", error);
   }
+}
+
+/**
+ * 监听定时同步配置变化（后台侧）
+ * 设置页在弹窗里调用 updateScheduledSync，弹窗可能在调用完成前关闭；
+ * 这里在后台再兜底一次，配置落盘后即使弹窗已死，闹钟也会被修正
+ */
+export function registerConfigWatcher(): void {
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    if (changes.scheduled_sync_enabled || changes.scheduled_sync_interval) {
+      console.log("[Scheduler] Scheduled sync config changed, reconciling alarm");
+      void maybeRunScheduledSync();
+    }
+  });
 }
 
 /**
