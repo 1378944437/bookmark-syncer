@@ -45,7 +45,9 @@ const manifest = defineManifest({
 // @ts-expect-error Firefox-specific property not in Chrome types
 manifest.browser_specific_settings = {
   gecko: {
-    id: "bookmark-syncer@example.com",
+    // 独立 ID：上游（Yueby）已用 bookmark-syncer@example.com 签名，
+    // Mozilla 将该 ID 绑定在其账号上；fork 必须使用自己的 ID 才能签名分发
+    id: "bookmark-syncer@1378944437.github.io",
     strict_min_version: "140.0", // Firefox 140+ 支持 data_collection_permissions
     data_collection_permissions: {
       required: ["none"], // 声明不收集任何数据
