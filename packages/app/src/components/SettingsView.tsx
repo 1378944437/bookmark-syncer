@@ -232,6 +232,11 @@ function SyncSettingsPage({ onBack }: { onBack: () => void }) {
       return
     }
     setE2eEnabled(next)
+    if (!next) {
+      // 关闭时清除本地密码（更稳妥）；已上传的加密备份仍需原密码才能恢复
+      setE2ePassphrase('')
+      setE2eConfirm('')
+    }
     toast.success(t(next ? 'settings.sync.e2eOnToast' : 'settings.sync.e2eOffToast'))
   }
 
