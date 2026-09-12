@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({
   getIsRestoring: vi.fn(),
   setIsRestoring: vi.fn(),
   getWebDAVConfig: vi.fn(),
-  getCloudInfo: vi.fn(),
+  getCloudBackupList: vi.fn(),
+  getSyncState: vi.fn(),
   smartPush: vi.fn(),
   smartPull: vi.fn(),
 }));
@@ -20,7 +21,8 @@ vi.mock("@src/application/state-manager", () => ({
 }));
 
 vi.mock("@src/core/sync", () => ({
-  getCloudInfo: (...args: any[]) => mocks.getCloudInfo(...args),
+  getCloudBackupList: (...args: any[]) => mocks.getCloudBackupList(...args),
+  getSyncState: (...args: any[]) => mocks.getSyncState(...args),
   smartPush: (...args: any[]) => mocks.smartPush(...args),
   smartPull: (...args: any[]) => mocks.smartPull(...args),
 }));
@@ -41,7 +43,8 @@ describe("executeUpload", () => {
       config,
       autoSyncEnabled: true,
     });
-    mocks.getCloudInfo.mockResolvedValue({ exists: false });
+    mocks.getCloudBackupList.mockResolvedValue([]);
+    mocks.getSyncState.mockResolvedValue(null);
     mocks.smartPush.mockResolvedValue({
       success: true,
       action: "uploaded",
@@ -52,7 +55,6 @@ describe("executeUpload", () => {
       action: "downloaded",
       message: "ok",
     });
-    // mock storage.local.get for sync state
     vi.mocked(browser.storage.local.get).mockResolvedValue({});
     vi.mocked(browser.alarms.create).mockResolvedValue(undefined as any);
   });
@@ -98,17 +100,15 @@ describe("executeUpload", () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
 
     try {
-      vi.mocked(browser.storage.local.get).mockResolvedValueOnce({
-        syncState: {
-          url: config.url,
-          time: now - 30000,
-          type: "download",
-        },
+      mocks.getSyncState.mockResolvedValueOnce({
+        url: config.url,
+        time: now - 30000,
+        type: "download",
       });
 
       await executeUpload();
 
-      expect(mocks.getCloudInfo).not.toHaveBeenCalled();
+      expect(mocks.getCloudBackupList).not.toHaveBeenCalled();
       expect(mocks.smartPull).not.toHaveBeenCalled();
       expect(mocks.smartPush).not.toHaveBeenCalled();
     } finally {
@@ -121,17 +121,15 @@ describe("executeUpload", () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
 
     try {
-      vi.mocked(browser.storage.local.get).mockResolvedValueOnce({
-        syncState: {
-          url: config.url,
-          time: now - 30000,
-          type: "restore",
-        },
+      mocks.getSyncState.mockResolvedValueOnce({
+        url: config.url,
+        time: now - 30000,
+        type: "restore",
       });
 
       await executeUpload();
 
-      expect(mocks.getCloudInfo).not.toHaveBeenCalled();
+      expect(mocks.getCloudBackupList).not.toHaveBeenCalled();
       expect(mocks.smartPull).not.toHaveBeenCalled();
       expect(mocks.smartPush).not.toHaveBeenCalled();
     } finally {
@@ -144,17 +142,15 @@ describe("executeUpload", () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
 
     try {
-      vi.mocked(browser.storage.local.get).mockResolvedValueOnce({
-        syncState: {
-          url: config.url,
-          time: now - POST_PULL_UPLOAD_SUPPRESSION_MS - 1,
-          type: "download",
-        },
+      mocks.getSyncState.mockResolvedValueOnce({
+        url: config.url,
+        time: now - POST_PULL_UPLOAD_SUPPRESSION_MS - 1,
+        type: "download",
       });
 
       await executeUpload();
 
-      expect(mocks.getCloudInfo).toHaveBeenCalled();
+      expect(mocks.getCloudBackupList).toHaveBeenCalled();
       expect(mocks.smartPush).toHaveBeenCalled();
     } finally {
       nowSpy.mockRestore();
@@ -162,28 +158,38 @@ describe("executeUpload", () => {
   });
 
   it("云端有更新时先 pull 再 push", async () => {
-    const syncState = { url: config.url, time: 1000 };
-    vi.mocked(browser.storage.local.get).mockResolvedValueOnce({
-      syncState,
+    mocks.getSyncState.mockResolvedValueOnce({
+      url: config.url,
+      time: 1000,
     });
-    mocks.getCloudInfo.mockResolvedValueOnce({
-      exists: true,
-      timestamp: 2000, // 比 lastSyncTime 新
-    });
+    mocks.getCloudBackupList.mockResolvedValueOnce([
+      {
+        name: "bookmarks_1_chrome_1_v1.json.gz",
+        path: "BookmarkSyncer/bookmarks_1_chrome_1_v1.json.gz",
+        timestamp: 2000, // 服务器时间比本地记录的新
+        totalCount: 1,
+        browser: "chrome",
+      },
+    ]);
 
     await executeUpload();
     expect(mocks.smartPull).toHaveBeenCalledBefore(mocks.smartPush);
   });
 
   it("pull 失败时不继续 push", async () => {
-    const syncState = { url: config.url, time: 1000 };
-    vi.mocked(browser.storage.local.get).mockResolvedValueOnce({
-      syncState,
+    mocks.getSyncState.mockResolvedValueOnce({
+      url: config.url,
+      time: 1000,
     });
-    mocks.getCloudInfo.mockResolvedValueOnce({
-      exists: true,
-      timestamp: 2000,
-    });
+    mocks.getCloudBackupList.mockResolvedValueOnce([
+      {
+        name: "bookmarks_1_chrome_1_v1.json.gz",
+        path: "BookmarkSyncer/bookmarks_1_chrome_1_v1.json.gz",
+        timestamp: 2000,
+        totalCount: 1,
+        browser: "chrome",
+      },
+    ]);
     mocks.smartPull.mockResolvedValueOnce({
       success: false,
       action: "error",
@@ -201,11 +207,16 @@ describe("executeAutoPull", () => {
     mocks.getIsRestoring.mockResolvedValue(false);
     mocks.setIsRestoring.mockResolvedValue(undefined);
     mocks.getWebDAVConfig.mockResolvedValue({ config });
-    mocks.getCloudInfo.mockResolvedValue({
-      exists: true,
-      timestamp: 5000,
-      totalCount: 100,
-    });
+    mocks.getCloudBackupList.mockResolvedValue([
+      {
+        name: "bookmarks_1_chrome_1_v1.json.gz",
+        path: "BookmarkSyncer/bookmarks_1_chrome_1_v1.json.gz",
+        timestamp: 5000,
+        totalCount: 100,
+        browser: "chrome",
+      },
+    ]);
+    mocks.getSyncState.mockResolvedValue(null);
     mocks.smartPull.mockResolvedValue({
       success: true,
       action: "downloaded",
@@ -240,19 +251,25 @@ describe("executeAutoPull", () => {
   });
 
   it("无云端备份时不 pull", async () => {
-    mocks.getCloudInfo.mockResolvedValueOnce({ exists: false });
+    mocks.getCloudBackupList.mockResolvedValueOnce([]);
     await executeAutoPull();
     expect(mocks.smartPull).not.toHaveBeenCalled();
   });
 
-  it("云端时间不新于本地时不 pull", async () => {
-    vi.mocked(browser.storage.local.get).mockResolvedValueOnce({
-      syncState: { url: config.url, time: 5000 },
+  it("云端时间不新于本地时不 pull（旧版状态回退比较）", async () => {
+    mocks.getSyncState.mockResolvedValueOnce({
+      url: config.url,
+      time: 5000,
     });
-    mocks.getCloudInfo.mockResolvedValueOnce({
-      exists: true,
-      timestamp: 5000, // 等于 lastSyncTime
-    });
+    mocks.getCloudBackupList.mockResolvedValueOnce([
+      {
+        name: "bookmarks_1_chrome_1_v1.json.gz",
+        path: "BookmarkSyncer/bookmarks_1_chrome_1_v1.json.gz",
+        timestamp: 5000, // 等于本地记录时间
+        totalCount: 100,
+        browser: "chrome",
+      },
+    ]);
     await executeAutoPull();
     expect(mocks.smartPull).not.toHaveBeenCalled();
   });

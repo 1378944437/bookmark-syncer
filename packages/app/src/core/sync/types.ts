@@ -12,6 +12,18 @@ export interface SyncResult {
 }
 
 /**
+ * 同步基线（服务器时间基准）
+ * 方向判断只使用服务器记录的文件时间，设备本地时钟不参与比较
+ */
+export interface SyncBasis {
+  /** 云端文件的服务器最后修改时间 */
+  mtime: number;
+
+  /** 云端文件路径（同一秒内文件被替换时以路径变化补充判断） */
+  filePath: string;
+}
+
+/**
  * 同步状态
  */
 export interface SyncState {
@@ -23,6 +35,12 @@ export interface SyncState {
   
   /** 同步类型 */
   type: "upload" | "download" | "skip_identical" | "restore";
+
+  /**
+   * 同步基线：最后一次同步所对应云端文件的服务器时间与路径。
+   * 旧版本状态无此字段，比较时退化为旧逻辑（见 sync-basis.ts）
+   */
+  basis?: SyncBasis;
 }
 
 /**

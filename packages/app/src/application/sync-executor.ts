@@ -2,12 +2,11 @@
  * 同步执行器
  * 执行上传和拉取同步操作
  */
-import browser from "webextension-polyfill";
-import { getCloudInfo, smartPull, smartPush, type SyncState } from "../core/sync";
+import { getCloudBackupList, getSyncState, smartPull, smartPush } from "../core/sync";
+import { isCloudNewerThanBasis } from "../core/sync/utils/sync-basis";
 import {
     LOCK_HOLDER_AUTO,
     POST_PULL_UPLOAD_SUPPRESSION_MS,
-    SYNC_STATE_KEY,
 } from "./constants";
 import { getIsRestoring, getWebDAVConfig } from "./state-manager";
 
@@ -43,12 +42,10 @@ export async function executeUpload(): Promise<void> {
     }
 
     // 检查云端是否有未同步的更新
-    const storageResult = await browser.storage.local.get(SYNC_STATE_KEY);
-    const syncState = storageResult[SYNC_STATE_KEY] as SyncState | undefined;
-    const lastSyncTime = syncState?.url === config.url ? syncState.time : 0;
+    const syncState = await getSyncState(config.url);
 
     if (
-      syncState?.url === config.url &&
+      syncState &&
       (syncState.type === "download" || syncState.type === "restore") &&
       Date.now() - syncState.time < POST_PULL_UPLOAD_SUPPRESSION_MS
     ) {
@@ -60,13 +57,20 @@ export async function executeUpload(): Promise<void> {
 
     // 强制刷新：与 smartPush 的实时云端检查保持一致，
     // 避免缓存窗口内自动上传被“云端有更新”阻断
-    const cloudInfo = await getCloudInfo(config, true);
-    const cloudTime = cloudInfo.exists ? (cloudInfo.timestamp || 0) : 0;
+    const backupList = await getCloudBackupList(config, true);
+    const latest = backupList[0] ?? null;
 
-    // 如果云端有更新，先增量拉取
-    if (cloudTime > lastSyncTime) {
+    // 如果云端有更新，先增量拉取（时间基准：服务器文件时间，与设备本地时钟无关）
+    if (
+      latest &&
+      isCloudNewerThanBasis(
+        { path: latest.path, lastModified: latest.timestamp },
+        syncState,
+        config.url,
+      )
+    ) {
       console.log(
-        `[SyncExecutor] Cloud has updates, pulling first (cloud: ${new Date(cloudTime).toISOString()}, local: ${new Date(lastSyncTime).toISOString()})`,
+        `[SyncExecutor] Cloud has updates, pulling first (cloud: ${new Date(latest.timestamp).toISOString()})`,
       );
       // 使用 merge 模式：保留本地新增的书签
       const pullResult = await smartPull(config, LOCK_HOLDER_AUTO, "merge");
@@ -122,30 +126,34 @@ export async function executeAutoPull(): Promise<void> {
     console.log("[SyncExecutor] Using WebDAV config");
 
     // 获取本地同步记录
-    const storageResult = await browser.storage.local.get(SYNC_STATE_KEY);
-    const syncState = storageResult[SYNC_STATE_KEY] as SyncState | undefined;
-    const lastSyncTime = syncState?.url === config.url ? syncState.time : 0;
+    const syncState = await getSyncState(config.url);
 
     // 获取云端信息（强制刷新，避免旧缓存漏检远端更新）
-    const cloudInfo = await getCloudInfo(config, true);
+    const backupList = await getCloudBackupList(config, true);
 
-    if (!cloudInfo.exists) {
+    if (backupList.length === 0) {
       console.log("[SyncExecutor] No cloud backup found");
       return;
     }
 
-    const cloudTime = cloudInfo.timestamp || 0;
+    const latest = backupList[0];
 
-    // 比对时间戳
-    if (cloudTime <= lastSyncTime) {
+    // 比对时间戳（基准：服务器文件时间，与设备本地时钟无关）
+    if (
+      !isCloudNewerThanBasis(
+        { path: latest.path, lastModified: latest.timestamp },
+        syncState,
+        config.url,
+      )
+    ) {
       console.log(
-        `[SyncExecutor] No updates (cloud: ${new Date(cloudTime).toISOString()}, local: ${new Date(lastSyncTime).toISOString()})`,
+        `[SyncExecutor] No updates (cloud: ${new Date(latest.timestamp).toISOString()})`,
       );
       return;
     }
 
     console.log(
-      `[SyncExecutor] Cloud update detected (${cloudInfo.totalCount} bookmarks from ${cloudInfo.browser || "unknown"})`,
+      `[SyncExecutor] Cloud update detected (${latest.totalCount} bookmarks from ${latest.browser || "unknown"})`,
     );
 
     const pullResult = await smartPull(config, LOCK_HOLDER_AUTO, "overwrite");

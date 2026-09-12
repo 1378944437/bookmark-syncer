@@ -9,6 +9,7 @@ const {
   mockAcquire,
   mockRelease,
   mockGetLastSyncTime,
+  mockGetSyncState,
   mockSetSyncState,
   mockClient,
   mockGetTree,
@@ -26,6 +27,7 @@ const {
     mockAcquire: vi.fn(async () => true),
     mockRelease: vi.fn(async () => {}),
     mockGetLastSyncTime: vi.fn(async () => 0),
+    mockGetSyncState: vi.fn(async () => null),
     mockSetSyncState: vi.fn(async () => {}),
     mockClient: {
       testConnection: vi.fn(async () => true),
@@ -61,6 +63,7 @@ vi.mock("@src/core/sync", () => ({
   acquireSyncLock: mockAcquire,
   releaseSyncLock: mockRelease,
   getLastSyncTime: mockGetLastSyncTime,
+  getSyncState: mockGetSyncState,
   setSyncState: mockSetSyncState,
 }));
 
@@ -139,7 +142,10 @@ describe("smartSync - 分支决策", () => {
   });
 
   it("云端更新时调用 smartPull（skipLock: true）", async () => {
-    mockGetLatestBackupFile.mockResolvedValueOnce("BookmarkSyncer/backup.json.gz");
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz",
+      lastModified: Date.now(),
+    });
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
@@ -148,6 +154,8 @@ describe("smartSync - 分支决策", () => {
     );
     mockCompareWithCloud.mockResolvedValueOnce(false);
     mockGetLastSyncTime.mockResolvedValueOnce(Date.now() - 60000);
+    // 无状态（未同步过）→ 云端数据视为更新
+    mockGetSyncState.mockResolvedValueOnce(null);
 
     await smartSync(testConfig, "auto-sync");
 
@@ -160,15 +168,25 @@ describe("smartSync - 分支决策", () => {
   });
 
   it("本地更新时调用 smartPush（skipLock: true）", async () => {
-    mockGetLatestBackupFile.mockResolvedValueOnce("BookmarkSyncer/backup.json.gz");
+    const cloudMtime = Date.now() - 60000;
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz",
+      lastModified: cloudMtime,
+    });
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
-        metadata: { timestamp: Date.now() - 60000, clientVersion: "1.0.0" },
+        metadata: { timestamp: cloudMtime, clientVersion: "1.0.0" },
         data: [{ title: "Cloud", url: "https://cloud.com" }],
       })
     );
     mockCompareWithCloud.mockResolvedValueOnce(false);
     mockGetLastSyncTime.mockResolvedValueOnce(Date.now());
+    // 基线与云端文件一致 → 云端没有更新 → 走推送
+    mockGetSyncState.mockResolvedValueOnce({
+      url: testConfig.url,
+      time: Date.now(),
+      basis: { mtime: cloudMtime, filePath: "BookmarkSyncer/backup.json.gz" },
+    });
 
     await smartSync(testConfig, "auto-sync");
 
@@ -180,7 +198,10 @@ describe("smartSync - 分支决策", () => {
   });
 
   it("内容相同时跳过", async () => {
-    mockGetLatestBackupFile.mockResolvedValueOnce("BookmarkSyncer/backup.json.gz");
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz",
+      lastModified: Date.now(),
+    });
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
@@ -197,7 +218,10 @@ describe("smartSync - 分支决策", () => {
   });
 
   it("首次同步需要用户选择", async () => {
-    mockGetLatestBackupFile.mockResolvedValueOnce("BookmarkSyncer/backup.json.gz");
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz",
+      lastModified: Date.now(),
+    });
     mockParseBackupFileName.mockReturnValueOnce({
       timestamp: Date.now(),
       browser: "chrome",

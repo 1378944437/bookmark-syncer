@@ -36,7 +36,10 @@ const {
   mockMergeFromBackup: vi.fn(async () => {}),
   mockCountBookmarks: vi.fn(() => 1),
   mockCreateSnapshot: vi.fn(async () => {}),
-  mockGetLatestBackupFile: vi.fn(async () => "BookmarkSyncer/backup.json.gz"),
+  mockGetLatestBackupFile: vi.fn(async () => ({
+    path: "BookmarkSyncer/backup.json.gz",
+    lastModified: Date.now(),
+  })),
   mockParseBackupFileName: vi.fn(() => ({
     timestamp: Date.now(),
     browser: "chrome",
@@ -100,7 +103,10 @@ const testConfig = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockAcquire.mockResolvedValue(true);
-  mockGetLatestBackupFile.mockResolvedValue("BookmarkSyncer/backup.json.gz");
+  mockGetLatestBackupFile.mockResolvedValue({
+    path: "BookmarkSyncer/backup.json.gz",
+    lastModified: Date.now(),
+  });
   mockGetFileWithDedup.mockResolvedValue(
     JSON.stringify({
       metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },

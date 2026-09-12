@@ -2,7 +2,7 @@
  * 智能同步策略
  * 自动判断推送或拉取
  */
-import { acquireSyncLock, getLastSyncTime, releaseSyncLock, setSyncState } from "../";
+import { acquireSyncLock, getLastSyncTime, getSyncState, releaseSyncLock, setSyncState } from "../";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../../types";
 import { bookmarkRepository, compareWithCloud, countBookmarks } from "../../bookmark";
@@ -10,6 +10,7 @@ import { fileManager } from "../../storage";
 import { queueManager } from "../../storage/queue-manager";
 import type { CloudInfo, WebDAVConfig } from "../../storage/types";
 import type { SmartSyncResult } from "../types";
+import { isCloudNewerThanBasis } from "../utils/sync-basis";
 import { smartPull } from "./pull-strategy";
 import { smartPush } from "./push-strategy";
 
@@ -49,11 +50,12 @@ export async function smartSync(
     console.log("[SmartSyncStrategy] Getting cloud data...");
     let cloudData: CloudBackup | null = null;
     let cloudInfo: CloudInfo = { exists: false };
+    let latest: { path: string; lastModified: number } | null = null;
 
     try {
-      const latestBackupPath = await fileManager.getLatestBackupFile(client);
-      if (latestBackupPath) {
-        const json = await queueManager.getFileWithDedup(client, latestBackupPath);
+      latest = await fileManager.getLatestBackupFile(client);
+      if (latest) {
+        const json = await queueManager.getFileWithDedup(client, latest.path);
         if (json) {
           try {
             cloudData = JSON.parse(json) as CloudBackup;
@@ -67,12 +69,12 @@ export async function smartSync(
           }
           
           // 从文件名解析浏览器信息
-          const fileName = latestBackupPath.split("/").pop() || "";
+          const fileName = latest.path.split("/").pop() || "";
           const parsed = fileManager.parseBackupFileName(fileName);
           
           cloudInfo = {
             exists: true,
-            timestamp: cloudData.metadata?.timestamp,
+            timestamp: latest.lastModified,
             totalCount: parsed?.count || countBookmarks(cloudData.data),
             browser: parsed?.browser,
             browserVersion: undefined,
@@ -87,7 +89,7 @@ export async function smartSync(
     }
 
     // Case A: 云端无数据 → 直接上传
-    if (!cloudData) {
+    if (!cloudData || !latest) {
       console.log("[SmartSyncStrategy] No cloud backup, uploading...");
       // 传递锁给 smartPush，避免释放后重新获取的竞态窗口
       return await smartPush(config, lockHolder, { skipLock: true });
@@ -103,6 +105,7 @@ export async function smartSync(
         time: Date.now(),
         url: config.url,
         type: "skip_identical",
+        basis: { mtime: latest.lastModified, filePath: latest.path },
       });
       return {
         success: true,
@@ -114,10 +117,10 @@ export async function smartSync(
 
     // 4. 检查是否需要用户选择
     const lastSyncTime = await getLastSyncTime(config.url);
-    const cloudTime = cloudData.metadata?.timestamp || 0;
+    const syncState = await getSyncState(config.url);
 
     console.log(
-      `[SmartSyncStrategy] Sync times - Last: ${new Date(lastSyncTime).toISOString()}, Cloud: ${new Date(cloudTime).toISOString()}`,
+      `[SmartSyncStrategy] Sync times - Last: ${new Date(lastSyncTime).toISOString()}, Cloud(server): ${new Date(latest.lastModified).toISOString()}`,
     );
 
     // 首次同步或环境变更，且云端有数据 → 需要用户选择
@@ -137,7 +140,8 @@ export async function smartSync(
     }
 
     // 5. 智能判断（传递锁给子策略，避免释放后重新获取的竞态窗口）
-    if (cloudTime > lastSyncTime) {
+    // 时间基准：服务器记录的文件时间，与设备本地时钟无关
+    if (isCloudNewerThanBasis(latest, syncState, config.url)) {
       // 云端比本地新 → 拉取
       console.log("[SmartSyncStrategy] Cloud is newer, pulling...");
       const result = await smartPull(config, lockHolder, "overwrite", { skipLock: true });

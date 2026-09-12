@@ -116,9 +116,11 @@ export class FileManager {
   /**
    * 获取最新的备份文件
    * @param client WebDAV 客户端
-   * @returns 最新备份文件的完整路径，如果没有则返回 null
+   * @returns 最新备份文件的路径与服务器修改时间，如果没有则返回 null
    */
-  async getLatestBackupFile(client: IWebDAVClient): Promise<string | null> {
+  async getLatestBackupFile(
+    client: IWebDAVClient
+  ): Promise<{ path: string; lastModified: number } | null> {
     try {
       const backupFiles = await this.listBackupFiles(client);
 
@@ -135,7 +137,7 @@ export class FileManager {
         `[FileManager] Found latest backup: ${latest.name} (${new Date(latest.lastModified).toISOString()})`
       );
 
-      return this.getFullPath(latest.name);
+      return { path: this.getFullPath(latest.name), lastModified: latest.lastModified };
     } catch (error) {
       console.error("[FileManager] Failed to get latest backup file:", error);
       return null;

@@ -68,13 +68,13 @@ export async function smartPull(
 
     // 1. 下载云端最新备份数据
     console.log("[PullStrategy] Downloading from cloud...");
-    const latestBackupPath = await fileManager.getLatestBackupFile(client);
-    if (!latestBackupPath) {
+    const latest = await fileManager.getLatestBackupFile(client);
+    if (!latest) {
       console.error("[PullStrategy] Pull aborted: no cloud backup found");
       return { success: false, action: "error", message: "云端无备份数据" };
     }
     
-    const json = await queueManager.getFileWithDedup(client, latestBackupPath);
+    const json = await queueManager.getFileWithDedup(client, latest.path);
     if (!json) {
       console.error("[PullStrategy] Pull aborted: failed to read backup file");
       return { success: false, action: "error", message: "无法读取云端备份" };
@@ -95,7 +95,7 @@ export async function smartPull(
     const cloudTime = cloudData.metadata?.timestamp || 0;
     
     // 从文件名解析浏览器信息
-    const fileName = latestBackupPath.split("/").pop() || "";
+    const fileName = latest.path.split("/").pop() || "";
     const parsed = fileManager.parseBackupFileName(fileName);
     const cloudBrowser = parsed?.browser || "unknown";
 
@@ -111,11 +111,12 @@ export async function smartPull(
       await bookmarkRepository.mergeFromBackup(cloudData);
     }
 
-    // 3. 更新同步时间
+    // 3. 更新同步时间（基线 = 所拉取文件的服务器时间）
     await setSyncState({
       time: Date.now(),
       url: config.url,
       type: "download",
+      basis: { mtime: latest.lastModified, filePath: latest.path },
     });
 
     const elapsed = Date.now() - startTime;

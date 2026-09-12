@@ -14,7 +14,8 @@ import { fileManager, STORAGE_CONSTANTS } from "../../storage";
 import { cacheManager } from "../../storage/cache-manager";
 import { queueManager } from "../../storage/queue-manager";
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
-import { getLastSyncTime, setSyncState } from "../state-manager";
+import { getSyncState, setSyncState } from "../state-manager";
+import { isCloudNewerThanBasis, type SyncBasis } from "../utils/sync-basis";
 import type { SyncResult } from "../types";
 
 const DIR = STORAGE_CONSTANTS.BACKUP_DIR;
@@ -80,9 +81,9 @@ export async function smartPush(
     // 2. 获取云端最新备份并比对
     console.log("[PushStrategy] Checking cloud state...");
     try {
-      const latestBackupPath = await fileManager.getLatestBackupFile(client);
-      if (latestBackupPath) {
-        const cloudJson = await queueManager.getFileWithDedup(client, latestBackupPath);
+      const latest = await fileManager.getLatestBackupFile(client);
+      if (latest) {
+        const cloudJson = await queueManager.getFileWithDedup(client, latest.path);
         if (cloudJson) {
           let cloudData: CloudBackup;
           try {
@@ -92,16 +93,16 @@ export async function smartPush(
             throw new Error("云端备份数据格式损坏，无法解析");
           }
           const cloudCount = countBookmarks(cloudData.data);
-          const cloudTime = cloudData.metadata?.timestamp || 0;
 
           console.log(
-            `[PushStrategy] Cloud: ${cloudCount} bookmarks (${new Date(cloudTime).toISOString()})`,
+            `[PushStrategy] Cloud: ${cloudCount} bookmarks (${new Date(latest.lastModified).toISOString()})`,
           );
 
-          // 检查云端是否有未拉取的更新
-          const lastSyncTime = await getLastSyncTime(config.url);
-          
-          if (cloudTime > lastSyncTime) {
+          // 检查云端是否有未拉取的更新（以服务器文件时间为基准，不受设备时钟偏差影响）
+          const syncState = await getSyncState(config.url);
+          const lastSyncTime = syncState?.time ?? 0;
+
+          if (isCloudNewerThanBasis(latest, syncState, config.url)) {
             // 云端有更新且本地未同步
             // 区分手动同步和自动同步：
             // - 自动同步：阻止上传，防止数据丢失
@@ -111,7 +112,7 @@ export async function smartPush(
             if (!isManualSync) {
               // 自动同步场景：阻止上传
               console.warn(
-                `[PushStrategy] Cloud is newer, blocking auto-sync (cloud: ${new Date(cloudTime).toISOString()}, last: ${new Date(lastSyncTime).toISOString()})`,
+                `[PushStrategy] Cloud is newer, blocking auto-sync (cloud: ${new Date(latest.lastModified).toISOString()}, last: ${new Date(lastSyncTime).toISOString()})`,
               );
               return {
                 success: false,
@@ -121,7 +122,7 @@ export async function smartPush(
             } else {
               // 手动同步：记录警告但允许继续（用户可能想覆盖）
               console.warn(
-                `[PushStrategy] Cloud is newer but manual sync, allowing user choice (cloud: ${new Date(cloudTime).toISOString()}, last: ${new Date(lastSyncTime).toISOString()})`,
+                `[PushStrategy] Cloud is newer but manual sync, allowing user choice (cloud: ${new Date(latest.lastModified).toISOString()}, last: ${new Date(lastSyncTime).toISOString()})`,
               );
             }
           }
@@ -138,7 +139,7 @@ export async function smartPush(
             const localBrowserInfo = getBrowserInfo();
             
             // 从文件名解析浏览器信息
-            const fileName = latestBackupPath.split("/").pop() || "";
+            const fileName = latest.path.split("/").pop() || "";
             const parsed = fileManager.parseBackupFileName(fileName);
             const cloudBrowser = parsed?.browser || "";
             
@@ -156,6 +157,7 @@ export async function smartPush(
                 time: Date.now(),
                 url: config.url,
                 type: "skip_identical",
+                basis: { mtime: latest.lastModified, filePath: latest.path },
               });
               return {
                 success: true,
@@ -298,11 +300,28 @@ export async function smartPush(
     // 4. 清除备份列表缓存（因为刚上传了新文件）
     await cacheManager.clearBackupListCache();
 
-    // 5. 更新同步时间
+    // 5. 更新同步时间（基线取服务器记录的新文件时间；查询失败时退回本地时钟）
+    let basis: SyncBasis = { mtime: Date.now(), filePath: targetFilePath };
+    try {
+      const uploadedFiles = await client.listFiles(DIR);
+      const uploaded = uploadedFiles.find(
+        (f) => f.path === targetFilePath || f.name === finalFileName
+      );
+      if (uploaded) {
+        basis = {
+          mtime: uploaded.lastModified || basis.mtime,
+          filePath: uploaded.path || targetFilePath,
+        };
+      }
+    } catch (error) {
+      console.warn("[PushStrategy] Failed to resolve uploaded file time:", error);
+    }
+
     await setSyncState({
       time: Date.now(),
       url: config.url,
       type: "upload",
+      basis,
     });
 
     const elapsed = Date.now() - startTime;

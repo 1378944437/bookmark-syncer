@@ -9,7 +9,7 @@ const {
   mockAcquire,
   mockRelease,
   mockClient,
-  mockGetLastSyncTime,
+  mockGetSyncState,
   mockSetSyncState,
   mockGetBackupFileInterval,
   mockGetLastBackupFileInfo,
@@ -45,7 +45,7 @@ const {
       listFiles: vi.fn(async () => []),
       deleteFile: vi.fn(async () => {}),
     },
-    mockGetLastSyncTime: vi.fn(async () => 0),
+    mockGetSyncState: vi.fn(async () => null),
     mockSetSyncState: vi.fn(async () => {}),
     mockGetBackupFileInterval: vi.fn(async () => 1),
     mockGetLastBackupFileInfo: vi.fn(async () => null),
@@ -131,7 +131,7 @@ vi.mock("@src/core/sync/lock-manager", () => ({
 }));
 
 vi.mock("@src/core/sync/state-manager", () => ({
-  getLastSyncTime: mockGetLastSyncTime,
+  getSyncState: mockGetSyncState,
   setSyncState: mockSetSyncState,
 }));
 
@@ -174,15 +174,21 @@ describe("smartPush - 基本流程", () => {
 
   it("内容相同时跳过上传", async () => {
     const cloudTimestamp = Date.now() - 5000;
-    mockGetLatestBackupFile.mockResolvedValueOnce("BookmarkSyncer/backup.json.gz");
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz",
+      lastModified: cloudTimestamp,
+    });
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: cloudTimestamp, clientVersion: "1.0.0" },
         data: mockBookmarkTree,
       })
     );
-    // 确保 lastSyncTime >= cloudTime，避免触发"云端有更新"的阻止逻辑
-    mockGetLastSyncTime.mockResolvedValueOnce(cloudTimestamp + 1000);
+    // 确保（旧版状态回退比较）云端服务器时间 <= 本地记录时间，不触发"云端有更新"的阻止逻辑
+    mockGetSyncState.mockResolvedValueOnce({
+      url: testConfig.url,
+      time: cloudTimestamp + 1000,
+    });
     mockCompareWithCloud.mockResolvedValueOnce(true);
 
     const result = await smartPush(testConfig, "auto-sync");
@@ -280,14 +286,20 @@ describe("smartPush - skipLock 修复", () => {
 
 describe("smartPush - 云端更新阻止自动上传", () => {
   it("自动同步时云端较新则阻止上传", async () => {
-    mockGetLatestBackupFile.mockResolvedValueOnce("BookmarkSyncer/backup.json.gz");
+    mockGetLatestBackupFile.mockResolvedValueOnce({
+      path: "BookmarkSyncer/backup.json.gz",
+      lastModified: Date.now(),
+    });
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
         data: [{ title: "Cloud", url: "https://cloud.com" }],
       })
     );
-    mockGetLastSyncTime.mockResolvedValueOnce(Date.now() - 60000);
+    mockGetSyncState.mockResolvedValueOnce({
+      url: testConfig.url,
+      time: Date.now() - 60000,
+    });
 
     const result = await smartPush(testConfig, "auto-sync");
     expect(result.success).toBe(false);
