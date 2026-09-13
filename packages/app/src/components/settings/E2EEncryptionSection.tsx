@@ -17,6 +17,7 @@ import { cn } from '../../infrastructure/utils/format'
 import { PasswordStrengthBar } from './PasswordStrengthBar'
 import { DisableE2EConfirmCard } from './DisableE2EConfirmCard'
 import { E2EEnabledCard } from './E2EEnabledCard'
+import { HelpTip } from '../HelpTip'
 
 export function E2EEncryptionSection() {
   const { t } = useI18n()
@@ -112,14 +113,12 @@ export function E2EEncryptionSection() {
       <div className="p-4 surface-card space-y-4 border border-border/60 dark:border-white/[0.08]">
         {/* 顶部标题与主开关 */}
         <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
+          <div className="flex items-center gap-1.5">
             <Label className="text-foreground text-sm font-semibold flex items-center gap-1.5">
               <Lock className="w-4 h-4 text-primary" />
               <span>{t('settings.sync.e2eSection')}</span>
             </Label>
-            <p className="text-xs text-muted-foreground leading-relaxed max-w-[260px]">
-              {t('settings.sync.e2eDesc')}
-            </p>
+            <HelpTip content={t('settings.sync.e2eDesc')} />
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input

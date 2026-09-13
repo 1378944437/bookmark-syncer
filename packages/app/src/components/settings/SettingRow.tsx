@@ -5,6 +5,7 @@
 import type { ElementType, ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '../../infrastructure/utils/format'
+import { HelpTip } from '../HelpTip'
 
 export interface SettingGroupProps {
   title?: string
@@ -32,6 +33,7 @@ export interface SettingRowProps {
   iconColor?: string
   label: string
   description?: string
+  tooltip?: string
   type?: 'navigation' | 'switch' | 'select' | 'custom'
   checked?: boolean
   disabled?: boolean
@@ -45,6 +47,7 @@ export function SettingRow({
   iconColor = 'text-primary bg-primary/10',
   label,
   description,
+  tooltip,
   type = 'navigation',
   checked = false,
   disabled = false,
@@ -87,7 +90,10 @@ export function SettingRow({
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-foreground leading-tight">{label}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-medium text-foreground leading-tight">{label}</p>
+            {tooltip && <HelpTip content={tooltip} />}
+          </div>
           {description && (
             <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{description}</p>
           )}

@@ -196,7 +196,7 @@ export const dictionary: Record<string, string> = {
   "settings.webdav.providerJianguo": "坚果云",
   "settings.webdav.providerNextcloud": "Nextcloud",
   "settings.webdav.providerInfini": "InfiniCLOUD",
-  "settings.webdav.jianguoTip": "提示：坚果云请在「账户信息-安全设置」中生成应用专用密码",
+  "settings.webdav.jianguoTip": "提示：请在「账户信息-安全设置」中生成应用专用密码",
   "settings.webdav.serverUrl": "服务器地址 (URL)",
   "settings.webdav.username": "用户名",
   "settings.webdav.password": "密码",

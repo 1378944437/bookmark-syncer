@@ -117,7 +117,7 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
             icon={History}
             iconColor="text-teal-600 bg-teal-500/10 dark:text-teal-400"
             label={t('settings.sync.maxLocalSnapshots')}
-            description={t('settings.sync.maxLocalSnapshotsDesc')}
+            tooltip={t('settings.sync.maxLocalSnapshotsDesc')}
             type="custom"
           >
             <div className="flex items-center gap-1 shrink-0">
@@ -158,7 +158,7 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
             icon={Cloud}
             iconColor="text-sky-600 bg-sky-500/10 dark:text-sky-400"
             label={t('settings.sync.maxCloudBackups')}
-            description={t('settings.sync.maxCloudBackupsDesc')}
+            tooltip={t('settings.sync.maxCloudBackupsDesc')}
             type="custom"
           >
             <div className="flex items-center gap-1 shrink-0">
@@ -199,7 +199,7 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
             icon={Timer}
             iconColor="text-amber-600 bg-amber-500/10 dark:text-amber-400"
             label={t('settings.sync.backupInterval')}
-            description={t('settings.sync.backupIntervalHint')}
+            tooltip={t('settings.sync.backupIntervalHint')}
             type="select"
           >
             <select
@@ -239,7 +239,7 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
             icon={Sliders}
             iconColor="text-zinc-600 bg-zinc-500/10 dark:text-zinc-400"
             label={t('settings.sync.missingFolderFallback')}
-            description={t('settings.sync.missingFolderFallbackDesc')}
+            tooltip={t('settings.sync.missingFolderFallbackDesc')}
             type="switch"
             checked={missingFolderFallback}
             onCheckedChange={setMissingFolderFallback}

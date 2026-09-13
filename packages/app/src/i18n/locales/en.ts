@@ -196,7 +196,7 @@ export const dictionary: Record<string, string> = {
   "settings.webdav.providerJianguo": "Jianguoyun",
   "settings.webdav.providerNextcloud": "Nextcloud",
   "settings.webdav.providerInfini": "InfiniCLOUD",
-  "settings.webdav.jianguoTip": "Tip: For Jianguoyun, generate an App Password in Account Security",
+  "settings.webdav.jianguoTip": "Tip: Generate an App Password in Account Security",
   "settings.webdav.serverUrl": "Server URL",
   "settings.webdav.username": "Username",
   "settings.webdav.password": "Password",
