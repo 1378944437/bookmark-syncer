@@ -3,7 +3,7 @@
  * 测试书签仓储层的 createCloudBackup 和 restoreFromBackup
  */
 import { BookmarkRepository } from "@src/core/bookmark/repository";
-import { mergeNodes } from "@src/core/bookmark/merger";
+import { mergeNodes } from "@src/core/bookmark/merger-basic";
 import type { BookmarkNode, CloudBackup } from "@src/types";
 import browser from "webextension-polyfill";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,7 +23,7 @@ vi.mock("@src/core/bookmark/hash-calculator", () => ({
   }),
 }));
 
-vi.mock("@src/core/bookmark/merger", () => ({
+vi.mock("@src/core/bookmark/merger-basic", () => ({
   buildGlobalIndex: vi.fn(async () => ({
     hashToNode: new Map(),
     urlToBookmarks: new Map(),

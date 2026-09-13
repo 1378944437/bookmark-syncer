@@ -34,10 +34,14 @@ export {
 export type { SyncScope, SyncScopeKey } from "./sync-scope";
 export { DEFAULT_SYNC_SCOPE, filterTreeByScope, hasAnyScopeEnabled, normalizeSyncScope, SYNC_SCOPE_KEYS } from "./sync-scope";
 
-// 树合并与同步
-export {
-    buildGlobalIndex, createChildren, mergeNodes
-} from "./merger";
+// 索引与身份匹配
+export { buildGlobalIndex, findNodeByHash, getBookmarkIdentityKeys } from "./indexer";
+
+// 三阶段同步引擎
+export { deleteUnprocessedNodes, smartSync, type SharedSyncState } from "./smart-sync-engine";
+
+// 基础合并
+export { createChildren, mergeNodes } from "./merger-basic";
 
 // 仓储层（推荐使用）
 export { BookmarkRepository, bookmarkRepository } from "./repository";

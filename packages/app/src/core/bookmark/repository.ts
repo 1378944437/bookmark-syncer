@@ -6,7 +6,9 @@ import { BrowserBookmarksAPI } from "../../infrastructure/browser/api";
 import type { BookmarkMetadata, BookmarkNode, CloudBackup } from "../../types";
 import { countBookmarks } from "./comparator";
 import { assignHashes } from "./hash-calculator";
-import { buildGlobalIndex, createChildren, deleteUnprocessedNodes, mergeNodes, smartSync, type SharedSyncState } from "./merger";
+import { buildGlobalIndex } from "./indexer";
+import { createChildren, mergeNodes } from "./merger-basic";
+import { deleteUnprocessedNodes, smartSync, type SharedSyncState } from "./smart-sync-engine";
 import { findMatchingSystemFolder, hasCrossBrowserMapping, annotateSystemFolders } from "./normalizer";
 
 /**

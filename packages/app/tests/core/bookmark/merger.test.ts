@@ -2,7 +2,8 @@
  * merger.ts 测试
  * 测试 buildGlobalIndex、mergeNodes、createChildren
  */
-import { buildGlobalIndex, createChildren, mergeNodes } from "@src/core/bookmark/merger";
+import { createChildren, mergeNodes } from "@src/core/bookmark/merger-basic";
+import { buildGlobalIndex } from "@src/core/bookmark/indexer";
 import type { BookmarkNode } from "@src/types";
 import browser from "webextension-polyfill";
 import { beforeEach, describe, expect, it, vi } from "vitest";
