@@ -20,6 +20,7 @@ import { useStorage } from '../hooks/useStorage'
 import { cn } from '../infrastructure/utils/format'
 import { Button } from './Button'
 import { Drawer } from './Drawer'
+import { OverwriteConfirmDrawer, RestoreConfirmDrawer } from './sync/ConfirmDrawers'
 import { StatsCard } from './StatsCard'
 
 import { toast } from 'sonner'
@@ -773,92 +774,25 @@ export function SyncView() {
         ) : null}
     </Drawer>
 
-    {/* 覆盖云端二次确认 Drawer */}
-    <Drawer
-        isOpen={confirmPushOpen}
-        onClose={() => setConfirmPushOpen(false)}
-        title={t('sync.confirmPush.title')}
-    >
-        <div className="space-y-4 pt-2">
-            <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-xl flex gap-3">
-                <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
-                <div>
-                    <h4 className="text-sm font-bold text-foreground mb-1">{t('sync.confirmPush.heading')}</h4>
-                    <p className="text-xs text-foreground/80 leading-relaxed">
-                        {t('sync.confirmPush.body1')}<br/>
-                        {t('sync.confirmPush.body2')}
-                    </p>
-                </div>
-            </div>
+    <OverwriteConfirmDrawer
+      isOpen={confirmPushOpen}
+      onClose={() => setConfirmPushOpen(false)}
+      onConfirm={confirmForcePush}
+      busy={isSyncBusy}
+      online={isOnline}
+      localCount={localCount}
+      t={t}
+    />
 
-            <div className="grid grid-cols-2 gap-3">
-                <Button
-                    variant="outline"
-                    onClick={() => setConfirmPushOpen(false)}
-                >
-                    {t('common.cancel')}
-                </Button>
-                <Button
-                    variant="destructive"
-                    onClick={confirmForcePush}
-                    disabled={isSyncBusy || !isOnline || localCount === 0}
-                >
-                    {t('sync.confirmPush.confirm')}
-                </Button>
-            </div>
-        </div>
-    </Drawer>
-
-    {/* 独立的确认恢复 Drawer */}
-    <Drawer
-        isOpen={confirmDrawerOpen}
-        onClose={cancelRestore}
-        title={t('sync.confirmRestore.title')}
-    >
-        {(pendingRestoreSnapshot || pendingRestoreCloudBackup) && (
-            <div className="space-y-4 pt-2">
-                <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-400 dark:border-amber-500/20 p-4 rounded-xl flex gap-3">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-                    <div>
-                        <h4 className="text-sm font-bold text-foreground mb-1">
-                            {pendingRestoreSnapshot ? t('sync.confirmRestore.snapshotTitle') : t('sync.confirmRestore.cloudTitle')}
-                        </h4>
-                        <p className="text-xs text-foreground/80 leading-relaxed">
-                            {pendingRestoreSnapshot ? (
-                                <>
-                                    {t('sync.confirmRestore.snapshotBody1', { time: new Date(pendingRestoreSnapshot.timestamp).toLocaleString() })}<br/>
-                                    {t('sync.confirmRestore.snapshotBody2', { count: pendingRestoreSnapshot.count })}<br/>
-                                    {t('sync.confirmRestore.overwriteAll')}
-                                </>
-                            ) : pendingRestoreCloudBackup ? (
-                                <>
-                                    {t('sync.confirmRestore.cloudBody1', { time: new Date(pendingRestoreCloudBackup.timestamp).toLocaleString() })}<br/>
-                                    {pendingRestoreCloudBackup.totalCount && t('sync.confirmRestore.snapshotBody2', { count: pendingRestoreCloudBackup.totalCount })}<br/>
-                                    {pendingRestoreCloudBackup.browser && t('sync.confirmRestore.cloudBody3', { browser: pendingRestoreCloudBackup.browser })}<br/>
-                                    {t('sync.confirmRestore.cloudBody4')}
-                                </>
-                            ) : null}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                    <Button 
-                        variant="outline" 
-                        onClick={cancelRestore}
-                    >
-                        {t('common.cancel')}
-                    </Button>
-                    <Button 
-                        onClick={pendingRestoreSnapshot ? confirmRestoreSnapshot : confirmRestoreCloudBackup}
-                    >
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        {t('sync.confirmRestore.confirm')}
-                    </Button>
-                </div>
-            </div>
-        )}
-    </Drawer>
+    <RestoreConfirmDrawer
+      isOpen={confirmDrawerOpen}
+      onClose={cancelRestore}
+      snapshot={pendingRestoreSnapshot}
+      cloudBackup={pendingRestoreCloudBackup}
+      onConfirmSnapshot={confirmRestoreSnapshot}
+      onConfirmCloudBackup={confirmRestoreCloudBackup}
+      t={t}
+    />
     </>
   )
 }
