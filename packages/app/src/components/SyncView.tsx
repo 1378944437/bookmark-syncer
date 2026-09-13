@@ -11,13 +11,12 @@ import {
   smartSyncInBackground,
 } from '../application/background-ops'
 import { snapshotManager } from '../core/backup'
-import { bookmarkRepository } from '../core/bookmark'
-import { getCloudInfo } from '../core/sync'
 import { useI18n } from '../i18n'
 import { translateSyncMessage } from '../i18n/sync-messages'
 import { useStorage } from '../hooks/useStorage'
 import { useSnapshots } from '../hooks/useSnapshots'
 import { useCloudBackups } from '../hooks/useCloudBackups'
+import { useBookmarkCounts } from '../hooks/useBookmarkCounts'
 import { cn } from '../infrastructure/utils/format'
 import { Drawer } from './Drawer'
 import { OverwriteConfirmDrawer, RestoreConfirmDrawer } from './sync/ConfirmDrawers'
@@ -45,11 +44,7 @@ export function SyncView() {
   const [lastRemoteDevice] = useStorage<{ deviceId?: string; deviceName?: string; time: number } | null>('last_remote_device', null)
   const isOnline = useOnlineStatus()
   
-  const [localCount, setLocalCount] = useState(0)
-  const [cloudCount, setCloudCount] = useState(0)
-  const [cloudMeta, setCloudMeta] = useState<{ time: number, device: string, count: number, browser?: string } | null>(null)
 
-  const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'checking' | 'syncing' | 'success' | 'error'>('idle')
   const [msg, setMsg] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -84,58 +79,11 @@ export function SyncView() {
 
   const isConfigured = !!webdavUrl
 
-  const loadCounts = async (signal?: { aborted: boolean }) => {
-    try {
-      const count = await bookmarkRepository.getLocalCount()
-      if (signal?.aborted) return
-      setLocalCount(count)
-      
-      if (isConfigured) {
-        setLoading(true) 
-        try {
-            // 使用 getCloudInfo 获取最新备份信息
-            // 注意：由于可能有多设备同步，这里需要实时获取最新数据
-            const cloudInfo = await getCloudInfo(getSyncConfig(), true)
-            if (signal?.aborted) return
-            
-            if (cloudInfo.exists && cloudInfo.totalCount !== undefined) {
-                setCloudCount(cloudInfo.totalCount)
-                setCloudMeta({ 
-                  time: cloudInfo.timestamp || 0, 
-                  device: cloudInfo.browser || '', 
-                  count: cloudInfo.totalCount,
-                  browser: cloudInfo.browser 
-                })
-            } else {
-                setCloudCount(0)
-                setCloudMeta(null)
-            }
-        } catch (e) {
-            if (signal?.aborted) return
-            console.error('[SyncView] Failed to load cloud info:', e)
-            toast.error(t('sync.toast.loadCloudInfoFailed'), {
-              description: (e as Error).message || t('sync.toast.checkNetworkAndConfig')
-            })
-            setCloudCount(0)
-            setCloudMeta(null)
-        } finally {
-            if (!signal?.aborted) setLoading(false)
-        }
-      } else {
-        setLoading(false)
-      }
-    } catch (e) { 
-      if (signal?.aborted) return
-      console.error('Failed to load counts:', e)
-      setLoading(false) 
-    }
-  }
-
   // 注意：WebDAV 用户名/密码是异步从 storage 读取的。
   // 如果这里只依赖 webdavUrl，会出现「URL 先加载 → 立刻发请求但账号/密码还是空」的情况，导致首次 401。
   useEffect(() => {
     const signal = { aborted: false }
-    loadCounts(signal); snapshotsApi.loadSnapshots()
+    countsApi.loadCounts(signal); snapshotsApi.loadSnapshots()
     return () => { signal.aborted = true }
   }, [webdavUrl, username, password, syncState?.time])
 
@@ -152,13 +100,13 @@ export function SyncView() {
   }
 
   const requestForcePush = () => {
-    if (!isOnline || localCount === 0 || isSyncBusy) return
+    if (!isOnline || countsApi.localCount === 0 || isSyncBusy) return
     setDrawerOpen(false)
     setConfirmPushOpen(true)
   }
 
   const confirmForcePush = async () => {
-    if (!isOnline || localCount === 0 || isSyncBusy) return
+    if (!isOnline || countsApi.localCount === 0 || isSyncBusy) return
     setConfirmPushOpen(false)
     await executePush()
   }
@@ -195,7 +143,7 @@ export function SyncView() {
           
           // 更新云端信息显示
           if (result.cloudInfo?.exists) {
-              setCloudMeta({
+              countsApi.setCloudMeta({
                   time: result.cloudInfo.timestamp || 0,
                   device: result.cloudInfo.browser || '',
                   count: result.cloudInfo.totalCount || 0,
@@ -216,7 +164,7 @@ export function SyncView() {
           if (result.success) {
               setSyncStatus('success')
               setMsg(translateSyncMessage(locale, result.message))
-              loadCounts()
+              countsApi.loadCounts()
               
               // 重置定时同步计时器，避免手动同步后立即触发定时同步
               await resetScheduledSync()
@@ -248,7 +196,7 @@ export function SyncView() {
               setSyncStatus('success')
               setMsg(translateSyncMessage(locale, result.message))
               setDrawerOpen(false)
-              loadCounts()
+              countsApi.loadCounts()
               snapshotsApi.loadSnapshots() // 刷新快照列表
               
               // 重置定时同步计时器
@@ -302,7 +250,7 @@ export function SyncView() {
               setSyncStatus('success')
               setMsg(translateSyncMessage(locale, result.message))
               setDrawerOpen(false)
-              loadCounts()
+              countsApi.loadCounts()
               snapshotsApi.loadSnapshots() // 刷新快照列表
               
               // 重置定时同步计时器
@@ -332,7 +280,10 @@ export function SyncView() {
 
   const isSyncBusy = syncStatus === 'checking' || syncStatus === 'syncing'
 
-  // 视图上下文：向 hooks 提供状态提示、确认抽屉与计数刷新
+  // 计数加载 hook（本地书签数 / 云端备份信息）
+  const countsApi = useBookmarkCounts({ t, isConfigured, getConfig: getSyncConfig })
+
+  // 视图上下文：向其余 hooks 提供状态提示、确认抽屉与计数刷新
   const viewCtx = {
     t,
     setSyncStatus,
@@ -340,7 +291,7 @@ export function SyncView() {
     setDrawerOpen,
     openConfirm: () => setConfirmDrawerOpen(true),
     closeConfirm: () => setConfirmDrawerOpen(false),
-    loadCounts,
+    loadCounts: countsApi.loadCounts,
   }
   const snapshotsApi = useSnapshots(viewCtx)
   const cloudBackupsApi = useCloudBackups({
@@ -369,8 +320,8 @@ export function SyncView() {
 
       {/* Stats */}
       <motion.div variants={item} className="grid grid-cols-2 gap-4 px-1">
-        <StatsCard label={t('sync.stats.local')} count={localCount} loading={false} color="zinc" />
-        <StatsCard label={t('sync.stats.cloud')} count={cloudCount} loading={loading} color="indigo" />
+        <StatsCard label={t('sync.stats.local')} count={countsApi.localCount} loading={false} color="zinc" />
+        <StatsCard label={t('sync.stats.cloud')} count={countsApi.cloudCount} loading={countsApi.loading} color="indigo" />
       </motion.div>
       
       {/* 提示信息：未配置 */}
@@ -440,10 +391,10 @@ export function SyncView() {
                             {msg}
                         </motion.span>
                     )}
-                    {cloudMeta && !msg && (
+                    {countsApi.cloudMeta && !msg && (
                         <span className="text-[10px] text-muted-foreground">
-                             {t('sync.cloudUpdatedAt', { time: new Date(cloudMeta.time).toLocaleString() })}
-                             {cloudMeta.device ? ` (${cloudMeta.device})` : ''}
+                             {t('sync.cloudUpdatedAt', { time: new Date(countsApi.cloudMeta.time).toLocaleString() })}
+                             {countsApi.cloudMeta.device ? ` (${countsApi.cloudMeta.device})` : ''}
                              {lastRemoteDevice?.deviceName ? ` · ${lastRemoteDevice.deviceName}` : ''}
                         </span>
                     )}
@@ -478,7 +429,7 @@ export function SyncView() {
                 cn={cn}
                 isOnline={isOnline}
                 isSyncBusy={isSyncBusy}
-                localCount={localCount}
+                localCount={countsApi.localCount}
                 openCloudBackups={openCloudBackups}
                 requestForcePush={requestForcePush}
             />
@@ -503,9 +454,9 @@ export function SyncView() {
                 cn={cn}
                 isOnline={isOnline}
                 isSyncBusy={isSyncBusy}
-                localCount={localCount}
-                cloudCount={cloudCount}
-                cloudMeta={cloudMeta}
+                localCount={countsApi.localCount}
+                cloudCount={countsApi.cloudCount}
+                cloudMeta={countsApi.cloudMeta}
                 executePull={executePull}
                 forceNewBackup={forceNewBackup}
                 requestForcePush={requestForcePush}
@@ -519,7 +470,7 @@ export function SyncView() {
       onConfirm={confirmForcePush}
       busy={isSyncBusy}
       online={isOnline}
-      localCount={localCount}
+      localCount={countsApi.localCount}
       t={t}
     />
 
