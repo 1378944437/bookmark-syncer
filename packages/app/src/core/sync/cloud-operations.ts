@@ -106,6 +106,7 @@ export async function getCloudBackupList(config: WebDAVConfig, forceRefresh = fa
       browser: parsed?.browser,
       browserVersion: undefined, // 不再提供
       deviceTag: parsed?.deviceTag,
+      deviceName: parsed?.deviceName,
     };
   });
 
@@ -146,7 +147,6 @@ export async function restoreFromCloudBackup(
 
   try {
     await setIsRestoring(true);
-
     const client = getWebDAVClient(config);
 
     // 路径问题已修复，理论上不再需要智能等待
@@ -162,7 +162,7 @@ export async function restoreFromCloudBackup(
       await snapshotManager.createSnapshot(
         currentTree,
         currentCount,
-        `云端恢复前自动备份 (${lockHolder === "manual" ? "手动" : "自动"})`
+        `云端恢复前 (${lockHolder === "manual" ? "手动" : "自动"} 恢复)`
       );
     } catch (error) {
       console.warn("[CloudOperations] Failed to create snapshot:", error);

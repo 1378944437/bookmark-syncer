@@ -27,6 +27,8 @@ export const dictionary: Record<string, string> = {
   "sync.stats.local": "Local bookmarks",
   "sync.stats.cloud": "Cloud backup",
   "sync.stats.synced": "In sync",
+  "sync.stats.viewLocalSnapshots": "Click to view local snapshots",
+  "sync.stats.viewCloudBackups": "Click to view cloud backups",
   "sync.stats.notConfigured": "Open \"Settings\" above to configure your WebDAV service",
   "sync.needConfigFirst": "Configure a connection first",
   "sync.syncButton.offline": "Offline",
@@ -124,7 +126,7 @@ export const dictionary: Record<string, string> = {
   "sync.confirmRestore.cloudBody3": "from {browser}",
   "sync.confirmRestore.cloudBody4": "This will replace all current bookmarks; a local snapshot is created automatically.",
   "sync.confirmRestore.confirm": "Restore",
-  "sync.confirmRestore.snapshotBackupReason": "Automatic backup before snapshot restore",
+  "sync.confirmRestore.snapshotBackupReason": "Before Restore (Manual Restore)",
 
   // ─── Settings main ───
   "settings.section.cloud": "Cloud & Security",

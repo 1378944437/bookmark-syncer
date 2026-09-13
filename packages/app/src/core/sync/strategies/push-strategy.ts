@@ -77,7 +77,7 @@ export async function smartPush(
       await snapshotManager.createSnapshot(
         localTree,
         localCount,
-        `上传前自动备份 (${lockHolder === "manual" ? "手动" : "自动"})`
+        `上传前 (${lockHolder === "manual" ? "手动" : "自动"} 备份)`
       );
     } catch (error) {
       console.warn("[PushStrategy] Failed to create snapshot:", error);
@@ -148,12 +148,13 @@ export async function smartPush(
       // 时间窗口内：创建新文件替换旧文件（先传后删，保证原子性）
       console.log(`[PushStrategy] Within time window (${backupIntervalMinutes}min), replacing: ${lastBackupInfo.fileName}`);
       
-      // 生成新文件名（书签数量会更新）
+      // 生成新文件名（书签数量会更新，并携带设备自定义备注标识）
       targetFileName = fileManager.generateBackupFileName(
         browserInfo.name,
         bookmarkCount,
         lastBackupInfo.revisionNumber + 1, // 保持修订号递增
-        deviceTag
+        deviceTag,
+        identity.deviceName
       );
       targetFilePath = `${DIR}/${targetFileName}`;
       revisionNumber = lastBackupInfo.revisionNumber + 1;
@@ -166,7 +167,8 @@ export async function smartPush(
         browserInfo.name,
         bookmarkCount,
         1, // 初始修订号
-        deviceTag
+        deviceTag,
+        identity.deviceName
       );
       targetFilePath = `${DIR}/${targetFileName}`;
       revisionNumber = 1;
@@ -187,8 +189,11 @@ export async function smartPush(
     if (!targetFilePath.endsWith(".gz")) {
       targetFilePath = targetFilePath + ".gz";
     }
+
+    // 端到端加密处理
     if (e2e.enabled) {
       if (!e2e.passphrase) {
+        console.error("[PushStrategy] Push aborted: E2E enabled but passphrase missing");
         return {
           success: false,
           action: "error",
@@ -232,9 +237,9 @@ export async function smartPush(
 
     console.log(`[PushStrategy] Backup saved: ${targetFilePath} (revision ${revisionNumber})`);
     
-    // 清理超过3天的旧备份（只在创建新文件时执行）
+    // 清理旧备份（双轨防空法则：保底保留 5 份，上限 10 份，先传后清）
     if (isNewFile) {
-      await fileManager.cleanOldBackups(client, 3);
+      await fileManager.cleanOldBackups(client);
     }
 
     // 4. 清除备份列表缓存（因为刚上传了新文件）

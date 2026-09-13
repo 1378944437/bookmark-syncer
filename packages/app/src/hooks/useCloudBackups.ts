@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import type { WebDAVConfig } from '../core/storage/types'
-import { getCloudBackupList, type CloudBackupFile } from '../core/sync'
+import { getCloudBackupList, getDeviceIdentity, type CloudBackupFile } from '../core/sync'
 import { restoreCloudBackupInBackground } from '../application/background-ops'
 import { translateSyncMessage } from '../i18n/sync-messages'
 import type { Locale } from '../i18n'
@@ -33,7 +33,25 @@ export function useCloudBackups(ctx: CloudBackupsContext) {
     try {
       // 使用缓存，避免频繁 PROPFIND
       const list = await getCloudBackupList(getConfig() as WebDAVConfig, false)
-      setCloudBackups(list)
+
+      // 尝试匹配本机或已知设备名称，提升云端列表可读性
+      try {
+        const identity = await getDeviceIdentity()
+        const myTag = identity.deviceId.replace(/[^a-z0-9]/gi, '').slice(0, 8).toLowerCase()
+        const enriched = list.map((item) => {
+          if (item.deviceName) return item
+          if (item.deviceTag && item.deviceTag === myTag) {
+            return {
+              ...item,
+              deviceName: identity.deviceName ? `${identity.deviceName} (本机)` : '本机',
+            }
+          }
+          return item
+        })
+        setCloudBackups(enriched)
+      } catch {
+        setCloudBackups(list)
+      }
     } catch (error) {
       console.error('Failed to load cloud backups:', error)
       toast.error(t('sync.toast.loadCloudListFailed'))

@@ -5,6 +5,7 @@
 import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Cloud, Monitor, WifiOff } from 'lucide-react'
+import { toast } from 'sonner'
 import { snapshotManager } from '../core/backup'
 import { useI18n } from '../i18n'
 import { useStorage } from '../hooks/useStorage'
@@ -134,7 +135,7 @@ export function SyncView() {
           </motion.div>
         )}
 
-        {/* 书签统计卡片 */}
+        {/* 书签统计卡片（支持点击直达快照历史与云端备份列表） */}
         <motion.div variants={item} className="grid grid-cols-2 gap-3 px-1">
           <StatsCard
             label={t('sync.stats.local')}
@@ -142,6 +143,8 @@ export function SyncView() {
             loading={false}
             color="zinc"
             icon={Monitor}
+            onClick={actionsApi.openHistory}
+            tooltip={t('sync.stats.viewLocalSnapshots')}
           />
           <StatsCard
             label={t('sync.stats.cloud')}
@@ -151,6 +154,12 @@ export function SyncView() {
             icon={Cloud}
             isSynced={isSynced}
             syncedTooltip={t('sync.stats.synced')}
+            onClick={() => {
+              if (!isConfigured) return void toast.info(t('sync.needConfigFirst'))
+              if (!isOnline) return void toast.warning(t('sync.offlineBanner'))
+              actionsApi.openCloudBackups()
+            }}
+            tooltip={t('sync.stats.viewCloudBackups')}
           />
         </motion.div>
 

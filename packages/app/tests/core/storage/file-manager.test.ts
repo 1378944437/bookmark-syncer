@@ -96,3 +96,67 @@ describe("FileManager - isBackupFile", () => {
     ).toBe(false);
   });
 });
+
+describe("FileManager - 设备标识与自定义名称扩展", () => {
+  it("生成携带设备标签与自定义设备名称的文件名", () => {
+    const name = fm.generateBackupFileName("Chrome", 120, 1, "a1b2c3d4", "客厅电脑");
+    expect(name).toMatch(/_chrome_120_d-a1b2c3d4_n-[a-zA-Z0-9_-]+_v1\.json$/);
+  });
+
+  it("正确解析携带设备标签与自定义中文设备名称的文件名", () => {
+    const generated = fm.generateBackupFileName("Edge", 88, 2, "mydevtag", "工作笔记本");
+    const parsed = fm.parseBackupFileName(generated);
+
+    expect(parsed).not.toBeNull();
+    expect(parsed!.browser).toBe("edge");
+    expect(parsed!.count).toBe(88);
+    expect(parsed!.revisionNumber).toBe(2);
+    expect(parsed!.deviceTag).toBe("mydevtag");
+    expect(parsed!.deviceName).toBe("工作笔记本");
+  });
+
+  it("正确解析未携带设备名称的旧版本文件名并向下兼容", () => {
+    const parsed = fm.parseBackupFileName("bookmarks_20260127_143052_edge_157_d-olddev_v1.json.gz");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.deviceTag).toBe("olddev");
+    expect(parsed!.deviceName).toBeUndefined();
+  });
+});
+
+describe("FileManager - cleanOldBackups 双轨安全清理", () => {
+  it("文件数不超过保底份数时不执行删除", async () => {
+    const mockClient = {
+      listFiles: async () => [
+        { name: "bookmarks_20260101_120000_edge_10_v1.json.gz", path: "/p1", lastModified: 1000 },
+        { name: "bookmarks_20260102_120000_edge_10_v1.json.gz", path: "/p2", lastModified: 2000 },
+      ],
+      deleteFile: async () => {},
+    } as any;
+
+    const deleted = await fm.cleanOldBackups(mockClient, { minToKeep: 5, maxToKeep: 10, daysToKeep: 1 });
+    expect(deleted).toBe(0);
+  });
+
+  it("超出总份数上限时安全删除多余的最旧备份", async () => {
+    const deletedPaths: string[] = [];
+    const now = Date.now();
+    const files = Array.from({ length: 12 }, (_, i) => ({
+      name: `bookmarks_20260101_1200${i.toString().padStart(2, "0")}_edge_10_v1.json.gz`,
+      path: `/p${i}`,
+      lastModified: now + (i + 1) * 1000, // p0 最旧，p11 最新
+    }));
+
+    const mockClient = {
+      listFiles: async () => files,
+      deleteFile: async (path: string) => {
+        deletedPaths.push(path);
+      },
+    } as any;
+
+    const deleted = await fm.cleanOldBackups(mockClient, { minToKeep: 5, maxToKeep: 10, daysToKeep: 999 });
+    // 12 个文件，上限 10 个，应删除最旧的 2 个（p0, p1）
+    expect(deleted).toBe(2);
+    expect(deletedPaths).toContain("/p0");
+    expect(deletedPaths).toContain("/p1");
+  });
+});

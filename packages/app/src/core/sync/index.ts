@@ -47,3 +47,6 @@ export {
 // 冲突解决
 export { checkNeedsConflictResolution } from "./conflict-resolver";
 
+// 设备身份
+export { getDeviceIdentity } from "./sync-settings";
+

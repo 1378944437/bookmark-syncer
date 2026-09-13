@@ -3,7 +3,7 @@
  * 支持设备类型图标与两端数量一致性状态双勾图标微徽章（无冗余文本）
  */
 import type { ComponentType } from 'react'
-import { CheckCheck } from 'lucide-react'
+import { CheckCheck, ChevronRight } from 'lucide-react'
 import { cn } from '../infrastructure/utils/format'
 
 export interface StatsCardProps {
@@ -14,6 +14,8 @@ export interface StatsCardProps {
   icon?: ComponentType<{ className?: string }>
   isSynced?: boolean
   syncedTooltip?: string
+  onClick?: () => void
+  tooltip?: string
 }
 
 export function StatsCard({
@@ -24,11 +26,26 @@ export function StatsCard({
   icon: Icon,
   isSynced,
   syncedTooltip,
+  onClick,
+  tooltip,
 }: StatsCardProps) {
+  const isClickable = Boolean(onClick)
+
   return (
     <div
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          onClick?.()
+        }
+      }}
+      title={tooltip}
       className={cn(
-        "relative overflow-hidden rounded-2xl p-4 transition-all border flex flex-col justify-between",
+        "group relative overflow-hidden rounded-2xl p-4 transition-all border flex flex-col justify-between select-none",
+        isClickable && "cursor-pointer hover:border-primary/60 hover:shadow-md active:scale-[0.98]",
         color === 'indigo'
           ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_30px_-5px_rgba(99,102,241,0.3)] dark:border-indigo-400/30 dark:shadow-[0_0_30px_-5px_rgba(99,102,241,0.45)]"
           : "surface-card border-border"
@@ -44,7 +61,12 @@ export function StatsCard({
       {/* 标题栏与图标 */}
       <div className="flex items-center justify-between mb-1 relative z-10">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-        {Icon && <Icon className="w-4 h-4 text-muted-foreground/70" />}
+        <div className="flex items-center gap-1">
+          {Icon && <Icon className="w-4 h-4 text-muted-foreground/70" />}
+          {isClickable && (
+            <ChevronRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+          )}
+        </div>
       </div>
 
       {/* 数量数值与两端一致图标微徽章（去除文本占位，鼠标悬停展示 Tooltip） */}
@@ -69,3 +91,4 @@ export function StatsCard({
     </div>
   )
 }
+

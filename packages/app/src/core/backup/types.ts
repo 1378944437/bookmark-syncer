@@ -54,10 +54,10 @@ export interface SnapshotConfig {
 }
 
 /**
- * 默认快照配置
+ * 默认快照配置（默认保留 15 份，FIFO 轮转淘汰）
  */
 export const DEFAULT_SNAPSHOT_CONFIG: SnapshotConfig = {
-  maxSnapshots: 5,
+  maxSnapshots: 15,
   dbName: "bookmark-syncer-db",
   storeName: "snapshots",
 };

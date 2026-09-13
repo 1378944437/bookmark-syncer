@@ -27,6 +27,8 @@ export const dictionary: Record<string, string> = {
   "sync.stats.local": "本地书签",
   "sync.stats.cloud": "云端备份",
   "sync.stats.synced": "两端已一致",
+  "sync.stats.viewLocalSnapshots": "点击查看本地快照历史",
+  "sync.stats.viewCloudBackups": "点击查看云端历史备份",
   "sync.stats.notConfigured": "点击上方 \"设置\" 配置 WebDAV 服务",
   "sync.needConfigFirst": "请先配置连接",
   "sync.syncButton.offline": "离线",
@@ -124,7 +126,7 @@ export const dictionary: Record<string, string> = {
   "sync.confirmRestore.cloudBody3": "来自 {browser}",
   "sync.confirmRestore.cloudBody4": "这将覆盖当前所有书签，并会自动创建本地快照。",
   "sync.confirmRestore.confirm": "确认恢复",
-  "sync.confirmRestore.snapshotBackupReason": "本地快照恢复前自动备份",
+  "sync.confirmRestore.snapshotBackupReason": "快照恢复前 (手动 恢复)",
 
   // ─── 设置主页 ───
   "settings.section.cloud": "云端与安全",

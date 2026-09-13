@@ -7,6 +7,43 @@ import type { BackupFileMetadata, CloudBackupFile, WebDAVFile } from "./types";
 import { STORAGE_CONSTANTS } from "./types";
 
 /**
+ * 安全地将设备名称转换为 URL 安全的 Base64 标识（支持中文字符）
+ */
+function encodeDeviceNameSlug(name?: string): string {
+  if (!name || !name.trim()) return "";
+  try {
+    const bytes = new TextEncoder().encode(name.trim().slice(0, 15));
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 将 URL 安全的 Base64 标识还原为设备名称
+ */
+function decodeDeviceNameSlug(slug?: string): string | undefined {
+  if (!slug || !slug.trim()) return undefined;
+  try {
+    let base64 = slug.replace(/-/g, "+").replace(/_/g, "/");
+    while (base64.length % 4) base64 += "=";
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const decoded = new TextDecoder().decode(bytes).trim();
+    return decoded || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * 文件管理器类
  * 提供文件操作的高级封装
  */
@@ -20,24 +57,18 @@ export class FileManager {
   /**
    * 生成带时间戳和修订号的备份文件名
    * 格式：bookmarks_YYYYMMDD_HHMMSS_browser_count_vN.json
-   * 
-   * @param browser 浏览器名称（如 "Chrome", "Edge", "Firefox"）
-   * @param count 书签总数
-   * @param revisionNumber 修订版本号（默认1）
-   * @param deviceTag 设备短标识（可选，多设备区分来源）
-   * @returns 文件名（不含 .gz 扩展名）
-   *
-   * @example
-   * generateBackupFileName("Edge", 157, 1)
-   * // => "bookmarks_20260127_143052_edge_157_v1.json"
-   * generateBackupFileName("Edge", 157, 1, "a1b2c3d4")
-   * // => "bookmarks_20260127_143052_edge_157_d-a1b2c3d4_v1.json"
+   */
+
+  /**
+   * 生成备份文件名
+   * 格式：bookmarks_YYYYMMDD_HHMMSS_browser_count[_d-deviceTag][_n-deviceName]_vX.json
    */
   generateBackupFileName(
     browser: string,
     count: number,
     revisionNumber: number = 1,
     deviceTag?: string,
+    deviceName?: string
   ): string {
     const now = new Date();
     const year = now.getFullYear();
@@ -50,13 +81,15 @@ export class FileManager {
     // 浏览器名称转为小写并移除空格
     const browserSlug = browser.toLowerCase().replace(/\s+/g, "");
     const deviceSegment = deviceTag ? `_d-${deviceTag}` : "";
+    const nameSlug = encodeDeviceNameSlug(deviceName);
+    const nameSegment = nameSlug ? `_n-${nameSlug}` : "";
 
-    return `bookmarks_${year}${month}${day}_${hours}${minutes}${seconds}_${browserSlug}_${count}${deviceSegment}_v${revisionNumber}.json`;
+    return `bookmarks_${year}${month}${day}_${hours}${minutes}${seconds}_${browserSlug}_${count}${deviceSegment}${nameSegment}_v${revisionNumber}.json`;
   }
 
   /**
    * 解析备份文件名，提取元数据
-   * 格式：bookmarks_20260127_143052_edge_157_v3.json.gz
+   * 格式：bookmarks_20260127_143052_edge_157_d-xxx_n-yyy_v3.json.gz
    * 
    * @param fileName 文件名
    * @returns 解析结果，如果无法解析则返回 null
@@ -65,16 +98,16 @@ export class FileManager {
     // 移除加密与压缩扩展名（.json.gz.enc → .json.gz）
     const cleanFileName = fileName.replace(/\.enc$/, "").replace(/\.gz$/, "");
     
-    // 解析格式: bookmarks_20260127_143052_edge_157_v3.json（_d-xxx 设备段可选）
+    // 解析格式: bookmarks_20260127_143052_edge_157_v3.json（_d-xxx 设备段、_n-xxx 名称段可选）
     const match = cleanFileName.match(
-      /^bookmarks_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_([a-z]+)_(\d+)(?:_d-([a-z0-9]+))?_v(\d+)\.json$/
+      /^bookmarks_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_([a-z]+)_(\d+)(?:_d-([a-z0-9]+))?(?:_n-([a-zA-Z0-9_-]+))?_v(\d+)\.json$/
     );
 
     if (!match) {
       return null;
     }
 
-    const [, year, month, day, hours, minutes, seconds, browser, count, device, revision] = match;
+    const [, year, month, day, hours, minutes, seconds, browser, count, device, nameSlug, revision] = match;
     const timestamp = new Date(
       parseInt(year),
       parseInt(month) - 1,
@@ -90,6 +123,7 @@ export class FileManager {
       count: parseInt(count),
       revisionNumber: parseInt(revision),
       deviceTag: device || undefined,
+      deviceName: decodeDeviceNameSlug(nameSlug),
     };
   }
 
@@ -171,45 +205,63 @@ export class FileManager {
       totalCount: metadata?.count,
       browser: metadata?.browser,
       browserVersion: undefined, // 文件名中不包含版本信息
+      deviceTag: metadata?.deviceTag,
+      deviceName: metadata?.deviceName,
     };
   }
 
   /**
-   * 清理超过指定天数的备份文件
+   * 清理多余的旧备份文件（双轨防空法则：至少保留 minToKeep 份，最多保留 maxToKeep 份）
    * @param client WebDAV 客户端
-   * @param daysToKeep 保留最近几天的备份，默认 3 天
+   * @param optionsOrDays 配置选项或保留天数（兼容数字参数）
    * @returns 删除的文件数量
    */
   async cleanOldBackups(
     client: IWebDAVClient,
-    daysToKeep: number = STORAGE_CONSTANTS.DEFAULT_DAYS_TO_KEEP
+    optionsOrDays?: number | { minToKeep?: number; maxToKeep?: number; daysToKeep?: number }
   ): Promise<number> {
     try {
       const backupFiles = await this.listBackupFiles(client);
-
       if (backupFiles.length === 0) {
-        console.log("[FileManager] No backup files to clean");
         return 0;
       }
 
-      // 计算截止时间
-      const cutoffTime = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
+      const opts =
+        typeof optionsOrDays === "number"
+          ? { daysToKeep: optionsOrDays }
+          : optionsOrDays || {};
 
-      // 找出需要删除的旧文件
-      const filesToDelete = backupFiles.filter(
-        (file) => file.lastModified < cutoffTime
-      );
+      const minToKeep = opts.minToKeep ?? STORAGE_CONSTANTS.DEFAULT_MIN_BACKUPS_TO_KEEP;
+      const maxToKeep = opts.maxToKeep ?? STORAGE_CONSTANTS.DEFAULT_MAX_BACKUPS_TO_KEEP;
+      const daysToKeep = opts.daysToKeep ?? 30;
+
+      // 备份总数未达保底份数，严禁清理
+      if (backupFiles.length <= minToKeep) {
+        return 0;
+      }
+
+      // 按服务器修改时间倒序排列（最新的排在最前）
+      backupFiles.sort((a, b) => b.lastModified - a.lastModified);
+
+      const cutoffTime = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
+      const filesToDelete: WebDAVFile[] = [];
+
+      // 前 minToKeep 份受到绝对保护，永不删除；只对超出保底的旧文件进行清理判断
+      for (let i = minToKeep; i < backupFiles.length; i++) {
+        const file = backupFiles[i];
+        if (i >= maxToKeep || file.lastModified < cutoffTime) {
+          filesToDelete.push(file);
+        }
+      }
 
       if (filesToDelete.length === 0) {
-        console.log(`[FileManager] No backups older than ${daysToKeep} days to clean`);
         return 0;
       }
 
       console.log(
-        `[FileManager] Cleaning ${filesToDelete.length} old backups (older than ${daysToKeep} days)`
+        `[FileManager] Cleaning ${filesToDelete.length} old backups (keeping min ${minToKeep}, max ${maxToKeep})`
       );
 
-      // 删除旧文件
       let deletedCount = 0;
       for (const file of filesToDelete) {
         try {

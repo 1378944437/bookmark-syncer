@@ -34,6 +34,8 @@ export interface CloudBackupFile {
   browserVersion?: string;
   /** 设备短标识（文件名 _d-xxx 段，设备标识功能） */
   deviceTag?: string;
+  /** 设备自定义备注名称（文件名 _n-xxx 解码或本地设备映射） */
+  deviceName?: string;
 }
 
 /**
@@ -47,6 +49,8 @@ export interface CloudInfo {
   browserVersion?: string;
   /** 设备短标识 */
   deviceTag?: string;
+  /** 设备自定义备注名称 */
+  deviceName?: string;
 }
 
 /**
@@ -79,6 +83,8 @@ export interface BackupFileMetadata {
   revisionNumber: number;
   /** 设备短标识（可选段，v1.2.x 起写入） */
   deviceTag?: string;
+  /** 设备自定义备注名称（可选段，v1.3.12 起写入） */
+  deviceName?: string;
 }
 
 /**
@@ -108,6 +114,12 @@ export const STORAGE_CONSTANTS = {
   
   /** 保留备份的天数 */
   DEFAULT_DAYS_TO_KEEP: 3,
+
+  /** 云端备份保底份数（绝对防空法则，绝不全清） */
+  DEFAULT_MIN_BACKUPS_TO_KEEP: 5,
+
+  /** 云端备份总数上限（滑动窗口淘汰） */
+  DEFAULT_MAX_BACKUPS_TO_KEEP: 10,
   
   /** 最后备份文件信息存储键 */
   LAST_BACKUP_FILE_KEY: 'last_backup_file_info',

@@ -68,7 +68,7 @@ export async function smartPull(
       await snapshotManager.createSnapshot(
         currentTree,
         currentCount,
-        `下载前自动备份 (${lockHolder === "manual" ? "手动" : "自动"}, ${mode === "overwrite" ? "覆盖" : "合并"})`
+        `下载前 (${lockHolder === "manual" ? "手动" : "自动"} ${mode === "overwrite" ? "覆盖" : "合并"})`
       );
     } catch (error) {
       console.warn("[PullStrategy] Failed to create snapshot:", error);
