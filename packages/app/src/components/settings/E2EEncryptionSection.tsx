@@ -5,7 +5,7 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { AlertTriangle, Check, ChevronDown, ChevronUp, Eye, EyeOff, KeyRound, Loader2, Lock, RefreshCw } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, Loader2, Lock } from 'lucide-react'
 import { clearLastBackupFileInfo, getWebDAVConfig } from '../../application'
 import { smartPushInBackground } from '../../application/background-ops'
 import { useI18n } from '../../i18n'
@@ -14,29 +14,9 @@ import { Button } from '../Button'
 import { Input } from '../Input'
 import { Label } from '../Label'
 import { cn } from '../../infrastructure/utils/format'
-
-/**
- * 密码强度辅助判定函数
- */
-function calculatePasswordStrength(pass: string): { level: 1 | 2 | 3; labelKey: string; color: string; width: string } {
-  if (!pass || pass.length < 8) {
-    return { level: 1, labelKey: 'settings.security.strengthWeak', color: 'bg-rose-500', width: 'w-1/3' }
-  }
-  let score = 0
-  if (pass.length >= 10) score += 1
-  if (pass.length >= 14) score += 1
-  if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score += 1
-  if (/\d/.test(pass)) score += 1
-  if (/[^A-Za-z0-9]/.test(pass)) score += 1
-
-  if (score <= 2) {
-    return { level: 1, labelKey: 'settings.security.strengthWeak', color: 'bg-rose-500', width: 'w-1/3' }
-  }
-  if (score <= 4) {
-    return { level: 2, labelKey: 'settings.security.strengthMedium', color: 'bg-amber-500', width: 'w-2/3' }
-  }
-  return { level: 3, labelKey: 'settings.security.strengthStrong', color: 'bg-emerald-500', width: 'w-full' }
-}
+import { PasswordStrengthBar } from './PasswordStrengthBar'
+import { DisableE2EConfirmCard } from './DisableE2EConfirmCard'
+import { E2EEnabledCard } from './E2EEnabledCard'
 
 export function E2EEncryptionSection() {
   const { t } = useI18n()
@@ -47,14 +27,11 @@ export function E2EEncryptionSection() {
   const [draftPassword, setDraftPassword] = useState('')
   const [draftConfirm, setDraftConfirm] = useState('')
   const [showDraftPassword, setShowDraftPassword] = useState(false)
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
 
   // 界面模式控制
-  const [isEditingPassword, setIsEditingPassword] = useState(false)
   const [showDisableConfirm, setShowDisableConfirm] = useState(false)
   const [reuploading, setReuploading] = useState(false)
 
-  const strength = calculatePasswordStrength(draftPassword)
   const isMismatch = draftConfirm.length > 0 && draftPassword !== draftConfirm
 
   // 重新加密云端备份
@@ -99,19 +76,8 @@ export function E2EEncryptionSection() {
   }
 
   // 保存修改后的新密码
-  const handleSaveNewPassword = () => {
-    if (draftPassword.length < 8) {
-      toast.error(t('settings.security.passwordMinLength'))
-      return
-    }
-    if (draftPassword !== draftConfirm) {
-      toast.error(t('settings.security.passwordMismatch'))
-      return
-    }
-    setE2ePassphrase(draftPassword)
-    setDraftPassword('')
-    setDraftConfirm('')
-    setIsEditingPassword(false)
+  const handleSaveNewPassword = (newPass: string) => {
+    setE2ePassphrase(newPass)
     toast.success(t('settings.security.savedToast'))
     void handleReupload()
   }
@@ -127,8 +93,8 @@ export function E2EEncryptionSection() {
         toast.success(t('settings.sync.e2eOnToast'))
         void handleReupload()
       } else {
-        // 无有效密码时保持关闭，聚焦让用户先设定
-        setIsEditingPassword(true)
+        // 无有效密码时保持关闭，提醒用户先输入密码
+        toast.error(t('settings.security.passwordMinLength'))
       }
     }
   }
@@ -168,132 +134,12 @@ export function E2EEncryptionSection() {
 
         {/* 状态 1：已开启端到端加密 */}
         {e2eEnabled ? (
-          <div className="space-y-3 pt-2 border-t border-border/50">
-            {/* 当前密码展示行 */}
-            <div className="p-3 rounded-lg bg-background/80 border border-border/60 flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-[11px] font-medium text-muted-foreground">
-                  {t('settings.security.currentPassword')}
-                </span>
-                <p className="text-sm font-mono tracking-wider text-foreground select-all">
-                  {showCurrentPassword ? e2ePassphrase : '••••••••••••'}
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                  title="Toggle visibility"
-                >
-                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setIsEditingPassword(!isEditingPassword)
-                    setDraftPassword('')
-                    setDraftConfirm('')
-                  }}
-                  className="text-xs h-7 px-2 text-primary hover:text-primary/80"
-                >
-                  {isEditingPassword ? t('settings.security.collapse') : t('settings.security.changePassword')}
-                  {isEditingPassword ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
-                </Button>
-              </div>
-            </div>
-
-            {/* 折叠区：修改主密码表单 */}
-            {isEditingPassword && (
-              <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60 space-y-3 animate-in fade-in duration-200">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">{t('settings.security.newPassword')}</Label>
-                  <div className="relative">
-                    <Input
-                      type={showDraftPassword ? 'text' : 'password'}
-                      value={draftPassword}
-                      onChange={(e) => setDraftPassword(e.target.value)}
-                      placeholder={t('settings.security.newPasswordPlaceholder')}
-                      className="pr-10 text-xs h-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowDraftPassword(!showDraftPassword)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showDraftPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* 密码强度指示条 */}
-                {draftPassword.length > 0 && (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
-                      <span>{t('settings.security.strengthLabel')}</span>
-                      <span className="font-medium">{t(strength.labelKey)}</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                      <div className={cn("h-full transition-all duration-300 rounded-full", strength.color, strength.width)} />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">{t('settings.security.confirmNewPassword')}</Label>
-                  <Input
-                    type={showDraftPassword ? 'text' : 'password'}
-                    value={draftConfirm}
-                    onChange={(e) => setDraftConfirm(e.target.value)}
-                    placeholder={t('settings.security.confirmNewPasswordPlaceholder')}
-                    className={cn("text-xs h-9", isMismatch && "border-rose-500 focus-visible:ring-rose-500")}
-                  />
-                  {isMismatch && (
-                    <p className="text-[11px] text-rose-500 font-medium">
-                      {t('settings.security.passwordMismatch')}
-                    </p>
-                  )}
-                </div>
-
-                <Button
-                  size="sm"
-                  onClick={handleSaveNewPassword}
-                  disabled={reuploading || draftPassword.length < 8 || draftPassword !== draftConfirm}
-                  className="w-full h-8 text-xs font-medium"
-                >
-                  {reuploading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1.5" />}
-                  {t('settings.security.saveNewPassword')}
-                </Button>
-              </div>
-            )}
-
-            {/* 独立重新加密上传操作 */}
-            <div className="pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={reuploading}
-                onClick={() => void handleReupload()}
-                className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
-              >
-                {reuploading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    {t('settings.sync.e2eReuploading')}
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                    {t('settings.sync.e2eReuploadButton')}
-                  </>
-                )}
-              </Button>
-              <p className="text-[11px] text-muted-foreground/80 text-center mt-1.5">
-                {t('settings.security.reencryptDesc')}
-              </p>
-            </div>
-          </div>
+          <E2EEnabledCard
+            passphrase={e2ePassphrase}
+            onSaveNewPassword={handleSaveNewPassword}
+            onReupload={() => void handleReupload()}
+            reuploading={reuploading}
+          />
         ) : (
           /* 状态 2：未开启端到端加密表单 */
           <div className="space-y-3 pt-2 border-t border-border/50">
@@ -319,17 +165,7 @@ export function E2EEncryptionSection() {
             </div>
 
             {/* 密码强度条 */}
-            {draftPassword.length > 0 && (
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>{t('settings.security.strengthLabel')}</span>
-                  <span className="font-medium">{t(strength.labelKey)}</span>
-                </div>
-                <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                  <div className={cn("h-full transition-all duration-300 rounded-full", strength.color, strength.width)} />
-                </div>
-              </div>
-            )}
+            <PasswordStrengthBar password={draftPassword} t={t} />
 
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t('settings.sync.e2eConfirm')}</Label>
@@ -367,37 +203,11 @@ export function E2EEncryptionSection() {
 
       {/* 关闭加密确认防手滑弹层 */}
       {showDisableConfirm && (
-        <div className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/5 dark:bg-rose-500/10 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <h4 className="text-xs font-semibold text-foreground">
-                {t('settings.security.disableConfirmTitle')}
-              </h4>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                {t('settings.security.disableConfirmDesc')}
-              </p>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowDisableConfirm(false)}
-              className="h-7 text-xs px-2.5"
-            >
-              {t('settings.security.cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={confirmDisable}
-              className="h-7 text-xs px-3"
-            >
-              {t('settings.security.disableConfirmBtn')}
-            </Button>
-          </div>
-        </div>
+        <DisableE2EConfirmCard
+          onCancel={() => setShowDisableConfirm(false)}
+          onConfirm={confirmDisable}
+          t={t}
+        />
       )}
     </div>
   )

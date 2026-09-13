@@ -6,6 +6,7 @@ export const dictionary: Record<string, string> = {
   // ─── 通用 ───
   "common.cancel": "取消",
   "common.confirm": "确认",
+  "common.delete": "删除",
   "common.loading": "加载中...",
   "common.restore": "恢复",
   "common.copy": "复制",
@@ -93,6 +94,9 @@ export const dictionary: Record<string, string> = {
   "sync.history.autoBackup": "自动备份",
   "sync.history.empty": "暂无快照",
   "sync.history.bookmarks": "{count} 书签",
+  "sync.history.delete": "删除",
+  "sync.history.confirmDelete": "确认删除？",
+  "sync.history.confirmDeleteBtn": "确认删除",
 
   // ─── 冲突解决 ───
   "sync.conflict.title": "请选择同步方向",

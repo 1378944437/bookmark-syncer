@@ -46,14 +46,6 @@ export function SyncView() {
   useSyncCompletionToast(syncState, t('sync.toast.completed'))
   const isConfigured = !!webdavUrl
 
-  // WebDAV 凭据异步加载联动刷新
-  useEffect(() => {
-    const signal = { aborted: false }
-    countsApi.loadCounts(signal)
-    snapshotsApi.loadSnapshots()
-    return () => { signal.aborted = true }
-  }, [webdavUrl, username, password, syncState?.time])
-
   // 取消恢复流程
   const cancelRestore = () => {
     snapshotsApi.clearPendingRestoreSnapshot()
@@ -111,6 +103,14 @@ export function SyncView() {
     loadSnapshots: snapshotsApi.loadSnapshots,
     loadCloudBackups: cloudBackupsApi.loadCloudBackups,
   }
+
+  // WebDAV 凭据与同步状态联动刷新（在 countsApi 与 snapshotsApi 声明后按序执行，无 TDZ 风险）
+  useEffect(() => {
+    const signal = { aborted: false }
+    countsApi.loadCounts(signal)
+    snapshotsApi.loadSnapshots()
+    return () => { signal.aborted = true }
+  }, [webdavUrl, username, password, syncState?.time])
 
   // 两端书签是否完全一致
   const isSynced =

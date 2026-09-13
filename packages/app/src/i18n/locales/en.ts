@@ -6,6 +6,7 @@ export const dictionary: Record<string, string> = {
   // ─── Common ───
   "common.cancel": "Cancel",
   "common.confirm": "Confirm",
+  "common.delete": "Delete",
   "common.loading": "Loading...",
   "common.restore": "Restore",
   "common.copy": "Copy",
@@ -93,6 +94,9 @@ export const dictionary: Record<string, string> = {
   "sync.history.autoBackup": "Automatic backup",
   "sync.history.empty": "No snapshots",
   "sync.history.bookmarks": "{count} bookmarks",
+  "sync.history.delete": "Delete",
+  "sync.history.confirmDelete": "Delete snapshot?",
+  "sync.history.confirmDeleteBtn": "Confirm Delete",
 
   // ─── Conflict resolution ───
   "sync.conflict.title": "Choose sync direction",

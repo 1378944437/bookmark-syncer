@@ -11,8 +11,12 @@ export function useStorage<T>(key: string, initialValue: T) {
       }
     });
 
-    const listener = (changes: Record<string, browser.Storage.StorageChange>) => {
-      if (changes[key]) {
+    const listener = (
+      changes: Record<string, browser.Storage.StorageChange>,
+      areaName?: string
+    ) => {
+      // 仅响应 local 域变更，防止 session 或 sync 域同名键触发意外状态抖动
+      if ((!areaName || areaName === "local") && changes[key]) {
         setValue(changes[key].newValue as T);
       }
     };

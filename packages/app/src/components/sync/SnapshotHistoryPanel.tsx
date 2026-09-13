@@ -141,7 +141,7 @@ export function SnapshotHistoryPanel({
                 {isConfirmingDelete ? (
                   <div className="flex items-center justify-between w-full gap-2 py-0.5">
                     <span className="text-xs text-destructive font-medium flex items-center gap-1 shrink-0">
-                      <AlertCircle className="w-3.5 h-3.5" /> 确认删除？
+                      <AlertCircle className="w-3.5 h-3.5" /> {t('sync.history.confirmDelete')}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <Button
@@ -150,7 +150,7 @@ export function SnapshotHistoryPanel({
                         className="h-7 px-2 text-xs"
                         onClick={() => setConfirmDeleteId(null)}
                       >
-                        取消
+                        {t('common.cancel')}
                       </Button>
                       <Button
                         size="sm"
@@ -158,7 +158,7 @@ export function SnapshotHistoryPanel({
                         className="h-7 px-2.5 text-xs"
                         onClick={() => handleDelete(s.id)}
                       >
-                        确认删除
+                        {t('sync.history.confirmDeleteBtn')}
                       </Button>
                     </div>
                   </div>
@@ -171,7 +171,7 @@ export function SnapshotHistoryPanel({
                       onClick={() => setConfirmDeleteId(s.id)}
                     >
                       <Trash2 className="w-3 h-3 mr-1" />
-                      删除
+                      {t('sync.history.delete')}
                     </Button>
                     <Button
                       size="sm"
