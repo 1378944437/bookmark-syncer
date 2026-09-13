@@ -3,6 +3,7 @@
  * 纯 HTTP 协议操作，不包含业务逻辑
  */
 import type { WebDAVConfig } from "../../core/storage/types";
+import { parseDavList } from "./webdav-xml-parser";
 
 export interface WebDAVFile {
   name: string;
@@ -238,118 +239,9 @@ export class WebDAVClient implements IWebDAVClient {
       }
 
       const xml = await response.text();
-      const files: WebDAVFile[] = [];
-
-      // 提取 base path 用于后续路径规范化
-      const baseUrlPathRaw = new URL(this.config.url).pathname;
-      const baseUrlPath = baseUrlPathRaw.replace(/\/+$/, "");
-
-      // WebDAV 的 XML 命名空间前缀在不同服务端可能是 d:/D:/a:...
-      // 改用 DOMParser 按 localName 解析（忽略命名空间前缀），更健壮。
-      try {
-        const doc = new DOMParser().parseFromString(xml, "application/xml");
-        const parserError = doc.getElementsByTagName("parsererror")[0];
-        if (parserError) {
-          throw new Error("Invalid XML response");
-        }
-
-        const responseEls = Array.from(doc.getElementsByTagNameNS("*", "response"));
-
-        for (const responseEl of responseEls) {
-          const hrefEl = responseEl.getElementsByTagNameNS("*", "href")[0];
-          const href = hrefEl?.textContent?.trim();
-          if (!href) continue;
-
-          const resourceTypeEl = responseEl.getElementsByTagNameNS("*", "resourcetype")[0];
-          const isCollection = !!resourceTypeEl?.getElementsByTagNameNS("*", "collection")[0];
-          if (isCollection) continue;
-
-          let decodedHref = decodeURIComponent(href);
-          try {
-            decodedHref = new URL(decodedHref).pathname;
-          } catch {
-            // Keep as is
-          }
-
-          // 移除 base path 前缀，避免重复
-          if (decodedHref.startsWith(baseUrlPath + "/")) {
-            decodedHref = decodedHref.substring((baseUrlPath + "/").length);
-          } else if (decodedHref === baseUrlPath) {
-            decodedHref = "";
-          }
-
-          // 移除前导斜杠
-          decodedHref = decodedHref.replace(/^\/+/, "");
-
-          const name = decodedHref.split("/").filter(Boolean).pop() || "";
-
-          const lastModifiedEl = responseEl.getElementsByTagNameNS("*", "getlastmodified")[0];
-          const lastModifiedStr = lastModifiedEl?.textContent?.trim() || "";
-          const lastModified = lastModifiedStr ? (new Date(lastModifiedStr).getTime() || 0) : 0;
-
-          const sizeEl = responseEl.getElementsByTagNameNS("*", "getcontentlength")[0];
-          const sizeStr = sizeEl?.textContent?.trim() || "0";
-          const size = parseInt(sizeStr, 10) || 0;
-
-          if (!name || !decodedHref) continue;
-
-          files.push({
-            name,
-            path: decodedHref,
-            lastModified,
-            size,
-          });
-        }
-      } catch (error) {
-        console.warn("[WebDAV] DOMParser failed, falling back to regex parser:", error);
-
-        // 兼容可选前缀（例如 d:/D:）以及无前缀（默认命名空间）
-        const responseRegex = /<(?:\w+:)?response[^>]*>([\s\S]*?)<\/(?:\w+:)?response>/gi;
-        const responses = [...xml.matchAll(responseRegex)];
-
-        for (const m of responses) {
-          const responseBlock = m[1];
-
-          const hrefMatch = responseBlock.match(/<(?:\w+:)?href[^>]*>(.*?)<\/(?:\w+:)?href>/i);
-          if (!hrefMatch) continue;
-
-          const isCollection = /<(?:\w+:)?collection\s*\/>/i.test(responseBlock);
-          if (isCollection) continue;
-
-          let decodedHref = decodeURIComponent(hrefMatch[1].trim());
-          try {
-            decodedHref = new URL(decodedHref).pathname;
-          } catch {
-            // Keep as is
-          }
-
-          if (decodedHref.startsWith(baseUrlPath + "/")) {
-            decodedHref = decodedHref.substring((baseUrlPath + "/").length);
-          } else if (decodedHref === baseUrlPath) {
-            decodedHref = "";
-          }
-
-          decodedHref = decodedHref.replace(/^\/+/, "");
-          const name = decodedHref.split("/").filter(Boolean).pop() || "";
-
-          const lastModifiedMatch = responseBlock.match(/<(?:\w+:)?getlastmodified[^>]*>(.*?)<\/(?:\w+:)?getlastmodified>/i);
-          const lastModifiedStr = lastModifiedMatch ? lastModifiedMatch[1].trim() : "";
-          const lastModified = lastModifiedStr ? (new Date(lastModifiedStr).getTime() || 0) : 0;
-
-          const sizeMatch = responseBlock.match(/<(?:\w+:)?getcontentlength[^>]*>(.*?)<\/(?:\w+:)?getcontentlength>/i);
-          const sizeStr = sizeMatch ? sizeMatch[1].trim() : "0";
-          const size = parseInt(sizeStr, 10) || 0;
-
-          if (!name || !decodedHref) continue;
-
-          files.push({
-            name,
-            path: decodedHref,
-            lastModified,
-            size,
-          });
-        }
-      }
+      // 解析委托给独立模块（DOMParser 优先，异常回退正则；见 webdav-xml-parser）
+      const baseUrlPath = new URL(this.config.url).pathname.replace(/\/+$/, "");
+      const files = parseDavList(xml, baseUrlPath);
 
       console.log(`[WebDAV] Listed ${files.length} files from ${dirPath}`);
       if (files.length > 0) {

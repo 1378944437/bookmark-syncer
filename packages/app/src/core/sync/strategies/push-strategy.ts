@@ -2,22 +2,21 @@
  * 推送策略
  * 智能上传：检查内容差异，只有真正有变化时才上传
  */
-import { getBackupFileInterval, getDeviceIdentity, getE2ESettings, getLastBackupFileInfo, getSyncScope, saveLastBackupFileInfo, saveLastRemoteDevice } from "../sync-settings";
+import { getBackupFileInterval, getDeviceIdentity, getE2ESettings, getLastBackupFileInfo, getSyncScope, saveLastBackupFileInfo } from "../sync-settings";
 
-import { getBrowserInfo, isSameBrowser } from "../../../infrastructure/browser/info";
+import { getBrowserInfo } from "../../../infrastructure/browser/info";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { compressText } from "../../../infrastructure/utils/compression";
-import { encryptText, E2EDecryptError, E2EPasswordRequiredError } from "../../../infrastructure/utils/crypto";
+import { encryptText } from "../../../infrastructure/utils/crypto";
 import { snapshotManager } from "../../backup";
-import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
-import { fetchValidatedCloudBackup } from "../utils/cloud-data-helper";
+import { bookmarkRepository, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
+import { checkCloudStateBeforeUpload } from "../utils/upload-precheck";
 import type { WebDAVConfig } from "../../storage";
 import { fileManager, STORAGE_CONSTANTS } from "../../storage";
 import { cacheManager } from "../../storage/cache-manager";
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
-import { getSyncState, setSyncState } from "../state-manager";
-import { isCloudNewerThanBasis } from "../utils/sync-basis";
-import { CloudDataError, type SyncBasis } from "../types";
+import { setSyncState } from "../state-manager";
+import { type SyncBasis } from "../types";
 import type { SyncResult } from "../types";
 
 const DIR = STORAGE_CONSTANTS.BACKUP_DIR;
@@ -54,6 +53,8 @@ export async function smartPush(
 
   try {
     const client = getWebDAVClient(config);
+    // 端到端加密设置：预检解密与上传加密共用
+    const e2e = await getE2ESettings();
 
     // 1. 获取本地书签
     console.log("[PushStrategy] Getting local bookmarks...");
@@ -83,123 +84,17 @@ export async function smartPush(
       // 快照创建失败不影响同步
     }
 
-    // 2. 获取云端最新备份并比对
-    console.log("[PushStrategy] Checking cloud state...");
-    const e2e = await getE2ESettings();
-    try {
-      const latest = await fileManager.getLatestBackupFile(client);
-      if (latest) {
-        const cloudData = await fetchValidatedCloudBackup(client, latest.path, {
-          passphrase: e2e.enabled ? e2e.passphrase : undefined,
-        });
-        if (cloudData) {
-          const cloudCount = countBookmarks(cloudData.data);
-
-          // 记录云端备份所属设备（面板显示「来自 XX」，无需额外下载）
-          if (cloudData.metadata?.deviceId || cloudData.metadata?.deviceName) {
-            try {
-              await saveLastRemoteDevice({
-                deviceId: cloudData.metadata.deviceId,
-                deviceName: cloudData.metadata.deviceName,
-                time: Date.now(),
-              });
-            } catch {
-              // 记录失败不影响同步
-            }
-          }
-
-          console.log(
-            `[PushStrategy] Cloud: ${cloudCount} bookmarks (${new Date(latest.lastModified).toISOString()})`,
-          );
-
-          // 检查云端是否有未拉取的更新（以服务器文件时间为基准，不受设备时钟偏差影响）
-          const syncState = await getSyncState(config.url);
-          const lastSyncTime = syncState?.time ?? 0;
-
-          if (isCloudNewerThanBasis(latest, syncState, config.url)) {
-            // 云端有更新且本地未同步
-            // 区分手动同步和自动同步：
-            // - 自动同步：阻止上传，防止数据丢失
-            // - 手动同步：允许用户选择（用户明确想覆盖）
-            const isManualSync = lockHolder === "manual";
-            
-            if (!isManualSync) {
-              // 自动同步场景：阻止上传
-              console.warn(
-                `[PushStrategy] Cloud is newer, blocking auto-sync (cloud: ${new Date(latest.lastModified).toISOString()}, last: ${new Date(lastSyncTime).toISOString()})`,
-              );
-              return {
-                success: false,
-                action: "error",
-                message: "云端有更新，请先拉取",
-              };
-            } else {
-              // 手动同步：记录警告但允许继续（用户可能想覆盖）
-              console.warn(
-                `[PushStrategy] Cloud is newer but manual sync, allowing user choice (cloud: ${new Date(latest.lastModified).toISOString()}, last: ${new Date(lastSyncTime).toISOString()})`,
-              );
-            }
-          }
-
-          // 比对内容（双方均按同步范围过滤后再比较）
-          console.log("[PushStrategy] Comparing content...");
-          const isIdentical = await compareWithCloud(
-            scopedLocalTree,
-            { ...cloudData, data: filterTreeByScope(cloudData.data, syncScope) },
-          );
-
-          if (isIdentical) {
-            // 检查是否为手动同步且浏览器一致
-            const localBrowserInfo = getBrowserInfo();
-            
-            // 从文件名解析浏览器信息
-            const fileName = latest.path.split("/").pop() || "";
-            const parsed = fileManager.parseBackupFileName(fileName);
-            const cloudBrowser = parsed?.browser || "";
-            
-            const isBrowserMatch = isSameBrowser(localBrowserInfo.name, cloudBrowser);
-            const isManualSync = lockHolder === "manual";
-
-            // 手动同步 + 浏览器一致 → 即使内容相同也更新云端时间戳
-            if (isManualSync && isBrowserMatch) {
-              console.log("[PushStrategy] Content identical but manual sync from same browser, creating new backup");
-              // 继续执行上传，创建新备份
-            } else {
-              console.log("[PushStrategy] Content identical, skipping upload");
-              // 内容相同，只更新同步时间
-              await setSyncState({
-                time: Date.now(),
-                url: config.url,
-                type: "skip_identical",
-                basis: { mtime: latest.lastModified, filePath: latest.path },
-                localHash: await computeTreeHash(scopedLocalTree),
-              });
-              return {
-                success: true,
-                action: "skipped",
-                message: "书签已同步，无需更新",
-              };
-            }
-          } else {
-            console.log("[PushStrategy] Content differs, will upload");
-          }
-        }
-      } else {
-        console.log("[PushStrategy] No cloud backup found, first upload");
-      }
-    } catch (error) {
-      // 端到端加密相关：未输入密码或密码不一致时必须中止，
-      // 不得用明文（或另一把密钥的密文）覆盖云端现场
-      if (
-        error instanceof E2EPasswordRequiredError ||
-        error instanceof E2EDecryptError ||
-        error instanceof CloudDataError
-      ) {
-        throw error;
-      }
-      console.warn("[PushStrategy] Failed to check cloud state:", error);
-      // 云端文件不存在或网络故障，继续上传
-    }
+    // 2. 上传前云端状态预检（云端更新判断、内容比对、加密提示；见 utils/upload-precheck）
+    const check = await checkCloudStateBeforeUpload({
+      client,
+      configUrl: config.url,
+      lockHolder,
+      scopedLocalTree,
+      e2e,
+      syncScope,
+    });
+    if (check.kind === "abort") return check.result;
+    if (check.kind === "skip") return check.result;
 
     // 3. 执行上传 - 判断是否需要创建新文件
     console.log("[PushStrategy] Uploading to cloud...");
