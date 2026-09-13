@@ -12,8 +12,10 @@ function App() {
   const [activeTab, setActiveTab] = useState<'sync' | 'settings'>('sync')
 
   return (
-    <I18nProvider>
+    // 边界放最外层：I18nProvider 等基础 Provider 的初始化错误也要显示出来，
+    // 而不是渲染成一块空的暗色面板
     <ErrorBoundary>
+    <I18nProvider>
     <LayoutWrapper>
       {/* Top Nav */}
       <div className="pt-6 pb-2 px-4 z-20">
@@ -39,8 +41,8 @@ function App() {
       {/* Toast Notifications */}
       <Toaster position="bottom-center" duration={2000} />
     </LayoutWrapper>
-    </ErrorBoundary>
     </I18nProvider>
+    </ErrorBoundary>
   )
 }
 
