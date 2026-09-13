@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
   <img src="./packages/app/assets/icon.png" alt="MarkSync Logo" width="100" height="100">
 </p>
 
@@ -31,9 +31,9 @@
 
 ## 📖 Introduction
 
-**MarkSync (汇签)** is a lightweight, privacy-focused browser extension designed to synchronize bookmarks across multiple browsers and devices using your private WebDAV server. With no intermediate proprietary server involved, users maintain 100% data sovereignty.
+**MarkSync (汇签)** is a modern, lightweight, privacy-focused browser extension designed to synchronize bookmarks bi-directionally across multiple browsers and devices using your private WebDAV server. With zero proprietary intermediary servers, users maintain complete data sovereignty.
 
-Whether you run **Nutstore (坚果云)**, **Nextcloud / ownCloud**, **Synology NAS**, **InfiniCLOUD**, or self-hosted **Alist / Apache / Nginx WebDAV**, MarkSync works seamlessly out of the box with end-to-end encryption, incremental sync, and automatic local snapshot rollback.
+Whether you run **Nutstore (坚果云)**, **Nextcloud / ownCloud**, **Synology NAS**, **InfiniCLOUD**, or self-hosted **Alist / Apache / Nginx WebDAV**, MarkSync delivers seamless out-of-the-box support with authenticated end-to-end encryption, incremental tree synchronization, and automated local snapshot rollbacks.
 
 ---
 
@@ -47,51 +47,52 @@ Whether you run **Nutstore (坚果云)**, **Nextcloud / ownCloud**, **Synology N
 
 ## ✨ Key Features
 
-- 🛡️ **End-to-End Encryption (E2E AES-256-GCM)**
-  - Client-side encryption powered by PBKDF2 key derivation and authenticated AES-256-GCM cipher;
-  - Bookmarks are encrypted before leaving your browser — even your cloud storage provider cannot read your data or folder hierarchy.
+- 🛡️ **End-to-End Privacy & Encryption (E2E AES-256-GCM)**
+  - Client-side authenticated encryption powered by PBKDF2 key derivation and AES-256-GCM;
+  - Local draft isolation and explicit save contracts, real-time password strength visualization, and confirmation guards against accidental disabling;
+  - Bookmark data is fully encrypted before leaving your browser — even your cloud storage provider cannot inspect your bookmark contents or folder hierarchy.
 - 🔄 **Smart Incremental Sync & Three-Way Merge**
   - Structural SHA-256 tree hashing compares local and cloud bookmarks in milliseconds;
   - Only transfers differential changes, saving network bandwidth;
-  - Intelligent deduplication and sibling-node collision resolution prevent duplicate bookmark explosion.
+  - Sibling-node collision resolution and smart folder normalization prevent duplicate bookmark explosions.
 - 🧩 **One-Click Cloud Provider Presets**
-  - Built-in configuration templates for Nutstore, Nextcloud, Synology NAS, InfiniCLOUD, and more;
+  - Pre-configured templates for Nutstore, Nextcloud, Synology NAS, InfiniCLOUD, and more;
   - Automatically populates standard WebDAV endpoint paths and recommended filenames.
-- 📦 **Local Snapshot & Time Machine Rollback**
-  - Automatically captures full local bookmark snapshots prior to every sync operation;
-  - Configurable snapshot history limit with one-click restore, completely guarding against accidental deletions or overwrites.
-- 🎨 **Modern Grouped Settings & UI/UX**
-  - Four distinct domains: **General**, **Provider & Connection**, **Security & Encryption**, and **Backup & Maintenance**;
-  - System-adaptive Dark / Light modes with zero-flicker theme provider, polished micro-interactions, and visual CheckCheck status micro-badge.
-- ⚡ **Auto-Save on Blur & Viewport Stability**
-  - Sensitive passwords feature toggleable visibility and persist automatically on blur/enter without manual clicks;
-  - Compact 380px × 560px popup viewport with isolated drawer navigation and smooth gesture transitions.
+- 📦 **Local Time Machine Snapshots & Instant Rollback**
+  - Full local bookmark snapshots are automatically created prior to any remote mutation;
+  - Configurable snapshot history limit with one-click restore, completely eliminating data loss from conflicts or network interruptions.
+- 📱 **Responsive & Mobile Friendly**
+  - Compact `380px × 560px` desktop viewport, with responsive adaptation for mobile browsers (Firefox Android, Kiwi Browser, etc.) in 360px/375px viewports;
+  - Toggleable password visibility and auto-save on blur (`onBlur`), combined with smooth drawer transitions and gesture scroll isolation.
+- 🎨 **Modern Grouped Settings & Design System**
+  - Four distinct functional domains: General, Provider & Connection, Security & Encryption, and Backup & Maintenance;
+  - System-adaptive Dark / Light themes, zero-flicker ThemeProvider, micro-interactions, and visual `CheckCheck` double-tick status micro-badge.
 - 🌐 **True Cross-Browser Compatibility**
   - Built on standard W3C WebExtensions API and Chrome Manifest V3;
-  - Works on Google Chrome, Microsoft Edge, Brave, Vivaldi, 360 Extreme Browser, and Firefox 140+.
+  - Fully compatible with Google Chrome, Microsoft Edge, Brave, Vivaldi, 360 Extreme Browser, and Firefox 140+.
 
 ---
 
-## 📦 Installation
+## 📦 Installation Guide
 
-Download the latest release from the [GitHub Releases Page](https://github.com/1378944437/marksync/releases/latest).
+Download the latest release packages from the [GitHub Releases Page](https://github.com/1378944437/marksync/releases/latest).
 
 ### Chrome / Microsoft Edge / Brave / Chromium-based Browsers
 
-> 💡 **Fixed Extension ID**: This extension is packaged with a pinned key (pccfkjndkjiljfj). Updating the extension preserves your settings, storage, and ID.
+> 💡 **Fixed Extension ID**: This extension is packaged with a pinned public key (`fpccfkjndkjiljfj`). Updating the extension preserves your configuration, storage, and ID!
 
-1. Download marksync-chrome-vX.X.X.zip (or chrome-extension.zip) from the [Releases Page](https://github.com/1378944437/marksync/releases/latest);
-2. Extract the ZIP archive into a permanent local directory (e.g. D:\extensions\marksync);
+1. Download `marksync-chrome-vX.X.X.zip` (or `chrome-extension.zip`) from the [Releases Page](https://github.com/1378944437/marksync/releases/latest);
+2. Extract the ZIP archive into a permanent local directory (e.g., `D:\extensions\marksync`);
 3. Navigate to the extension management page in your browser:
-   - Chrome / Brave: chrome://extensions/
-   - Microsoft Edge: dge://extensions/
-4. Toggle on **"Developer mode"** in the top right corner;
+   - Google Chrome / Brave: `chrome://extensions/`
+   - Microsoft Edge: `edge://extensions/`
+4. Toggle on **"Developer mode"** in the upper right corner;
 5. Click **"Load unpacked"** in the top left;
 6. Select the folder where you extracted the files.
 
 **Upgrading to a new release:**
 - Download the new ZIP, extract and **overwrite** the files in your existing folder;
-- Return to chrome://extensions/ and click the **"Reload"** icon on the MarkSync card.
+- Return to `chrome://extensions/` and click the **"Reload"** icon on the MarkSync card.
 
 ---
 
@@ -99,23 +100,25 @@ Download the latest release from the [GitHub Releases Page](https://github.com/1
 
 > **Requirement**: Firefox 140 or higher.
 
-1. Download the latest signed package marksync-firefox-vX.X.X.xpi from the [Releases Page](https://github.com/1378944437/marksync/releases/latest);
-2. Drag and drop the .xpi file directly into your Firefox window, then click **"Add"** when prompted;
-3. Alternatively, visit bout:addons, click the gear icon ⚙️, choose **"Install Add-on From File..."** and pick the .xpi file.
+1. Download the signed package `marksync-firefox-vX.X.X.xpi` from the [Releases Page](https://github.com/1378944437/marksync/releases/latest);
+2. **Drag & Drop**: Drag the `.xpi` file directly into your Firefox window, then click **"Add"** in the permission prompt;
+3. **Add-ons Manager**: Alternatively, open `about:addons` in Firefox, click the gear icon ⚙️, select **"Install Add-on From File..."** and choose the downloaded `.xpi` file.
 
 ---
 
 ## ⚙️ Quick Start
 
-1. **Open the Extension**: Click the MarkSync icon in your browser toolbar;
-2. **Access Connection Settings**: Click the gear icon ⚙️ in the upper right corner to open Settings → **Provider & Connection**;
-3. **Select Provider Preset** (or enter manually):
-   - Choose your provider from the preset dropdown (e.g. "Nutstore" or "Nextcloud");
-   - Fill in your username and app-specific password;
-4. **Test & Save**: Click **"Test Connection"** to verify server accessibility and credentials;
+1. **Open Extension**: Click the MarkSync icon in your browser toolbar;
+2. **Configure Connection**: Click the gear icon ⚙️ to enter Settings → **Provider & Connection**;
+3. **Select Preset** (or enter manually):
+   - Choose your provider from the preset dropdown (e.g., "Nutstore" or "Nextcloud");
+   - Fill in your username and app-specific authorization password;
+4. **Test Connection**: Click **"Test Connection"** to verify server accessibility and credentials;
 5. **Enable E2E Encryption (Recommended)**:
    - Go to Settings → **Security & Encryption**;
-   - Enable encryption and configure a strong Master Password. Note: you must use the exact same master password across all syncing devices;
+   - Enter your Master Passphrase (min 8 characters), check the password strength bar, and click **"Enable & Save Encryption"**;
+   - Bookmarks will be re-encrypted and uploaded using AES-256-GCM;
+   - ⚠️ **Remember your passphrase**: You must use the exact same passphrase across all syncing devices;
 6. **Trigger Sync**: Return to the home screen and click **"Sync Now"**. Once synchronized, the status card will display the double-check badge.
 
 ---
@@ -124,33 +127,33 @@ Download the latest release from the [GitHub Releases Page](https://github.com/1
 
 | Provider | Recommended URL Format | Username | Password / Notes |
 | :--- | :--- | :--- | :--- |
-| **Nutstore (坚果云)** | https://dav.jianguoyun.com/dav/ | Email | ⚠️ **Must use an App Password** (generate in Nutstore Security Settings → Third-party Apps) |
-| **Nextcloud** | https://your-cloud.com/remote.php/dav/files/USER/ | Username | Recommended to create an app password in Personal Settings → Security; ensure trailing slash / |
-| **Synology NAS** | https://nas.example.com:5006/home/ | DSM account | Install WebDAV Server in DSM Package Center and expose port 5006 (HTTPS) |
-| **InfiniCLOUD** | https://my.infinicloud.com/dav/ | Connection ID | Enable WebDAV Connection in InfiniCLOUD user dashboard and generate connection password |
-| **Custom / Alist** | https://dav.example.com/dav/ | Account | Ensure standard HTTP verbs (PROPFIND, GET, PUT, MKCOL) are supported |
+| **Nutstore (坚果云)** | `https://dav.jianguoyun.com/dav/` | Email | ⚠️ **Must use an App Password** (generate in Nutstore Security Settings → Third-Party App Management) |
+| **Nextcloud** | `https://your-cloud.com/remote.php/dav/files/USER/` | Username | Recommended to create an app password in Personal Settings → Security; ensure trailing slash `/` |
+| **Synology NAS** | `https://nas.example.com:5006/home/` | DSM account | Install WebDAV Server in DSM Package Center and expose port 5006 (HTTPS) |
+| **InfiniCLOUD** | `https://my.infinicloud.com/dav/` | Connection ID | Enable WebDAV Connection in InfiniCLOUD dashboard and generate connection password |
+| **Custom / Alist** | `https://dav.example.com/dav/` | Account | Ensure standard HTTP verbs (`PROPFIND`, `GET`, `PUT`, `MKCOL`) are supported |
 
 ---
 
-## 🛡️ Security & Privacy Architecture
+## 🛡️ Security & Privacy Model
 
-`mermaid
+```mermaid
 flowchart LR
     subgraph Browser ["Local Browser (Chrome / Edge / Firefox)"]
-        A[Local Bookmarks] <--> B[MarkSync Core Engine]
-        B --> C[Local Snapshot Store]
-        B --> D[AES-256-GCM Crypto Engine]
+        A[Local Bookmarks] <--> B[MarkSync Engine]
+        B --> C[Local Snapshot Vault]
+        B --> D[AES-256-GCM Crypto Module]
     end
 
-    subgraph WebDAV ["Your Private WebDAV Server"]
-        E[Encrypted / Plain Bookmarks]
+    subgraph WebDAV ["Private WebDAV Cloud (Nutstore / NAS / Nextcloud)"]
+        E[Encrypted / Plain Backup Data]
     end
 
-    D -- Direct TLS Connection --> E
-`
+    D -- TLS Direct Connection --> E
+```
 
 1. **Zero Intermediate Servers**: MarkSync has no central backend, logs zero telemetry, and collects no user data;
-2. **Local Credential Storage**: WebDAV credentials and encryption keys are isolated inside browser-sandboxed local storage (rowser.storage.local);
+2. **Local Credential Storage**: WebDAV credentials and encryption keys are isolated inside browser-sandboxed local storage (`browser.storage.local`);
 3. **Reversible Operations**: Prior to any remote mutation, a local snapshot is created, allowing instant recovery in the event of conflicts or network failure.
 
 ---
@@ -159,13 +162,13 @@ flowchart LR
 
 MarkSync adopts **Domain-Driven Design (DDD)** principles to maintain clear boundaries:
 
-`
+```
 packages/app/src/
 ├── core/                # Domain Core: entities, incremental merger, hashing, crypto, snapshot manager
 ├── infrastructure/      # Infrastructure: WebDAV client, local storage adapter, browser bookmark adapter
 ├── application/         # Application Services: sync orchestration, event dispatching, auto-sync polling
 └── components/          # Presentation Layer: React 19 UI, settings drawers, status cards, atomic widgets
-`
+```
 
 - **File Size Limit**: Each source code file strictly adheres to the Single Responsibility Principle and stays under 300 lines of code;
 - **Platform Decoupling**: Browser-specific APIs are isolated behind infrastructure interfaces, making the core domain 100% unit-testable;
@@ -181,7 +184,7 @@ packages/app/src/
 
 ### Commands
 
-`ash
+```bash
 # 1. Clone repository
 git clone https://github.com/1378944437/marksync.git
 cd marksync
@@ -203,7 +206,7 @@ pnpm build
 
 # 7. Package extension archives
 pnpm package
-`
+```
 
 ---
 
@@ -218,7 +221,7 @@ pnpm package
 <details>
 <summary><strong>Q2: Nextcloud returns "405 Method Not Allowed"?</strong></summary>
 
-> Verify that your WebDAV URL includes the full path. The standard format is https://domain.com/remote.php/dav/files/<username>/ and must end with a trailing /.
+> Verify that your WebDAV URL includes the full path. The standard format is `https://domain.com/remote.php/dav/files/<username>/` and must end with a trailing `/`.
 </details>
 
 <details>
