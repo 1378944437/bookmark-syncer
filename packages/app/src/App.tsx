@@ -5,6 +5,7 @@ import { LayoutWrapper } from './components/LayoutWrapper'
 import { SettingsView } from './components/SettingsView'
 import { SyncView } from './components/SyncView'
 import { TabNav } from './components/TabNav'
+import { ThemeProvider } from './components/ThemeProvider'
 import { Toaster } from './components/Toaster'
 import { I18nProvider } from './i18n'
 
@@ -16,6 +17,7 @@ function App() {
     // 而不是渲染成一块空的暗色面板
     <ErrorBoundary>
     <I18nProvider>
+    <ThemeProvider>
     <LayoutWrapper>
       {/* Top Nav */}
       <div className="pt-6 pb-2 px-4 z-20">
@@ -41,6 +43,7 @@ function App() {
       {/* Toast Notifications */}
       <Toaster position="bottom-center" duration={2000} />
     </LayoutWrapper>
+    </ThemeProvider>
     </I18nProvider>
     </ErrorBoundary>
   )

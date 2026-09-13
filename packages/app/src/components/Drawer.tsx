@@ -43,6 +43,7 @@ export function Drawer({ isOpen, onClose, title, children, footer }: DrawerProps
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
             drag="y"
+            dragListener={false}
             dragControls={controls}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.2 }}

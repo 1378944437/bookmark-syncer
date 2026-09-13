@@ -1,16 +1,24 @@
+/**
+ * 设置主视图
+ * 采用分组式卡片架构（Grouped Section Cards），划分为四大清晰领域：
+ * 1. 云端与安全 (WebDAV / 端到端加密)
+ * 2. 同步与范围 (同步策略)
+ * 3. 偏好与设备 (外观/语言/设备标识)
+ * 4. 关于与支持 (版本/更新)
+ */
 import { AnimatePresence, motion } from 'framer-motion'
-import { Globe, Info, Link2, RefreshCw } from 'lucide-react'
+import { Cloud, Info, RefreshCw, ShieldCheck, Sliders } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n } from '../i18n'
-import { SettingsItem } from './settings/SettingsShared'
+import { SettingGroup, SettingRow } from './settings/SettingRow'
 import { WebDAVPage } from './settings/WebDAVPage'
+import { SecuritySettingsPage } from './settings/SecuritySettingsPage'
 import { SyncSettingsPage } from './settings/SyncSettingsPage'
 import { GeneralSettingsPage } from './settings/GeneralSettingsPage'
 import { AboutPage } from './settings/AboutPage'
 
-type SubPage = 'main' | 'webdav' | 'sync' | 'general' | 'about'
+type SubPage = 'main' | 'webdav' | 'security' | 'sync' | 'general' | 'about'
 
-// 主设置视图
 export function SettingsView() {
   const { t } = useI18n()
   const [subPage, setSubPage] = useState<SubPage>('main')
@@ -24,7 +32,7 @@ export function SettingsView() {
   const direction = subPage === 'main' ? -1 : 1
 
   return (
-    <div className="flex flex-col h-full pt-4">
+    <div className="flex flex-col h-full pt-3">
       <AnimatePresence mode="wait" custom={direction}>
         {subPage === 'main' && (
           <motion.div
@@ -35,34 +43,63 @@ export function SettingsView() {
             animate="center"
             exit="exit"
             transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="flex-1"
+            className="flex-1 overflow-y-auto space-y-4 pb-4"
           >
-            <div className="space-y-3">
-              <SettingsItem
-                icon={Link2}
+            {/* 云端与安全 */}
+            <SettingGroup title={t('settings.section.cloud')}>
+              <SettingRow
+                icon={Cloud}
+                iconColor="text-blue-600 bg-blue-500/10 dark:text-blue-400"
                 label={t('settings.item.webdav.label')}
                 description={t('settings.item.webdav.desc')}
+                type="navigation"
                 onClick={() => setSubPage('webdav')}
               />
-              <SettingsItem
+              <SettingRow
+                icon={ShieldCheck}
+                iconColor="text-emerald-600 bg-emerald-500/10 dark:text-emerald-400"
+                label={t('settings.item.security.label')}
+                description={t('settings.item.security.desc')}
+                type="navigation"
+                onClick={() => setSubPage('security')}
+              />
+            </SettingGroup>
+
+            {/* 同步与范围 */}
+            <SettingGroup title={t('settings.section.sync')}>
+              <SettingRow
                 icon={RefreshCw}
+                iconColor="text-indigo-600 bg-indigo-500/10 dark:text-indigo-400"
                 label={t('settings.item.sync.label')}
                 description={t('settings.item.sync.desc')}
+                type="navigation"
                 onClick={() => setSubPage('sync')}
               />
-              <SettingsItem
-                icon={Globe}
+            </SettingGroup>
+
+            {/* 偏好与设备 */}
+            <SettingGroup title={t('settings.section.preferences')}>
+              <SettingRow
+                icon={Sliders}
+                iconColor="text-violet-600 bg-violet-500/10 dark:text-violet-400"
                 label={t('settings.item.general.label')}
                 description={t('settings.item.general.desc')}
+                type="navigation"
                 onClick={() => setSubPage('general')}
               />
-              <SettingsItem
+            </SettingGroup>
+
+            {/* 关于与支持 */}
+            <SettingGroup title={t('settings.section.system')}>
+              <SettingRow
                 icon={Info}
+                iconColor="text-zinc-600 bg-zinc-500/10 dark:text-zinc-400"
                 label={t('settings.item.about.label')}
                 description={t('settings.item.about.desc')}
+                type="navigation"
                 onClick={() => setSubPage('about')}
               />
-            </div>
+            </SettingGroup>
           </motion.div>
         )}
 
@@ -78,6 +115,21 @@ export function SettingsView() {
             className="flex-1 overflow-hidden"
           >
             <WebDAVPage onBack={() => setSubPage('main')} />
+          </motion.div>
+        )}
+
+        {subPage === 'security' && (
+          <motion.div
+            key="security"
+            custom={1}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="flex-1 overflow-hidden"
+          >
+            <SecuritySettingsPage onBack={() => setSubPage('main')} />
           </motion.div>
         )}
 
