@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react'
 
 export const LayoutWrapper = ({ children }: { children: ReactNode }) => (
-  <div className="relative w-[380px] max-w-full h-[560px] max-h-[100dvh] mx-auto bg-background text-foreground font-sans overflow-hidden sm:rounded-xl flex flex-col transition-colors duration-300 border border-border/70 dark:border-white/[0.08] box-border">
+  <div className="relative w-[360px] h-[560px] bg-background text-foreground font-sans overflow-hidden rounded-xl flex flex-col transition-colors duration-300 border border-border/70 dark:border-white/[0.08]">
     {/* 环境背景微光：使用径向渐变预渲染替代 100px 动态高斯模糊滤镜，极大释放 GPU 显存与重绘开销 */}
     {/* Primary Glow */}
     <div
