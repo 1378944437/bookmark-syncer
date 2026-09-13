@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 
 export const LayoutWrapper = ({ children }: { children: ReactNode }) => (
-  <div className="relative w-[360px] h-[520px] bg-background text-foreground font-sans overflow-hidden flex flex-col transition-colors duration-300">
+  <div className="relative w-[360px] h-[520px] bg-background text-foreground font-sans overflow-hidden rounded-xl flex flex-col transition-colors duration-300">
     {/* Ambient Background Lights */}
     {/* Primary Blob */}
     <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full filter blur-[100px] pointer-events-none 
