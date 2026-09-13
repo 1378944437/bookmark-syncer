@@ -1,29 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 
 import { motion } from 'framer-motion'
 import { Cloud, History, MoreHorizontal, RefreshCw, WifiOff } from 'lucide-react'
-import { clearLastBackupFileInfo } from '../core/sync/sync-settings'
-import { resetScheduledSync } from '../application'
-import {
-  smartPullInBackground,
-  smartPushInBackground,
-  smartSyncInBackground,
-} from '../application/background-ops'
 import { snapshotManager } from '../core/backup'
 import { useI18n } from '../i18n'
-import { translateSyncMessage } from '../i18n/sync-messages'
 import { useStorage } from '../hooks/useStorage'
 import { useSnapshots } from '../hooks/useSnapshots'
 import { useCloudBackups } from '../hooks/useCloudBackups'
 import { useBookmarkCounts } from '../hooks/useBookmarkCounts'
+import { useSyncActions } from '../hooks/useSyncActions'
+import { useSyncCompletionToast } from '../hooks/useSyncCompletionToast'
 import { cn } from '../infrastructure/utils/format'
 import { Drawer } from './Drawer'
 import { OverwriteConfirmDrawer, RestoreConfirmDrawer } from './sync/ConfirmDrawers'
 import { ActionsPanel, CloudBackupsPanel, ConflictPanel, SnapshotHistoryPanel } from './sync/SyncDrawerPanels'
 import { StatsCard } from './StatsCard'
-
-import { toast } from 'sonner'
 
 const container = {
   hidden: { opacity: 0 },
@@ -45,37 +37,8 @@ export function SyncView() {
   const isOnline = useOnlineStatus()
   
 
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'checking' | 'syncing' | 'success' | 'error'>('idle')
-  const [msg, setMsg] = useState('')
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerMode, setDrawerMode] = useState<'conflict' | 'history' | 'cloudBackups' | 'actions'>('conflict')
-  const [confirmDrawerOpen, setConfirmDrawerOpen] = useState(false)
-  const [confirmPushOpen, setConfirmPushOpen] = useState(false)
-  const msgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 安全设置消息清除定时器
-  const scheduleMsgClear = useCallback((delayMs = 3000) => {
-    if (msgTimerRef.current) clearTimeout(msgTimerRef.current)
-    msgTimerRef.current = setTimeout(() => { setMsg(''); msgTimerRef.current = null }, delayMs)
-  }, [])
-
-  // 组件卸载时清理定时器
-  useEffect(() => {
-    return () => { if (msgTimerRef.current) clearTimeout(msgTimerRef.current) }
-  }, [])
-
-  // 后台同步完成时弹出轻提示（面板打开期间可见；自动消失，不打断操作）
-  const lastSeenSyncTimeRef = useRef<number | null>(null)
-  useEffect(() => {
-    const time = syncState?.time
-    if (!time) return
-    const previous = lastSeenSyncTimeRef.current
-    lastSeenSyncTimeRef.current = time
-    // 首次加载已有状态不提示，只对“面板打开期间新完成”的同步提示
-    if (previous !== null && time !== previous && syncState?.type !== 'skip_identical') {
-      toast.success(t('sync.toast.completed'), { duration: 2000 })
-    }
-  }, [syncState?.time, syncState?.type, t])
+  useSyncCompletionToast(syncState, t('sync.toast.completed'))
 
   const isConfigured = !!webdavUrl
 
@@ -91,31 +54,7 @@ export function SyncView() {
   const cancelRestore = () => {
     snapshotsApi.clearPendingRestoreSnapshot()
     cloudBackupsApi.clearPendingRestoreCloudBackup()
-    setConfirmDrawerOpen(false)
-  }
-
-  const openMoreActions = () => {
-    setDrawerMode('actions')
-    setDrawerOpen(true)
-  }
-
-  const requestForcePush = () => {
-    if (!isOnline || countsApi.localCount === 0 || isSyncBusy) return
-    setDrawerOpen(false)
-    setConfirmPushOpen(true)
-  }
-
-  const confirmForcePush = async () => {
-    if (!isOnline || countsApi.localCount === 0 || isSyncBusy) return
-    setConfirmPushOpen(false)
-    await executePush()
-  }
-
-  // 打开云端备份列表
-  const openCloudBackups = () => {
-    setDrawerMode('cloudBackups')
-    setDrawerOpen(true)
-    cloudBackupsApi.loadCloudBackups()
+    actionsApi.closeConfirm()
   }
 
   // --- 智能无感同步逻辑 ---
@@ -131,166 +70,34 @@ export function SyncView() {
     return config;
   }
   
-  const handleSmartSync = async () => {
-      if (!isConfigured) return
-      
-      setSyncStatus('checking')
-      setMsg(t('sync.status.analyzing'))
-      
-      try {
-          // 在后台 Service Worker 中执行，关闭面板不会中断
-          const result = await smartSyncInBackground(getSyncConfig())
-          
-          // 更新云端信息显示
-          if (result.cloudInfo?.exists) {
-              countsApi.setCloudMeta({
-                  time: result.cloudInfo.timestamp || 0,
-                  device: result.cloudInfo.browser || '',
-                  count: result.cloudInfo.totalCount || 0,
-                  browser: result.cloudInfo.browser
-              })
-          }
-          
-          // 处理结果
-          if (result.needsConflictResolution) {
-              // 需要用户选择同步方向
-              setMsg(translateSyncMessage(locale, result.message))
-              setDrawerMode('conflict')
-              setDrawerOpen(true)
-              setSyncStatus('idle')
-              return
-          }
-          
-          if (result.success) {
-              setSyncStatus('success')
-              setMsg(translateSyncMessage(locale, result.message))
-              countsApi.loadCounts()
-              
-              // 重置定时同步计时器，避免手动同步后立即触发定时同步
-              await resetScheduledSync()
-              
-              scheduleMsgClear()
-          } else {
-              if (result.message === '同步正在进行中') {
-                  toast.info(t('sync.toast.syncInProgress'))
-                  setSyncStatus('idle')
-              } else {
-                  setSyncStatus('error')
-                  setMsg(translateSyncMessage(locale, result.message))
-              }
-          }
-      } catch (e) {
-          setSyncStatus('error')
-          setMsg(t('sync.connectionFailed'))
-      }
-  }
-
-  const executePush = async () => {
-      setSyncStatus('syncing')
-      setMsg(t('sync.status.uploading'))
-      try {
-          // 在后台 Service Worker 中执行，关闭面板不会中断
-          const result = await smartPushInBackground(getSyncConfig())
-          
-          if (result.success) {
-              setSyncStatus('success')
-              setMsg(translateSyncMessage(locale, result.message))
-              setDrawerOpen(false)
-              countsApi.loadCounts()
-              snapshotsApi.loadSnapshots() // 刷新快照列表
-              
-              // 重置定时同步计时器
-              await resetScheduledSync()
-              scheduleMsgClear()
-          } else {
-              if (result.message === '同步正在进行中') {
-                  toast.info(t('sync.toast.syncInProgress'))
-                  setSyncStatus('idle')
-              } else {
-                  setSyncStatus('error')
-                  setMsg(translateSyncMessage(locale, result.message))
-              }
-          }
-      } catch (e) {
-          setSyncStatus('error')
-          setMsg(t('sync.uploadFailed'))
-      }
-  }
-
-  // 强制创建新备份（忽略时间窗口）
-  const forceNewBackup = async () => {
-      try {
-          await clearLastBackupFileInfo()
-          toast.success(t('sync.toast.forceNewBackupTitle'), { 
-              description: t('sync.toast.forceNewBackupDesc') 
-          })
-      } catch (e) {
-          toast.error(t('sync.toast.opFailed'), {
-              description: (e as Error).message || t('common.unknownError')
-          })
-      }
-  }
-
-  const executePull = async (mode: 'overwrite' | 'merge') => {
-      setSyncStatus('syncing') 
-      setMsg(mode === 'overwrite' ? t('sync.status.restoring') : t('sync.status.merging'))
-      
-      // 提示用户操作在后台执行（运行于 Service Worker，关闭面板不会中断）
-      const loadingToast = toast.loading(
-        mode === 'overwrite' ? t('sync.status.restoring') : t('sync.status.merging'), 
-        { description: t('sync.toast.backgroundHint') }
-      )
-      
-      try {
-          const result = await smartPullInBackground(getSyncConfig(), mode)
-          
-          toast.dismiss(loadingToast)
-          
-          if (result.success) {
-              setSyncStatus('success')
-              setMsg(translateSyncMessage(locale, result.message))
-              setDrawerOpen(false)
-              countsApi.loadCounts()
-              snapshotsApi.loadSnapshots() // 刷新快照列表
-              
-              // 重置定时同步计时器
-              await resetScheduledSync()
-              
-              scheduleMsgClear()
-              toast.success(t('sync.toast.restoreSuccess'), { 
-                description: mode === 'merge' ? t('sync.toast.restoredMergedBookmarks') : t('sync.toast.restoredBookmarks') 
-              })
-          } else {
-              if (result.message === '同步正在进行中') {
-                  toast.info(t('sync.toast.syncInProgress'))
-                  setSyncStatus('idle')
-              } else {
-                  setSyncStatus('error')
-                  setMsg(translateSyncMessage(locale, result.message))
-                  toast.error(t('sync.toast.restoreFailed'), { description: translateSyncMessage(locale, result.message) })
-              }
-          }
-      } catch (e) {
-          toast.dismiss(loadingToast)
-          setSyncStatus('error')
-          setMsg(t('sync.toast.restoreFailed'))
-          toast.error(t('sync.toast.restoreFailed'), { description: (e as Error).message })
-      }
-  }
-
-  const isSyncBusy = syncStatus === 'checking' || syncStatus === 'syncing'
 
   // 计数加载 hook（本地书签数 / 云端备份信息）
   const countsApi = useBookmarkCounts({ t, isConfigured, getConfig: getSyncConfig })
 
-  // 视图上下文：向其余 hooks 提供状态提示、确认抽屉与计数刷新
+  // 跨 hook 刷新回调（ref 延迟取用，避免初始化顺序造成的循环依赖）
+  const refreshersRef = useRef({ loadSnapshots: () => {}, loadCloudBackups: () => {} })
+
+  // 同步动作与视图状态 hook
+  const actionsApi = useSyncActions({
+    t,
+    locale,
+    isConfigured,
+    isOnline,
+    localCount: countsApi.localCount,
+    getConfig: getSyncConfig,
+    loadCounts: countsApi.loadCounts,
+    setCloudMeta: countsApi.setCloudMeta,
+    refreshers: refreshersRef,
+  })
+
+  // 视图上下文：向其余 hooks 提供状态提示与确认抽屉回调
   const viewCtx = {
     t,
-    setSyncStatus,
-    setMsg,
-    setDrawerOpen,
-    openConfirm: () => setConfirmDrawerOpen(true),
-    closeConfirm: () => setConfirmDrawerOpen(false),
+    setSyncStatus: actionsApi.setSyncStatus,
+    setMsg: actionsApi.setMsg,
+    setDrawerOpen: actionsApi.setDrawerOpen,
+    openConfirm: actionsApi.openConfirm,
+    closeConfirm: actionsApi.closeConfirm,
     loadCounts: countsApi.loadCounts,
   }
   const snapshotsApi = useSnapshots(viewCtx)
@@ -301,6 +108,11 @@ export function SyncView() {
     locale,
     loadSnapshots: snapshotsApi.loadSnapshots,
   })
+
+  refreshersRef.current = {
+    loadSnapshots: snapshotsApi.loadSnapshots,
+    loadCloudBackups: cloudBackupsApi.loadCloudBackups,
+  }
 
   return (
     <>
@@ -339,8 +151,8 @@ export function SyncView() {
              <>
                 <div className="relative">
                   <button
-                      onClick={handleSmartSync}
-                      disabled={!isOnline || (syncStatus !== 'idle' && syncStatus !== 'success' && syncStatus !== 'error')}
+                      onClick={actionsApi.handleSmartSync}
+                      disabled={!isOnline || (actionsApi.syncStatus !== 'idle' && actionsApi.syncStatus !== 'success' && actionsApi.syncStatus !== 'error')}
                       className={cn(
                           "group relative w-40 h-40 rounded-full glass-panel flex flex-col items-center justify-center transition-all shadow-xl",
                           isOnline 
@@ -352,7 +164,7 @@ export function SyncView() {
                       
                       {!isOnline ? (
                           <WifiOff className="w-12 h-12 text-muted-foreground" />
-                      ) : (syncStatus === 'syncing' || syncStatus === 'checking') ? (
+                      ) : (actionsApi.syncStatus === 'syncing' || actionsApi.syncStatus === 'checking') ? (
                           <RefreshCw className="w-12 h-12 text-primary animate-spin" />
                       ) : (
                           <Cloud className="w-12 h-12 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -360,19 +172,19 @@ export function SyncView() {
                       
                       <span className="mt-3 text-sm font-medium text-secondary-foreground">
                           {!isOnline ? t('sync.syncButton.offline') :
-                           syncStatus === 'checking' ? t('sync.syncButton.analyzing') : 
-                           syncStatus === 'syncing' ? t('sync.syncButton.syncing') : 
-                           syncStatus === 'success' ? t('sync.syncButton.done') : t('sync.syncButton.syncNow')}
+                           actionsApi.syncStatus === 'checking' ? t('sync.syncButton.analyzing') : 
+                           actionsApi.syncStatus === 'syncing' ? t('sync.syncButton.syncing') : 
+                           actionsApi.syncStatus === 'success' ? t('sync.syncButton.done') : t('sync.syncButton.syncNow')}
                       </span>
                   </button>
 
                   {/* 小的圆形更多操作按钮 */}
                   <button
-                      onClick={openMoreActions}
-                      disabled={!isOnline || isSyncBusy}
+                      onClick={actionsApi.openMoreActions}
+                      disabled={!isOnline || actionsApi.isSyncBusy}
                       className={cn(
                           "absolute bottom-0 right-0 w-12 h-12 rounded-full glass-panel flex items-center justify-center transition-all shadow-lg",
-                          isOnline && !isSyncBusy
+                          isOnline && !actionsApi.isSyncBusy
                               ? "hover:scale-110 active:scale-95" 
                               : "opacity-50 cursor-not-allowed"
                       )}
@@ -383,15 +195,15 @@ export function SyncView() {
                 </div>
 
                 <div className="h-6 text-center">
-                    {msg && (
+                    {actionsApi.msg && (
                         <motion.span 
                             initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
-                            className={cn("text-xs font-medium", syncStatus === 'error' ? "text-destructive" : "text-muted-foreground")}
+                            className={cn("text-xs font-medium", actionsApi.syncStatus === 'error' ? "text-destructive" : "text-muted-foreground")}
                         >
-                            {msg}
+                            {actionsApi.msg}
                         </motion.span>
                     )}
-                    {countsApi.cloudMeta && !msg && (
+                    {countsApi.cloudMeta && !actionsApi.msg && (
                         <span className="text-[10px] text-muted-foreground">
                              {t('sync.cloudUpdatedAt', { time: new Date(countsApi.cloudMeta.time).toLocaleString() })}
                              {countsApi.cloudMeta.device ? ` (${countsApi.cloudMeta.device})` : ''}
@@ -404,7 +216,7 @@ export function SyncView() {
       </motion.div>
 
       {/* Footer History Trigger */}
-      <motion.div variants={item} className="mt-auto glass-panel border-x-0 border-b-0 rounded-b-none -mx-4 px-6 py-3 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => { setDrawerMode('history'); setDrawerOpen(true); }}>
+      <motion.div variants={item} className="mt-auto glass-panel border-x-0 border-b-0 rounded-b-none -mx-4 px-6 py-3 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors" onClick={actionsApi.openHistory}>
         <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('sync.viewSnapshots')}</span>
@@ -419,28 +231,28 @@ export function SyncView() {
 
     {/* Drawer for Conflict / History / Cloud Backups */}
     <Drawer
-        isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title={drawerMode === 'history' ? t('sync.drawer.title.history') : drawerMode === 'cloudBackups' ? t('sync.drawer.title.cloudBackups') : drawerMode === 'actions' ? t('sync.drawer.title.actions') : t('sync.drawer.title.conflict')}
+        isOpen={actionsApi.drawerOpen}
+        onClose={actionsApi.closeDrawer}
+        title={actionsApi.drawerMode === 'history' ? t('sync.drawer.title.history') : actionsApi.drawerMode === 'cloudBackups' ? t('sync.drawer.title.cloudBackups') : actionsApi.drawerMode === 'actions' ? t('sync.drawer.title.actions') : t('sync.drawer.title.conflict')}
     >
-        {drawerMode === 'actions' ? (
+        {actionsApi.drawerMode === 'actions' ? (
             <ActionsPanel
                 t={t}
                 cn={cn}
                 isOnline={isOnline}
-                isSyncBusy={isSyncBusy}
+                isSyncBusy={actionsApi.isSyncBusy}
                 localCount={countsApi.localCount}
-                openCloudBackups={openCloudBackups}
-                requestForcePush={requestForcePush}
+                openCloudBackups={actionsApi.openCloudBackups}
+                requestForcePush={actionsApi.requestForcePush}
             />
-        ) : drawerMode === 'cloudBackups' ? (
+        ) : actionsApi.drawerMode === 'cloudBackups' ? (
             <CloudBackupsPanel
                 t={t}
                 cloudBackups={cloudBackupsApi.cloudBackups}
                 loadingCloudBackups={cloudBackupsApi.loadingCloudBackups}
                 requestRestoreCloudBackup={cloudBackupsApi.requestRestoreCloudBackup}
             />
-        ) : drawerMode === 'history' ? (
+        ) : actionsApi.drawerMode === 'history' ? (
             <SnapshotHistoryPanel
                 t={t}
                 snapshots={snapshotsApi.snapshots}
@@ -448,34 +260,34 @@ export function SyncView() {
                 requestRestoreSnapshot={snapshotsApi.requestRestoreSnapshot}
                 snapshotManager={snapshotManager}
             />
-        ) : drawerMode === 'conflict' ? (
+        ) : actionsApi.drawerMode === 'conflict' ? (
             <ConflictPanel
                 t={t}
                 cn={cn}
                 isOnline={isOnline}
-                isSyncBusy={isSyncBusy}
+                isSyncBusy={actionsApi.isSyncBusy}
                 localCount={countsApi.localCount}
                 cloudCount={countsApi.cloudCount}
                 cloudMeta={countsApi.cloudMeta}
-                executePull={executePull}
-                forceNewBackup={forceNewBackup}
-                requestForcePush={requestForcePush}
+                executePull={actionsApi.executePull}
+                forceNewBackup={actionsApi.forceNewBackup}
+                requestForcePush={actionsApi.requestForcePush}
             />
         ) : null}
     </Drawer>
 
     <OverwriteConfirmDrawer
-      isOpen={confirmPushOpen}
-      onClose={() => setConfirmPushOpen(false)}
-      onConfirm={confirmForcePush}
-      busy={isSyncBusy}
+      isOpen={actionsApi.confirmPushOpen}
+      onClose={actionsApi.closeConfirmPush}
+      onConfirm={actionsApi.confirmForcePush}
+      busy={actionsApi.isSyncBusy}
       online={isOnline}
       localCount={countsApi.localCount}
       t={t}
     />
 
     <RestoreConfirmDrawer
-      isOpen={confirmDrawerOpen}
+      isOpen={actionsApi.confirmDrawerOpen}
       onClose={cancelRestore}
       snapshot={snapshotsApi.pendingRestoreSnapshot}
       cloudBackup={cloudBackupsApi.pendingRestoreCloudBackup}
