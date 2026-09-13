@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="./packages/app/assets/icon.png" alt="Logo" width="80" height="80">
+  <img src="./packages/app/assets/icon.png" alt="汇签 Logo" width="96" height="96">
 </p>
 
-<h1 align="center">汇签</h1>
+<h1 align="center">汇签 marksync</h1>
 
 <p align="center">
-  跨浏览器书签同步工具，基于 WebDAV 协议的自托管方案。
+  跨浏览器书签同步工具 · 基于 WebDAV 的自托管方案
 </p>
 
 <p align="center">
@@ -43,43 +43,52 @@
 
 ### 📦 安装
 
+所有版本均从 [Releases](https://github.com/1378944437/marksync/releases/latest) 页面下载。
+
 #### Chrome / Edge
 
-**扩展 ID：** `fpccfkjndkjiljfj`（固定，更新时不会变化）
+**扩展 ID：** `fpccfkjndkjiljfj`（已固定，更新时不会变化）
 
 1. 下载最新版本的 `chrome-extension.zip`
 2. 解压到本地文件夹
 3. 打开 `chrome://extensions/`
 4. 开启「开发者模式」
-5. 点击「加载已解压的扩展程序」
-6. 选择解压后的文件夹
+5. 点击「加载已解压的扩展程序」，选择解压后的文件夹
 
 **更新扩展：**
+
 - 下载新版本 zip，解压到**相同文件夹**（覆盖旧文件）
 - 在 `chrome://extensions/` 点击扩展卡片的「刷新」按钮
-- 扩展 ID 和所有数据都会保留
+- 扩展 ID 和所有本地数据都会保留
 
 #### Firefox
 
 **最低版本要求：Firefox 140+**
 
 1. 下载最新版本的 `marksync-firefox-vX.X.X.xpi`（已签名）
-2. 拖拽 `.xpi` 文件到 Firefox 窗口
-3. 点击「添加」按钮确认安装
+2. 将 `.xpi` 文件拖入 Firefox 窗口，点击「添加」确认安装
 
 **或手动安装：**
+
 1. 打开 `about:addons`
 2. 点击右上角齿轮图标 ⚙️
-3. 选择「从文件安装附加组件」
-4. 选择 `.xpi` 文件
+3. 选择「从文件安装附加组件」，选择 `.xpi` 文件
 
 ### ⚙️ 使用方法
 
-1. 点击扩展图标打开面板
+1. 点击工具栏中的扩展图标，打开面板
 2. 进入「设置」→「WebDAV 配置」
-3. 填写你的 WebDAV 服务器信息
+3. 填写你的 WebDAV 服务器地址、账号与密码
 4. 点击「保存并测试连接」
-5. 返回主页点击「同步」按钮
+5. 返回主页，点击「同步」按钮
+
+> 💡 配置一次即可：之后书签变更会自动上传，也可随时手动同步或从快照恢复。
+
+### 🔒 隐私
+
+- 书签数据只在你配置的 WebDAV 服务器与本地之间传输，不经过任何第三方服务器
+- 同步前自动创建本地快照，同步出错时可一键回滚
+- 项目不内置任何账号体系，WebDAV 凭证仅保存在本地扩展存储中
 
 ### 🛠️ 开发与构建
 
@@ -91,13 +100,17 @@ pnpm install
 pnpm dev:chrome   # Chrome 扩展开发
 pnpm dev:firefox  # Firefox 扩展开发
 
-# 构建生产版本
+# 构建生产版本（含 tsc strict 类型检查）
 pnpm build
 
 # 打包分发（自动签名 Firefox，打包 Chrome）
 pnpm package
 ```
 
+- 技术栈：TypeScript（strict）+ React 19 + Vite 5 + Vitest 4 + Tailwind 3
+- 单元测试：`pnpm test`
+- 架构说明见 [REFACTORING.md](./REFACTORING.md)
+
 ### 📄 许可证
 
-[GNU AGPLv3](./LICENSE) - 开源协议
+[GNU AGPLv3](./LICENSE)

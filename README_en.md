@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="./packages/app/assets/icon.png" alt="Logo" width="80" height="80">
+  <img src="./packages/app/assets/icon.png" alt="marksync logo" width="96" height="96">
 </p>
 
-<h1 align="center">MarkSync</h1>
+<h1 align="center">marksync 汇签</h1>
 
 <p align="center">
-  Cross-browser bookmark sync tool with self-hosted WebDAV solution.
+  Cross-browser bookmark sync · Self-hosted over WebDAV
 </p>
 
 <p align="center">
@@ -43,29 +43,52 @@
 
 ### 📦 Installation
 
+All builds are available on the [Releases](https://github.com/1378944437/marksync/releases/latest) page.
+
 #### Chrome / Edge
 
+**Extension ID:** `fpccfkjndkjiljfj` (pinned, stays the same across updates)
+
 1. Download the latest `chrome-extension.zip`
-2. Extract to a local folder
+2. Extract it to a local folder
 3. Open `chrome://extensions/`
 4. Enable "Developer mode"
-5. Click "Load unpacked"
-6. Select the extracted folder
+5. Click "Load unpacked" and select the extracted folder
+
+**Updating the extension:**
+
+- Download the new zip and extract it to the **same folder** (overwrite the old files)
+- Click the "Reload" button on the extension card in `chrome://extensions/`
+- The extension ID and all local data are preserved
 
 #### Firefox
 
-1. Download the latest `firefox-extension.zip`
-2. Open `about:debugging#/runtime/this-firefox`
-3. Click "Load Temporary Add-on"
-4. Select the zip file
+**Requires Firefox 140 or later**
+
+1. Download the latest `marksync-firefox-vX.X.X.xpi` (signed)
+2. Drag the `.xpi` file into a Firefox window and click "Add" to confirm
+
+**Or install manually:**
+
+1. Open `about:addons`
+2. Click the gear icon ⚙️ in the top-right corner
+3. Choose "Install Add-on From File..." and select the `.xpi` file
 
 ### ⚙️ Usage
 
-1. Click the extension icon to open the panel
+1. Click the extension icon in the toolbar to open the panel
 2. Go to "Settings" → "WebDAV Configuration"
-3. Enter your WebDAV server details
+3. Enter your WebDAV server URL, username and password
 4. Click "Save and Test Connection"
-5. Return to home and click "Sync"
+5. Return to the home page and click "Sync"
+
+> 💡 Set it up once: bookmarks are uploaded automatically on change, and you can always sync manually or restore from a snapshot.
+
+### 🔒 Privacy
+
+- Bookmark data only travels between your local browser and the WebDAV server you configured — never through any third-party server
+- A local snapshot is created before every sync, so you can roll back with one click
+- There is no built-in account system; your WebDAV credentials are stored only in the extension's local storage
 
 ### 🛠️ Development
 
@@ -73,14 +96,21 @@
 # Install dependencies
 pnpm install
 
-# Development mode
+# Development mode (hot reload)
 pnpm dev:chrome   # Chrome extension
 pnpm dev:firefox  # Firefox extension
 
-# Build
+# Production build (includes tsc strict type checking)
 pnpm build
+
+# Package for distribution (signs Firefox, packs Chrome)
+pnpm package
 ```
+
+- Stack: TypeScript (strict) + React 19 + Vite 5 + Vitest 4 + Tailwind 3
+- Unit tests: `pnpm test`
+- Architecture notes: [REFACTORING.md](./REFACTORING.md)
 
 ### 📄 License
 
-[GNU AGPLv3](./LICENSE) - Open Source
+[GNU AGPLv3](./LICENSE)
