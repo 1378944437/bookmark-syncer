@@ -5,8 +5,8 @@ export function StatsCard({ label, count, loading, color }: { label: string, cou
     <div className={cn(
         "relative overflow-hidden rounded-2xl p-4 transition-all border",
         color === 'indigo' 
-            ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_30px_-5px_rgba(99,102,241,0.3)]" 
-            : "bg-secondary/50 border-border"
+            ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_30px_-5px_rgba(99,102,241,0.3)] dark:border-indigo-400/30 dark:shadow-[0_0_30px_-5px_rgba(99,102,241,0.45)]" 
+            : "surface-card border-border"
     )}>
       {/* 只有 indigo 卡片有微光装饰 */}
       {color === 'indigo' && (

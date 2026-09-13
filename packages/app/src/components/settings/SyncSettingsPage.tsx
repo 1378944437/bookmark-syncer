@@ -63,7 +63,7 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
       <SubPageHeader title={t('settings.sync.title')} onBack={onBack} />
       <div className="space-y-4 pb-4">
         {/* 自动同步 */}
-        <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/30">
+        <div className="flex items-center justify-between p-4 surface-card">
           <div>
             <Label className="text-foreground">{t('settings.sync.autoSync')}</Label>
             <p className="text-xs text-muted-foreground">{t('settings.sync.autoSyncDesc')}</p>
@@ -75,12 +75,12 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
               onChange={(e) => setAutoSyncEnabled(e.target.checked)}
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+            <div className="w-11 h-6 bg-zinc-300/70 dark:bg-white/15 rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
           </label>
         </div>
 
         {/* 同步范围 */}
-        <div className="p-4 rounded-xl bg-secondary/30 space-y-3">
+        <div className="p-4 surface-card space-y-3">
           <div>
             <Label className="text-foreground">{t('settings.sync.scopeSection')}</Label>
             <p className="text-xs text-muted-foreground">{t('settings.sync.scopeHint')}</p>
@@ -101,7 +101,7 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* 定时同步 */}
-        <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/30">
+        <div className="flex items-center justify-between p-4 surface-card">
           <div>
             <Label className="text-foreground flex items-center gap-1">
               <Clock className="w-4 h-4" /> {t('settings.sync.scheduled')}
@@ -115,13 +115,13 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
               onChange={(e) => setScheduledSyncEnabled(e.target.checked)}
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+            <div className="w-11 h-6 bg-zinc-300/70 dark:bg-white/15 rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
           </label>
         </div>
 
         {/* 间隔设置 */}
         {scheduledSyncEnabled && (
-          <div className="space-y-2 p-4 rounded-xl bg-secondary/30">
+          <div className="space-y-2 p-4 surface-card">
             <Label className="text-muted-foreground">{t('settings.sync.interval')}</Label>
             <Input
               type="number"
@@ -141,7 +141,7 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
         )}
 
         {/* 缺失文件夹兜底 */}
-        <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/30">
+        <div className="flex items-center justify-between p-4 surface-card">
           <div>
             <Label className="text-foreground">{t('settings.sync.missingFolderFallback')}</Label>
             <p className="text-xs text-muted-foreground max-w-[70%]">{t('settings.sync.missingFolderFallbackDesc')}</p>
@@ -153,12 +153,12 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
               onChange={(e) => setMissingFolderFallback(e.target.checked)}
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+            <div className="w-11 h-6 bg-zinc-300/70 dark:bg-white/15 rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
           </label>
         </div>
 
         {/* 设备标识 */}
-        <div className="p-4 rounded-xl bg-secondary/30 space-y-3">
+        <div className="p-4 surface-card space-y-3">
           <div>
             <Label className="text-foreground">{t('settings.sync.deviceSection')}</Label>
             <p className="text-xs text-muted-foreground">
@@ -179,7 +179,7 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
         <E2EEncryptionSection />
 
         {/* 备份文件间隔 */}
-        <div className="space-y-2 p-4 rounded-xl bg-secondary/30">
+        <div className="space-y-2 p-4 surface-card">
           <Label className="text-muted-foreground">{t('settings.sync.backupInterval')}</Label>
           <select
             value={backupFileInterval}

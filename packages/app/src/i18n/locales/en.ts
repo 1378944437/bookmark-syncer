@@ -126,12 +126,14 @@ export const dictionary: Record<string, string> = {
   "settings.item.sync.label": "Sync settings",
   "settings.item.sync.desc": "Auto sync, scheduled sync",
   "settings.item.general.label": "General",
-  "settings.item.general.desc": "Language and preferences",
+  "settings.item.general.desc": "Theme, language and preferences",
   "settings.item.about.label": "About",
   "settings.item.about.desc": "Version info",
 
   // ─── General / language ───
   "settings.general.title": "General",
+  "settings.general.appearance": "Appearance",
+  "settings.general.appearanceDesc": "Light / Dark / Follow system",
   "settings.general.language": "Language",
   "settings.general.languageDesc": "Interface display language",
   "settings.general.language.auto": "Follow browser",

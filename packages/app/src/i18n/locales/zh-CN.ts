@@ -126,12 +126,14 @@ export const dictionary: Record<string, string> = {
   "settings.item.sync.label": "同步设置",
   "settings.item.sync.desc": "自动同步、定时同步",
   "settings.item.general.label": "通用设置",
-  "settings.item.general.desc": "语言等偏好",
+  "settings.item.general.desc": "外观主题、语言等偏好",
   "settings.item.about.label": "关于",
   "settings.item.about.desc": "版本信息",
 
   // ─── 通用/语言设置 ───
   "settings.general.title": "通用设置",
+  "settings.general.appearance": "外观主题",
+  "settings.general.appearanceDesc": "浅色 / 深色 / 跟随系统",
   "settings.general.language": "语言",
   "settings.general.languageDesc": "界面显示语言",
   "settings.general.language.auto": "跟随浏览器",

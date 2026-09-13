@@ -13,7 +13,7 @@ export function SettingsItem({ icon: Icon, label, description, onClick }: {
 }) {
   return (
     <div
-      className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition-colors"
+      className="flex items-center justify-between p-4 surface-card hover:bg-secondary/70 dark:hover:bg-secondary/60 cursor-pointer transition-colors"
       onClick={onClick}
     >
       <div className="flex items-center gap-3">

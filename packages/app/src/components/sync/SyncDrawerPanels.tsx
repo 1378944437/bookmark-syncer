@@ -95,7 +95,7 @@ export function CloudBackupsPanel({ t, cloudBackups, loadingCloudBackups, reques
                     <p className="text-center text-muted-foreground py-4">{t('sync.cloudBackups.empty')}</p>
                 ) : (
                     cloudBackups.map((backup) => (
-                        <div key={backup.path} className="bg-muted border border-border rounded-lg p-3 flex items-center justify-between group transition-colors hover:border-primary/50">
+                        <div key={backup.path} className="bg-muted/60 dark:bg-white/[0.04] border border-border rounded-lg p-3 flex items-center justify-between group transition-colors hover:border-primary/50">
                              <div className="flex flex-col min-w-0">
                                 <span className="text-xs font-medium text-foreground">
                                     {new Date(backup.timestamp).toLocaleString()}
@@ -121,7 +121,7 @@ export function CloudBackupsPanel({ t, cloudBackups, loadingCloudBackups, reques
                                      onClick={() => requestRestoreCloudBackup(backup)}
                                  >
                                      <Download className="w-3 h-3 mr-1" />
-                                     恢复
+                                     {t('common.restore')}
                                  </Button>
                              </div>
                         </div>
@@ -144,7 +144,7 @@ export function SnapshotHistoryPanel({ t, snapshots, loadSnapshots, requestResto
              <div className="space-y-3 pt-2">
                 <p className="text-xs text-muted-foreground mb-2">{t('sync.history.pick')}</p>
                 {snapshots.map((s) => (
-                    <div key={s.id} className="bg-muted border border-border rounded-lg p-3 flex items-center justify-between group transition-colors hover:border-primary/50">
+                    <div key={s.id} className="bg-muted/60 dark:bg-white/[0.04] border border-border rounded-lg p-3 flex items-center justify-between group transition-colors hover:border-primary/50">
                          <div className="flex flex-col min-w-0">
                             <span className="text-xs font-medium text-foreground">
                                 {s.reason || t('sync.history.autoBackup')}
@@ -204,7 +204,7 @@ export function ConflictPanel({ t, cn, isOnline, isSyncBusy, localCount, cloudCo
                 {/* 跨浏览器警告 */}
 
                 <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-400 dark:border-amber-500/20 p-4 rounded-xl flex gap-3">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
                     <div>
                         <h4 className="text-sm font-bold text-foreground mb-1">{t('sync.conflict.title')}</h4>
                         <p className="text-xs text-foreground/70 leading-relaxed">

@@ -32,7 +32,7 @@ export function Drawer({ isOpen, onClose, title, children, footer }: DrawerProps
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm z-40"
+            className="absolute inset-0 bg-black/40 dark:bg-black/65 backdrop-blur-sm z-40"
           />
 
           {/* Drawer Panel */}
@@ -47,7 +47,7 @@ export function Drawer({ isOpen, onClose, title, children, footer }: DrawerProps
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.2 }}
             onDragEnd={handleDragEnd}
-            className="absolute bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90%] w-full bg-card backdrop-blur-xl border-t border-border rounded-t-[20px] shadow-2xl"
+            className="absolute bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90%] w-full bg-card/95 dark:bg-card/90 backdrop-blur-xl border-t border-border rounded-t-[20px] shadow-2xl"
             style={{ willChange: 'transform' }} // Optimization
           >
             {/* Handle Bar */}
@@ -55,7 +55,7 @@ export function Drawer({ isOpen, onClose, title, children, footer }: DrawerProps
                 className="w-full flex items-center justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none"
                 onPointerDown={(e) => controls.start(e)}
             >
-              <div className="w-12 h-1.5 rounded-full bg-border" />
+              <div className="w-12 h-1.5 rounded-full bg-border dark:bg-white/20" />
             </div>
 
             {/* Header */}

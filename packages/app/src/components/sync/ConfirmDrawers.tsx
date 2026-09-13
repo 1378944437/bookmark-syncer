@@ -85,7 +85,7 @@ export function RestoreConfirmDrawer({
       {(snapshot || cloudBackup) && (
         <div className="space-y-4 pt-2">
           <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-400 dark:border-amber-500/20 p-4 rounded-xl flex gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
               <h4 className="text-sm font-bold text-foreground mb-1">
                 {snapshot ? t('sync.confirmRestore.snapshotTitle') : t('sync.confirmRestore.cloudTitle')}

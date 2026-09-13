@@ -1,5 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // 主题由 useTheme 在 <html> 上切换 .dark / .light 类控制，
+  // 必须用 class 策略：默认的 media 策略只跟随系统偏好，
+  // 会导致应用内切到深色时 dark: 工具类不生效（只剩 CSS 变量变暗）
+  darkMode: 'class',
   content: [
     "./src/**/*.{js,ts,jsx,tsx}",
   ],

@@ -37,7 +37,10 @@
   }
 
   .dark {
-    /* Dark Mode: Rich & Vibrant */
+    /* Dark Mode: Rich & Vibrant
+       深色下刻意抬高 border/muted-foreground/destructive：
+       原值（border 17%、destructive 31%）在近黑背景上几乎不可见，
+       卡片边界、分隔线和错误文案都会“糊”在背景里 */
     --background: 224 71% 4%;
     --foreground: 213 31% 91%;
     
@@ -54,16 +57,18 @@
     --secondary-foreground: 213 31% 91%;
     
     --muted: 215 28% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted-foreground: 215 20% 70%;
     
     --accent: 215 28% 17%;
     --accent-foreground: 213 31% 91%;
     
-    --destructive: 0 63% 31%;
+    /* 深色下用亮一档的红：31% 亮度的红在深色背景上对比度不足，
+       离线提示、错误文案、危险按钮图标都会看不清 */
+    --destructive: 0 72% 56%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
+    --border: 215 25% 25%;
+    --input: 215 25% 25%;
     --ring: 239 84% 67%;
   }
   
@@ -92,6 +97,13 @@
   
   html.light .glass-panel {
     @apply bg-white/90 backdrop-blur-xl border-black/5 shadow-lg;
+  }
+
+  /* 设置项 / 信息卡片的统一表面：
+     浅色下是浅灰底，深色下抬高一档并用内描边勾出边界，
+     避免 bg-secondary/30 在深色中退化成“看不见的卡片” */
+  .surface-card {
+    @apply rounded-xl bg-secondary/60 dark:bg-secondary/50 dark:ring-1 dark:ring-inset dark:ring-white/[0.06];
   }
 }
 

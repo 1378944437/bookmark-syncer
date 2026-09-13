@@ -54,16 +54,16 @@ export function AboutPage({ onBack }: { onBack: () => void }) {
     <div className="flex flex-col h-full overflow-y-auto">
       <SubPageHeader title={t('settings.about.title')} onBack={onBack} />
       <div className="space-y-4 pb-4">
-        <div className="p-4 rounded-xl bg-secondary/30 text-center">
+        <div className="p-4 surface-card text-center">
           <h3 className="text-xl font-bold text-foreground">MarkSync</h3>
           <p className="text-sm text-muted-foreground mt-1">v{currentVersion}</p>
         </div>
-        <div className="p-4 rounded-xl bg-secondary/30">
+        <div className="p-4 surface-card">
           <p className="text-sm text-muted-foreground">
             {t('settings.about.desc')}
           </p>
         </div>
-        <div className="p-4 rounded-xl bg-secondary/30">
+        <div className="p-4 surface-card">
           <p className="text-xs text-muted-foreground">
             {t('settings.about.support')}
           </p>

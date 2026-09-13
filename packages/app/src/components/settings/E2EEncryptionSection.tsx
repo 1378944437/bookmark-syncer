@@ -65,7 +65,7 @@ export function E2EEncryptionSection() {
   }
   // 端到端加密设置区块
   return (
-        <div className="p-4 rounded-xl bg-secondary/30 space-y-3">
+        <div className="p-4 surface-card space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-foreground">{t('settings.sync.e2eSection')}</Label>
@@ -78,7 +78,7 @@ export function E2EEncryptionSection() {
                 onChange={(e) => onE2eToggle(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+              <div className="w-11 h-6 bg-zinc-300/70 dark:bg-white/15 rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
             </label>
           </div>
           <div className="space-y-2">
@@ -112,7 +112,7 @@ export function E2EEncryptionSection() {
                 autoComplete="new-password"
               />
             </div>
-            <p className="text-xs text-amber-500">{t('settings.sync.e2eWarn')}</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400">{t('settings.sync.e2eWarn')}</p>
           </div>
           {e2eEnabled && (
             <Button
