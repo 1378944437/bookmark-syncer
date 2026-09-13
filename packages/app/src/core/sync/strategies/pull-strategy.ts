@@ -3,7 +3,7 @@
  * 智能下载：拉取云端数据并恢复到本地
  */
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
-import { CloudBackup, type BookmarkNode } from "../../../types";
+import type { BookmarkNode } from "../../../types";
 import { getE2ESettings, getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
 import { snapshotManager } from "../../backup";
 import {
@@ -12,9 +12,9 @@ import {
   countBookmarks,
   filterTreeByScope,
 } from "../../bookmark";
+import { fetchValidatedCloudBackup } from "../utils/cloud-data-helper";
 import type { WebDAVConfig } from "../../storage";
 import { fileManager } from "../../storage";
-import { queueManager } from "../../storage/queue-manager";
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
 import { setSyncState } from "../state-manager";
 import type { SyncResult } from "../types";
@@ -83,26 +83,15 @@ export async function smartPull(
       return { success: false, action: "error", message: "云端无备份数据" };
     }
     
-    // 端到端加密：.enc 备份需要本机密码解密；未开启时队列层会抛出开启提示
+    // 下载 →（端到端解密）→ 解压 → 解析 → 结构校验，统一由 helper 处理；
+    // .enc 备份需要本机密码解密，未开启时队列层会抛出开启提示
     const e2e = await getE2ESettings();
-    const json = await queueManager.getFileWithDedup(client, latest.path, {
+    const cloudData = await fetchValidatedCloudBackup(client, latest.path, {
       passphrase: e2e.enabled ? e2e.passphrase : undefined,
     });
-    if (!json) {
+    if (!cloudData) {
       console.error("[PullStrategy] Pull aborted: failed to read backup file");
       return { success: false, action: "error", message: "无法读取云端备份" };
-    }
-
-    let cloudData: CloudBackup;
-    try {
-      cloudData = JSON.parse(json) as CloudBackup;
-    } catch {
-      console.error("[PullStrategy] Cloud data is corrupted, cannot parse");
-      return { success: false, action: "error", message: "云端备份数据格式损坏" };
-    }
-    if (!cloudData.data || !Array.isArray(cloudData.data)) {
-      console.error("[PullStrategy] Cloud data structure invalid: missing or non-array data");
-      return { success: false, action: "error", message: "云端备份数据结构无效" };
     }
     // 应用同步范围：范围外系统文件夹不参与恢复
     cloudData.data = filterTreeByScope(cloudData.data, syncScope);

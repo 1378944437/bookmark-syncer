@@ -44,7 +44,7 @@ describe("QueueManager", () => {
     await vi.advanceTimersByTimeAsync(0);
     const result = await resultPromise;
     expect(result).toBe("decompressed_compressed_data");
-    expect(client.getFile).toHaveBeenCalledWith("/backup/file.json.gz");
+    expect(client.getFile).toHaveBeenCalledWith("/backup/file.json.gz", expect.any(AbortSignal));
   });
 
   it("拒绝非 .gz 文件", async () => {

@@ -5,15 +5,14 @@
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
 import { getLastSyncTime, getSyncState, setSyncState } from "../state-manager";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
+import { fetchValidatedCloudBackup } from "../utils/cloud-data-helper";
 import { CloudBackup } from "../../../types";
 import { getE2ESettings, getSyncScope } from "../../../application/state-manager";
 import { E2EDecryptError, E2EPasswordRequiredError } from "../../../infrastructure/utils/crypto";
 import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
 import { fileManager } from "../../storage";
-import { queueManager } from "../../storage/queue-manager";
 import type { CloudInfo, WebDAVConfig } from "../../storage/types";
 import type { SmartSyncResult } from "../types";
-import { CloudDataError } from "../types";
 import { isCloudNewerThanBasis, isLocalDirty } from "../utils/sync-basis";
 import { smartPull } from "./pull-strategy";
 import { smartPush } from "./push-strategy";
@@ -61,21 +60,12 @@ export async function smartSync(
       if (latest) {
         // .enc 备份需本机密码解密；未开启时队列层抛出开启提示
         const e2e = await getE2ESettings();
-        const json = await queueManager.getFileWithDedup(client, latest.path, {
+        const fetched = await fetchValidatedCloudBackup(client, latest.path, {
           passphrase: e2e.enabled ? e2e.passphrase : undefined,
         });
-        if (json) {
-          try {
-            cloudData = JSON.parse(json) as CloudBackup;
-          } catch {
-            console.error("[SmartSyncStrategy] Cloud data is corrupted");
-            throw new CloudDataError("云端备份数据格式损坏，无法解析");
-          }
-          if (!cloudData.data || !Array.isArray(cloudData.data)) {
-            console.error("[SmartSyncStrategy] Cloud data structure invalid");
-            throw new CloudDataError("云端备份数据结构无效");
-          }
-          
+        if (fetched) {
+          cloudData = fetched;
+
           // 从文件名解析浏览器信息
           const fileName = latest.path.split("/").pop() || "";
           const parsed = fileManager.parseBackupFileName(fileName);

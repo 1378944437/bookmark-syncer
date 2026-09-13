@@ -17,7 +17,7 @@ export interface WebDAVFile {
 export interface IWebDAVClient {
   testConnection(): Promise<boolean>;
   putFile(path: string, content: string): Promise<void>;
-  getFile(path: string): Promise<string>;
+  getFile(path: string, signal?: AbortSignal): Promise<string>;
   createDirectory(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
   listFiles(dirPath: string): Promise<WebDAVFile[]>;
@@ -63,11 +63,15 @@ export class WebDAVClient implements IWebDAVClient {
   }
 
   /**
-   * 带超时的 fetch：防止挂起的服务器让同步无限期占锁
+   * 带超时的 fetch：防止挂起的服务器让同步无限期占锁。
+   * 外部 signal（如下载队列超时）与内部超时任一触发都会中止请求
    */
   private async fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const externalSignal = init.signal ?? null;
+    const onExternalAbort = () => controller.abort();
+    externalSignal?.addEventListener("abort", onExternalAbort);
     try {
       return await fetch(url, { ...init, signal: controller.signal });
     } catch (error) {
@@ -77,6 +81,7 @@ export class WebDAVClient implements IWebDAVClient {
       throw error;
     } finally {
       clearTimeout(timer);
+      externalSignal?.removeEventListener("abort", onExternalAbort);
     }
   }
 
@@ -112,7 +117,7 @@ export class WebDAVClient implements IWebDAVClient {
     }
   }
 
-  async getFile(path: string): Promise<string> {
+  async getFile(path: string, signal?: AbortSignal): Promise<string> {
     const fullUrl = this.normalizeUrl(path);
     const fileName = path.split("/").pop() || path;
     console.log(`[WebDAV] Getting file: ${fileName}`);
@@ -130,6 +135,7 @@ export class WebDAVClient implements IWebDAVClient {
       credentials: "omit",
       // 强制不使用缓存
       cache: "no-store",
+      signal,
     }, WebDAVClient.REQUEST_TIMEOUT_MS);
 
     if (!response.ok) {

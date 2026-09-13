@@ -25,7 +25,9 @@ export class SnapshotManager {
 
   /**
    * 获取数据库连接
-   * 延迟初始化，首次调用时创建数据库
+   * 延迟初始化，首次调用时创建数据库；
+   * 打开失败（配额超限/临时 IO 错误）时清空缓存的 Promise，
+   * 下一次操作自动重试，避免一次失败导致快照功能永久失效
    */
   private async getDb(): Promise<IDBPDatabase> {
     if (!this.dbPromise) {
@@ -38,6 +40,9 @@ export class SnapshotManager {
             });
           }
         },
+      }).catch((error) => {
+        this.dbPromise = null;
+        throw error;
       });
     }
     return this.dbPromise;

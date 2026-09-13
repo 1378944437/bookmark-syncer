@@ -8,13 +8,12 @@ import { getBrowserInfo, isSameBrowser } from "../../../infrastructure/browser/i
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { compressText } from "../../../infrastructure/utils/compression";
 import { encryptText, E2EDecryptError, E2EPasswordRequiredError } from "../../../infrastructure/utils/crypto";
-import { CloudBackup } from "../../../types";
 import { snapshotManager } from "../../backup";
 import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
+import { fetchValidatedCloudBackup } from "../utils/cloud-data-helper";
 import type { WebDAVConfig } from "../../storage";
 import { fileManager, STORAGE_CONSTANTS } from "../../storage";
 import { cacheManager } from "../../storage/cache-manager";
-import { queueManager } from "../../storage/queue-manager";
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
 import { getSyncState, setSyncState } from "../state-manager";
 import { isCloudNewerThanBasis } from "../utils/sync-basis";
@@ -90,21 +89,10 @@ export async function smartPush(
     try {
       const latest = await fileManager.getLatestBackupFile(client);
       if (latest) {
-        const cloudJson = await queueManager.getFileWithDedup(client, latest.path, {
+        const cloudData = await fetchValidatedCloudBackup(client, latest.path, {
           passphrase: e2e.enabled ? e2e.passphrase : undefined,
         });
-        if (cloudJson) {
-          let cloudData: CloudBackup;
-          try {
-            cloudData = JSON.parse(cloudJson) as CloudBackup;
-          } catch {
-            console.error("[PushStrategy] Cloud data is corrupted, skipping comparison");
-            throw new CloudDataError("云端备份数据格式损坏，无法解析");
-          }
-          if (!cloudData.data || !Array.isArray(cloudData.data)) {
-            console.error("[PushStrategy] Cloud data structure invalid");
-            throw new CloudDataError("云端备份数据结构无效");
-          }
+        if (cloudData) {
           const cloudCount = countBookmarks(cloudData.data);
 
           // 记录云端备份所属设备（面板显示「来自 XX」，无需额外下载）

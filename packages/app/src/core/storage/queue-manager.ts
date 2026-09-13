@@ -43,12 +43,15 @@ export class QueueManager {
 
     console.log(`[QueueManager] Starting new download: ${path}`);
 
-    // 创建超时 Promise
+    // 创建超时 Promise：超时先中止底层请求（AbortSignal 贯通到 fetch），
+    // 避免竞态失败后底层仍在空耗带宽
+    const controller = new AbortController();
     const timeoutPromise = new Promise<string>((_, reject) => {
       const timerId = setTimeout(() => {
         console.error(
           `[QueueManager] Download timeout after ${this.timeoutMs}ms: ${path}`
         );
+        controller.abort();
         this.cleanupDownload(path);
         reject(new Error(`下载超时 (${this.timeoutMs / 1000}秒)`));
       }, this.timeoutMs);
@@ -58,7 +61,7 @@ export class QueueManager {
 
     // 创建下载任务，与超时竞争
     const downloadPromise = Promise.race([
-      client.getFile(path),
+      client.getFile(path, controller.signal),
       timeoutPromise,
     ]).then(async (content) => {
       // 端到端加密的备份：先解密再解压；本设备未配置密码时提示开启

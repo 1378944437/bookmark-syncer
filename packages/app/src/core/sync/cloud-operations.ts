@@ -3,7 +3,7 @@
  * 获取云端信息、备份列表、恢复指定备份
  */
 import { getWebDAVClient } from "../../infrastructure/http/webdav-client";
-import { CloudBackup, type BookmarkNode } from "../../types";
+import type { BookmarkNode } from "../../types";
 import { getE2ESettings, getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring, saveLastRemoteDevice } from "../../application/state-manager";
 import { snapshotManager } from "../backup";
 import {
@@ -12,9 +12,9 @@ import {
   countBookmarks,
   filterTreeByScope,
 } from "../bookmark";
+import { fetchValidatedCloudBackup } from "./utils/cloud-data-helper";
 import { fileManager, STORAGE_CONSTANTS } from "../storage";
 import { cacheManager } from "../storage/cache-manager";
-import { queueManager } from "../storage/queue-manager";
 import type { CloudBackupFile, CloudInfo, WebDAVConfig } from "../storage/types";
 import { acquireSyncLock, releaseSyncLock } from "./lock-manager";
 import { setSyncState } from "./state-manager";
@@ -172,23 +172,16 @@ export async function restoreFromCloudBackup(
     // 直接下载备份文件（带去重保护；.enc 备份需本机密码解密，未开启时队列层抛出开启提示）
     console.log("[CloudOperations] Downloading backup...");
     const e2e = await getE2ESettings();
-    const json = await queueManager.getFileWithDedup(client, backupPath, {
+    const fetched = await fetchValidatedCloudBackup(client, backupPath, {
       passphrase: e2e.enabled ? e2e.passphrase : undefined,
     });
-    if (!json) {
+    if (!fetched) {
       console.error("[CloudOperations] Restore aborted: failed to read backup file");
       return { success: false, action: "error", message: "无法读取备份文件" };
     }
-    
-    const fileName = backupPath.split("/").pop() || "";
+    const cloudData = fetched;
 
-    let cloudData: CloudBackup;
-    try {
-      cloudData = JSON.parse(json) as CloudBackup;
-    } catch {
-      console.error("[CloudOperations] Backup data is corrupted, cannot parse");
-      return { success: false, action: "error", message: "备份数据格式损坏" };
-    }
+    const fileName = backupPath.split("/").pop() || "";
     const cloudTime = cloudData.metadata?.timestamp || 0;
 
     // 应用同步范围：范围外系统文件夹不参与恢复

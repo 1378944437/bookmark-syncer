@@ -1,37 +1,42 @@
 /**
  * 云端数据辅助函数
- * 提供云端备份下载和解析的通用功能
+ * 统一「下载 → （端到端解密）→ 解压 → 解析 → 结构校验」的通用流程，
+ * 三大同步策略与云端恢复共用。空内容返回 null，由调用方按各自语义处理；
+ * 格式损坏/结构无效抛出 CloudDataError（调用方一律中止，不得覆盖云端）
  */
-import type { CloudBackup } from "../../../types";
-import { countBookmarks } from "../../bookmark";
 import type { IWebDAVClient } from "../../../infrastructure/http/webdav-client";
+import type { CloudBackup } from "../../../types";
+import { CloudDataError } from "../types";
 import { queueManager } from "../../storage/queue-manager";
 
 /**
- * 下载并解析云端备份
- * 自动处理下载、解压和解析JSON
- * 
+ * 下载并校验云端备份
+ *
  * @param client WebDAV 客户端
- * @param backupPath 备份文件路径
- * @returns 解析后的备份数据及元信息，如果失败返回 null
+ * @param path 备份文件路径（.json.gz 或加密的 .json.gz.enc）
+ * @param opts.passphrase 端到端加密密码（.enc 备份必需，缺失时队列层抛出开启提示）
+ * @returns 解析后的备份数据；文件内容为空时返回 null
  */
-export async function downloadAndParseCloudBackup(
+export async function fetchValidatedCloudBackup(
   client: IWebDAVClient,
-  backupPath: string
-): Promise<{
-  data: CloudBackup;
-  count: number;
-  timestamp: number;
-} | null> {
-  const json = await queueManager.getFileWithDedup(client, backupPath);
+  path: string,
+  opts: { passphrase?: string } = {},
+): Promise<CloudBackup | null> {
+  const json = await queueManager.getFileWithDedup(client, path, {
+    passphrase: opts.passphrase,
+  });
   if (!json) {
     return null;
   }
-  
-  const cloudData = JSON.parse(json) as CloudBackup;
-  return {
-    data: cloudData,
-    count: countBookmarks(cloudData.data),
-    timestamp: cloudData.metadata?.timestamp || 0,
-  };
+
+  let data: CloudBackup;
+  try {
+    data = JSON.parse(json) as CloudBackup;
+  } catch {
+    throw new CloudDataError("云端备份数据格式损坏，无法解析");
+  }
+  if (!data.data || !Array.isArray(data.data)) {
+    throw new CloudDataError("云端备份数据结构无效");
+  }
+  return data;
 }
