@@ -2,7 +2,8 @@
  * 智能同步策略
  * 自动判断推送或拉取
  */
-import { acquireSyncLock, getLastSyncTime, getSyncState, releaseSyncLock, setSyncState } from "../";
+import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
+import { getLastSyncTime, getSyncState, setSyncState } from "../state-manager";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { CloudBackup } from "../../../types";
 import { getE2ESettings, getSyncScope } from "../../../application/state-manager";

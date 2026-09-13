@@ -44,7 +44,6 @@
 #### Browser API 层
 - ✅ `infrastructure/browser/api.ts` - 书签 API 封装
 - ✅ `infrastructure/browser/info.ts` - 浏览器信息检测
-- ✅ `infrastructure/browser/storage-adapter.ts` - Storage API 适配器
 
 #### HTTP 层
 - ✅ `infrastructure/http/webdav-client.ts` - WebDAV HTTP 客户端
@@ -74,7 +73,6 @@
 - ✅ `core/storage/cache-manager.ts` - 缓存管理器（Session Storage 缓存）
 - ✅ `core/storage/queue-manager.ts` - 下载队列管理器（去重、超时控制）
 - ✅ `core/storage/file-manager.ts` - 文件管理器（命名、解析、清理）
-- ✅ `core/storage/providers/webdav-provider.ts` - WebDAV 存储提供者（业务适配层）
 - ✅ `core/storage/index.ts` - 统一导出
 
 #### 已更新的文件
@@ -137,7 +135,6 @@
 ### Phase 3: Core/Storage 领域迁移 ✅ **（完全迁移，无兼容层）**
 已完成：
 - ✅ `core/storage/types.ts` - 存储类型
-- ✅ `core/storage/providers/webdav-provider.ts` - WebDAV业务适配
 - ✅ `core/storage/cache-manager.ts` - 缓存管理
 - ✅ `core/storage/queue-manager.ts` - 下载队列
 - ✅ `core/storage/file-manager.ts` - 文件管理
@@ -309,8 +306,7 @@ packages/app/src/
 ├── infrastructure/           # 基础设施层
 │   ├── browser/              # 浏览器 API 适配
 │   │   ├── api.ts            # 书签 API
-│   │   ├── info.ts           # 浏览器信息
-│   │   └── storage-adapter.ts
+│   │   └── info.ts           # 浏览器信息
 │   ├── http/                 # HTTP 客户端
 │   │   └── webdav-client.ts  # WebDAV 实现
 │   └── utils/                # 工具函数
@@ -323,8 +319,6 @@ packages/app/src/
 │   │   ├── cache-manager.ts
 │   │   ├── queue-manager.ts
 │   │   ├── file-manager.ts
-│   │   ├── providers/
-│   │   │   └── webdav-provider.ts
 │   │   └── index.ts
 │   ├── backup/               # 备份领域
 │   │   ├── types.ts
@@ -378,4 +372,5 @@ packages/app/src/
 - **仓储模式** - BookmarkRepository 封装数据访问
 - **策略模式** - Push/Pull/SmartSync 策略
 - **管理器模式** - SnapshotManager、CacheManager 等
-- **依赖倒置** - IStorageProvider 接口抽象
+- **面向接口** - WebDAV 操作面向 `IWebDAVClient` 接口（多存储后端的 `IStorageProvider` 抽象未实现，如需引入再做）
+- **同步范围** - 每设备可配置参与的系统文件夹（默认仅书签栏），范围外内容保留本地

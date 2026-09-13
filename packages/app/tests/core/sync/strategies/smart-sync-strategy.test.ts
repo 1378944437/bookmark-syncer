@@ -61,9 +61,12 @@ const {
 });
 
 // --- Mock 模块 ---
-vi.mock("@src/core/sync", () => ({
+vi.mock("@src/core/sync/lock-manager", () => ({
   acquireSyncLock: mockAcquire,
   releaseSyncLock: mockRelease,
+}));
+
+vi.mock("@src/core/sync/state-manager", () => ({
   getLastSyncTime: mockGetLastSyncTime,
   getSyncState: mockGetSyncState,
   setSyncState: mockSetSyncState,
