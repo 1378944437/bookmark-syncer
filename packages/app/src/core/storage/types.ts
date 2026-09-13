@@ -118,8 +118,8 @@ export const STORAGE_CONSTANTS = {
   /** 云端备份保底份数（绝对防空法则，绝不全清） */
   DEFAULT_MIN_BACKUPS_TO_KEEP: 5,
 
-  /** 云端备份总数上限（滑动窗口淘汰） */
-  DEFAULT_MAX_BACKUPS_TO_KEEP: 10,
+  /** 云端备份总数上限（滑动窗口淘汰，默认15份） */
+  DEFAULT_MAX_BACKUPS_TO_KEEP: 15,
   
   /** 最后备份文件信息存储键 */
   LAST_BACKUP_FILE_KEY: 'last_backup_file_info',

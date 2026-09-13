@@ -253,6 +253,12 @@ export const dictionary: Record<string, string> = {
   "settings.sync.minute10": "10 minutes",
   "settings.sync.minute30": "30 minutes",
   "settings.sync.backupIntervalHint": "Changes within this window overwrite the same file to avoid excess backups",
+  "settings.sync.groupBackup": "Snapshots & Disaster Recovery Quota",
+  "settings.sync.maxLocalSnapshots": "Local snapshots retention",
+  "settings.sync.maxLocalSnapshotsDesc": "Automatically clean oldest local snapshots when exceeded (min 5)",
+  "settings.sync.maxCloudBackups": "Cloud backups retention",
+  "settings.sync.maxCloudBackupsDesc": "Automatically clean oldest cloud backups after push (min 5)",
+  "settings.sync.copies": "copies",
 
   // ─── About page ───
   "settings.about.title": "About",

@@ -4,7 +4,7 @@
  */
 import { useEffect } from 'react'
 import { toast } from 'sonner'
-import { Clock, FolderTree, RefreshCw, Sliders } from 'lucide-react'
+import { Clock, Cloud, FolderTree, History, RefreshCw, Sliders, Timer } from 'lucide-react'
 import { updateScheduledSync } from '../../application'
 import { SYNC_SCOPE_KEYS, type SyncScope } from '../../core/bookmark'
 import { useI18n } from '../../i18n'
@@ -19,12 +19,35 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
   const [scheduledSyncEnabled, setScheduledSyncEnabled] = useStorage('scheduled_sync_enabled', false)
   const [scheduledSyncInterval, setScheduledSyncInterval] = useStorage('scheduled_sync_interval', 30)
   const [backupFileInterval, setBackupFileInterval] = useStorage('backup_file_interval', 1)
+  const [maxLocalSnapshots, setMaxLocalSnapshots] = useStorage('max_local_snapshots', 15)
+  const [maxCloudBackups, setMaxCloudBackups] = useStorage('max_cloud_backups', 15)
   const [missingFolderFallback, setMissingFolderFallback] = useStorage('missing_folder_fallback', false)
   const [syncScope, setSyncScope] = useStorage<SyncScope>('sync_scope', {
     'bookmarks-bar': true,
     other: false,
     mobile: false,
   })
+
+  // 步进调节与规范化（保底 5 份，上限 100 份）
+  const stepLocalSnapshots = (delta: number) => {
+    const next = Math.max(5, Math.min(100, (Number(maxLocalSnapshots) || 15) + delta))
+    setMaxLocalSnapshots(next)
+  }
+
+  const stepCloudBackups = (delta: number) => {
+    const next = Math.max(5, Math.min(100, (Number(maxCloudBackups) || 15) + delta))
+    setMaxCloudBackups(next)
+  }
+
+  const normalizeQuota = (val: number, setter: (v: number) => void) => {
+    if (isNaN(val) || val < 5) {
+      setter(5)
+    } else if (val > 100) {
+      setter(100)
+    } else {
+      setter(Math.floor(val))
+    }
+  }
 
   // 同步范围校验：至少保留一项
   const updateSyncScope = (key: keyof SyncScope, value: boolean) => {
@@ -88,6 +111,110 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
           )}
         </SettingGroup>
 
+        {/* 快照与容灾配额 */}
+        <SettingGroup title={t('settings.sync.groupBackup')}>
+          <SettingRow
+            icon={History}
+            iconColor="text-teal-600 bg-teal-500/10 dark:text-teal-400"
+            label={t('settings.sync.maxLocalSnapshots')}
+            description={t('settings.sync.maxLocalSnapshotsDesc')}
+            type="custom"
+          >
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => stepLocalSnapshots(-1)}
+                disabled={maxLocalSnapshots <= 5}
+                className="w-7 h-7 flex items-center justify-center rounded-md border border-border bg-background hover:bg-secondary active:scale-95 text-xs text-foreground font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                -
+              </button>
+              <Input
+                type="number"
+                min={5}
+                max={100}
+                value={maxLocalSnapshots}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10)
+                  if (!isNaN(val)) setMaxLocalSnapshots(Math.min(100, Math.max(1, val)))
+                }}
+                onBlur={() => normalizeQuota(maxLocalSnapshots, setMaxLocalSnapshots)}
+                className="w-11 h-7 text-xs text-center p-0 font-medium"
+                inputMode="numeric"
+              />
+              <button
+                type="button"
+                onClick={() => stepLocalSnapshots(1)}
+                disabled={maxLocalSnapshots >= 100}
+                className="w-7 h-7 flex items-center justify-center rounded-md border border-border bg-background hover:bg-secondary active:scale-95 text-xs text-foreground font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                +
+              </button>
+              <span className="text-[11px] text-muted-foreground ml-1">{t('settings.sync.copies')}</span>
+            </div>
+          </SettingRow>
+
+          <SettingRow
+            icon={Cloud}
+            iconColor="text-sky-600 bg-sky-500/10 dark:text-sky-400"
+            label={t('settings.sync.maxCloudBackups')}
+            description={t('settings.sync.maxCloudBackupsDesc')}
+            type="custom"
+          >
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => stepCloudBackups(-1)}
+                disabled={maxCloudBackups <= 5}
+                className="w-7 h-7 flex items-center justify-center rounded-md border border-border bg-background hover:bg-secondary active:scale-95 text-xs text-foreground font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                -
+              </button>
+              <Input
+                type="number"
+                min={5}
+                max={100}
+                value={maxCloudBackups}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10)
+                  if (!isNaN(val)) setMaxCloudBackups(Math.min(100, Math.max(1, val)))
+                }}
+                onBlur={() => normalizeQuota(maxCloudBackups, setMaxCloudBackups)}
+                className="w-11 h-7 text-xs text-center p-0 font-medium"
+                inputMode="numeric"
+              />
+              <button
+                type="button"
+                onClick={() => stepCloudBackups(1)}
+                disabled={maxCloudBackups >= 100}
+                className="w-7 h-7 flex items-center justify-center rounded-md border border-border bg-background hover:bg-secondary active:scale-95 text-xs text-foreground font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                +
+              </button>
+              <span className="text-[11px] text-muted-foreground ml-1">{t('settings.sync.copies')}</span>
+            </div>
+          </SettingRow>
+
+          <SettingRow
+            icon={Timer}
+            iconColor="text-amber-600 bg-amber-500/10 dark:text-amber-400"
+            label={t('settings.sync.backupInterval')}
+            description={t('settings.sync.backupIntervalHint')}
+            type="select"
+          >
+            <select
+              value={backupFileInterval}
+              onChange={(e) => setBackupFileInterval(parseInt(e.target.value, 10))}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-background border border-border text-foreground focus:outline-none"
+            >
+              <option value={1}>{t('settings.sync.minute1')}</option>
+              <option value={5}>{t('settings.sync.minute5')}</option>
+              <option value={10}>{t('settings.sync.minute10')}</option>
+              <option value={30}>{t('settings.sync.minute30')}</option>
+            </select>
+          </SettingRow>
+        </SettingGroup>
+
         {/* 同步范围 */}
         <SettingGroup title={t('settings.sync.groupScope')}>
           <div className="px-3.5 py-2 bg-muted/20 border-b border-border/50">
@@ -110,29 +237,13 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
         <SettingGroup title={t('settings.sync.groupAdvanced')}>
           <SettingRow
             icon={Sliders}
-            iconColor="text-amber-600 bg-amber-500/10 dark:text-amber-400"
+            iconColor="text-zinc-600 bg-zinc-500/10 dark:text-zinc-400"
             label={t('settings.sync.missingFolderFallback')}
             description={t('settings.sync.missingFolderFallbackDesc')}
             type="switch"
             checked={missingFolderFallback}
             onCheckedChange={setMissingFolderFallback}
           />
-          <SettingRow
-            label={t('settings.sync.backupInterval')}
-            description={t('settings.sync.backupIntervalHint')}
-            type="select"
-          >
-            <select
-              value={backupFileInterval}
-              onChange={(e) => setBackupFileInterval(parseInt(e.target.value, 10))}
-              className="text-xs px-2.5 py-1.5 rounded-lg bg-background border border-border text-foreground focus:outline-none"
-            >
-              <option value={1}>{t('settings.sync.minute1')}</option>
-              <option value={5}>{t('settings.sync.minute5')}</option>
-              <option value={10}>{t('settings.sync.minute10')}</option>
-              <option value={30}>{t('settings.sync.minute30')}</option>
-            </select>
-          </SettingRow>
         </SettingGroup>
       </div>
     </div>

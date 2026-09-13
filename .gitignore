@@ -102,6 +102,8 @@ dist
 .DS_Store
 
 # Extension build artifacts
+*.zip
+*.xpi
 apps/chrome-extension/*.zip
 apps/chrome-extension/web-ext-artifacts/
 apps/firefox-extension/*.xpi

@@ -253,6 +253,12 @@ export const dictionary: Record<string, string> = {
   "settings.sync.minute10": "10 分钟",
   "settings.sync.minute30": "30 分钟",
   "settings.sync.backupIntervalHint": "在此时间内的修改将覆盖同一个文件，避免产生过多备份",
+  "settings.sync.groupBackup": "快照与容灾配额",
+  "settings.sync.maxLocalSnapshots": "本地快照保留份数",
+  "settings.sync.maxLocalSnapshotsDesc": "超出配额自动清理最早的本地快照（最低保底 5 份）",
+  "settings.sync.maxCloudBackups": "云端备份保留份数",
+  "settings.sync.maxCloudBackupsDesc": "每次推送成功后自动清理多余的旧备份（最低保底 5 份）",
+  "settings.sync.copies": "份",
 
   // ─── 关于页 ───
   "settings.about.title": "关于",

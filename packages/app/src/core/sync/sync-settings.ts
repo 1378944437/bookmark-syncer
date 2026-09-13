@@ -113,6 +113,37 @@ export async function getBackupFileInterval(): Promise<number> {
   return (result.backup_file_interval as number) || 1; // 默认1分钟
 }
 
+export const DEFAULT_MAX_LOCAL_SNAPSHOTS = 15;
+export const MIN_LOCAL_SNAPSHOTS = 5;
+export const DEFAULT_MAX_CLOUD_BACKUPS = 15;
+export const MIN_CLOUD_BACKUPS = 5;
+
+/**
+ * 获取本地快照最大保留份数（保底防呆）
+ * 默认 15 份，最低保底 5 份
+ */
+export async function getMaxLocalSnapshots(): Promise<number> {
+  const result = await browser.storage.local.get('max_local_snapshots');
+  const val = Number(result.max_local_snapshots);
+  if (isNaN(val) || val < MIN_LOCAL_SNAPSHOTS) {
+    return DEFAULT_MAX_LOCAL_SNAPSHOTS;
+  }
+  return Math.max(MIN_LOCAL_SNAPSHOTS, Math.floor(val));
+}
+
+/**
+ * 获取云端备份最大保留份数（保底防呆）
+ * 默认 15 份，最低保底 5 份
+ */
+export async function getMaxCloudBackups(): Promise<number> {
+  const result = await browser.storage.local.get('max_cloud_backups');
+  const val = Number(result.max_cloud_backups);
+  if (isNaN(val) || val < MIN_CLOUD_BACKUPS) {
+    return DEFAULT_MAX_CLOUD_BACKUPS;
+  }
+  return Math.max(MIN_CLOUD_BACKUPS, Math.floor(val));
+}
+
 /**
  * 缺失文件夹兜底开关：本地缺少云端系统文件夹时，
  * 把其中书签合并到本地「其他书签」（只增不删）。默认关闭

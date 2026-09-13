@@ -5,6 +5,7 @@
 import { SnapshotManager } from "@src/core/backup/snapshot-manager";
 import type { BookmarkNode } from "@src/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import browser from "webextension-polyfill";
 
 // ─── Mock IndexedDB (idb) ───
 
@@ -88,6 +89,17 @@ describe("SnapshotManager", () => {
       expect(mockStore.size).toBe(3);
       // 最老的（id=1）应该被删除
       expect(mockStore.has(1)).toBe(false);
+    });
+
+    it("未显式指定 maxSnapshots 时动态读取 max_local_snapshots 存储配置", async () => {
+      await browser.storage.local.set({ max_local_snapshots: 6 });
+      const dynamicManager = new SnapshotManager({ dbName: "test-db", storeName: "snapshots" });
+      for (let i = 1; i <= 7; i++) {
+        await dynamicManager.createSnapshot(sampleTree, i, `snap-${i}`);
+      }
+      expect(mockStore.size).toBe(6);
+      expect(mockStore.has(1)).toBe(false);
+      expect(mockStore.has(7)).toBe(true);
     });
 
     it("默认原因为 auto-backup", async () => {

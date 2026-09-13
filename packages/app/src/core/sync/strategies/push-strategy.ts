@@ -2,7 +2,7 @@
  * 推送策略
  * 智能上传：检查内容差异，只有真正有变化时才上传
  */
-import { getBackupFileInterval, getDeviceIdentity, getE2ESettings, getLastBackupFileInfo, getSyncScope, saveLastBackupFileInfo } from "../sync-settings";
+import { getBackupFileInterval, getDeviceIdentity, getE2ESettings, getLastBackupFileInfo, getMaxCloudBackups, getSyncScope, saveLastBackupFileInfo } from "../sync-settings";
 
 import { getBrowserInfo } from "../../../infrastructure/browser/info";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
@@ -237,9 +237,10 @@ export async function smartPush(
 
     console.log(`[PushStrategy] Backup saved: ${targetFilePath} (revision ${revisionNumber})`);
     
-    // 清理旧备份（双轨防空法则：保底保留 5 份，上限 10 份，先传后清）
+    // 清理旧备份（双轨防空法则：保底保留 5 份，上限动态读取用户配置，默认 15 份，先传后清）
     if (isNewFile) {
-      await fileManager.cleanOldBackups(client);
+      const maxCloudBackups = await getMaxCloudBackups();
+      await fileManager.cleanOldBackups(client, { maxToKeep: maxCloudBackups, minToKeep: 5 });
     }
 
     // 4. 清除备份列表缓存（因为刚上传了新文件）

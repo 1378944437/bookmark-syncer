@@ -82,6 +82,8 @@ vi.mock("@src/core/sync/sync-settings", () => ({
   saveLastRemoteDevice: vi.fn(async () => {}),
   getSyncScope: vi.fn(async () => ({ "bookmarks-bar": true, other: false, mobile: false })),
   getE2ESettings: (...args: any[]) => mockGetE2ESettings(...args),
+  getMaxCloudBackups: vi.fn(async () => 15),
+  getMaxLocalSnapshots: vi.fn(async () => 15),
 }));
 
 vi.mock("@src/infrastructure/browser/info", () => ({

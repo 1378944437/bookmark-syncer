@@ -4,6 +4,7 @@
  */
 import { IDBPDatabase, openDB } from "idb";
 import type { BookmarkNode } from "../../types";
+import { getMaxLocalSnapshots } from "../sync/sync-settings";
 import type {
     CreateSnapshotParams,
     Snapshot,
@@ -17,9 +18,11 @@ import { DEFAULT_SNAPSHOT_CONFIG } from "./types";
  */
 export class SnapshotManager {
   private config: SnapshotConfig;
+  private hasExplicitMaxSnapshots: boolean;
   private dbPromise: Promise<IDBPDatabase> | null = null;
 
   constructor(config: Partial<SnapshotConfig> = {}) {
+    this.hasExplicitMaxSnapshots = typeof config.maxSnapshots === "number";
     this.config = { ...DEFAULT_SNAPSHOT_CONFIG, ...config };
   }
 
@@ -81,15 +84,20 @@ export class SnapshotManager {
   }
 
   /**
-   * 清理超出限制的旧快照
+   * 清理超出限制的旧快照（优先尊重显式参数，否则读取用户动态配置，保底最低 5 份）
    */
   private async cleanOldSnapshots(): Promise<void> {
     const db = await this.getDb();
     const keys = await db.getAllKeys(this.config.storeName);
     
-    if (keys.length > this.config.maxSnapshots) {
-      const toDelete = keys.slice(0, keys.length - this.config.maxSnapshots);
-      console.log(`[SnapshotManager] Cleaning ${toDelete.length} old snapshots`);
+    // 优先尊重构造函数显式配置（测试或特定实例），否则读取用户自定义配置
+    const maxSnapshots = this.hasExplicitMaxSnapshots
+      ? this.config.maxSnapshots
+      : await getMaxLocalSnapshots();
+
+    if (keys.length > maxSnapshots) {
+      const toDelete = keys.slice(0, keys.length - maxSnapshots);
+      console.log(`[SnapshotManager] Cleaning ${toDelete.length} old snapshots (retaining ${maxSnapshots})`);
       
       for (const key of toDelete) {
         await db.delete(this.config.storeName, key);
