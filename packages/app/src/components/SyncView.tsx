@@ -3,20 +3,21 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus'
 
 import { motion } from 'framer-motion'
 import { Cloud, History, MoreHorizontal, RefreshCw, WifiOff } from 'lucide-react'
-import { clearLastBackupFileInfo, holdRestoringUntil, setIsRestoring } from '../core/sync/sync-settings'
+import { clearLastBackupFileInfo } from '../core/sync/sync-settings'
 import { resetScheduledSync } from '../application'
 import {
-  restoreCloudBackupInBackground,
   smartPullInBackground,
   smartPushInBackground,
   smartSyncInBackground,
 } from '../application/background-ops'
-import { snapshotManager, type Snapshot } from '../core/backup'
-import { bookmarkRepository, countBookmarks } from '../core/bookmark'
-import { getCloudBackupList, getCloudInfo, type CloudBackupFile } from '../core/sync'
+import { snapshotManager } from '../core/backup'
+import { bookmarkRepository } from '../core/bookmark'
+import { getCloudInfo } from '../core/sync'
 import { useI18n } from '../i18n'
 import { translateSyncMessage } from '../i18n/sync-messages'
 import { useStorage } from '../hooks/useStorage'
+import { useSnapshots } from '../hooks/useSnapshots'
+import { useCloudBackups } from '../hooks/useCloudBackups'
 import { cn } from '../infrastructure/utils/format'
 import { Drawer } from './Drawer'
 import { OverwriteConfirmDrawer, RestoreConfirmDrawer } from './sync/ConfirmDrawers'
@@ -40,7 +41,6 @@ export function SyncView() {
   const [webdavUrl] = useStorage('webdav_url', '')
   const [username] = useStorage('webdav_username', '')
   const [password] = useStorage('webdav_password', '')
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [syncState] = useStorage<{ time: number; url: string; type: string } | null>('syncState', null)
   const [lastRemoteDevice] = useStorage<{ deviceId?: string; deviceName?: string; time: number } | null>('last_remote_device', null)
   const isOnline = useOnlineStatus()
@@ -56,10 +56,6 @@ export function SyncView() {
   const [drawerMode, setDrawerMode] = useState<'conflict' | 'history' | 'cloudBackups' | 'actions'>('conflict')
   const [confirmDrawerOpen, setConfirmDrawerOpen] = useState(false)
   const [confirmPushOpen, setConfirmPushOpen] = useState(false)
-  const [pendingRestoreSnapshot, setPendingRestoreSnapshot] = useState<Snapshot | null>(null)
-  const [cloudBackups, setCloudBackups] = useState<CloudBackupFile[]>([])
-  const [loadingCloudBackups, setLoadingCloudBackups] = useState(false)
-  const [pendingRestoreCloudBackup, setPendingRestoreCloudBackup] = useState<CloudBackupFile | null>(null)
   const msgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 安全设置消息清除定时器
@@ -139,129 +135,14 @@ export function SyncView() {
   // 如果这里只依赖 webdavUrl，会出现「URL 先加载 → 立刻发请求但账号/密码还是空」的情况，导致首次 401。
   useEffect(() => {
     const signal = { aborted: false }
-    loadCounts(signal); loadSnapshots()
+    loadCounts(signal); snapshotsApi.loadSnapshots()
     return () => { signal.aborted = true }
   }, [webdavUrl, username, password, syncState?.time])
 
-  // 加载本地快照列表
-  const loadSnapshots = async () => {
-    try {
-      const list = await snapshotManager.getAllSnapshots()
-      setSnapshots(list)
-    } catch (error) {
-      console.error('[SyncView] Failed to load snapshots:', error)
-      // 快照加载失败不影响主要功能，仅记录日志
-    }
-  }
-
-  // 加载云端备份列表
-  const loadCloudBackups = async () => {
-    if (!isConfigured) return
-    
-    setLoadingCloudBackups(true)
-    try {
-      // 使用缓存，避免频繁 PROPFIND
-      const list = await getCloudBackupList(getSyncConfig(), false)
-      setCloudBackups(list)
-    } catch (error) {
-      console.error('Failed to load cloud backups:', error)
-      toast.error(t('sync.toast.loadCloudListFailed'))
-    } finally {
-      setLoadingCloudBackups(false)
-    }
-  }
-
-  // 请求从云端备份恢复
-  const requestRestoreCloudBackup = (backup: CloudBackupFile) => {
-    setPendingRestoreCloudBackup(backup)
-    setConfirmDrawerOpen(true)
-  }
-
-  // 确认从云端备份恢复
-  const confirmRestoreCloudBackup = async () => {
-    if (!pendingRestoreCloudBackup) return
-    
-    setSyncStatus('syncing')
-    setMsg(t('sync.status.restoreFromCloud'))
-    setConfirmDrawerOpen(false)
-    setDrawerOpen(false)
-    
-    // 提示用户操作在后台执行（运行于 Service Worker，关闭面板不会中断）
-    const loadingToast = toast.loading(t('sync.status.restoreFromCloud'), { 
-      description: t('sync.toast.backgroundHint') 
-    })
-    
-    try {
-      const result = await restoreCloudBackupInBackground(getSyncConfig(), pendingRestoreCloudBackup.path)
-      
-      toast.dismiss(loadingToast)
-      
-      if (result.success) {
-        setSyncStatus('success')
-        setMsg(translateSyncMessage(locale, result.message))
-        loadCounts()
-        loadSnapshots() // 刷新快照列表
-        toast.success(t('sync.toast.restoreSuccess'), { description: t('sync.toast.restoredFromCloud') })
-      } else {
-        setSyncStatus('error')
-        setMsg(translateSyncMessage(locale, result.message))
-        toast.error(t('sync.toast.restoreFailed'), { description: translateSyncMessage(locale, result.message) })
-      }
-    } catch (e) {
-      toast.dismiss(loadingToast)
-      setSyncStatus('error')
-      setMsg(t('sync.toast.restoreFailed'))
-      toast.error(t('sync.toast.restoreFailed'), { description: (e as Error).message })
-    } finally {
-      setPendingRestoreCloudBackup(null)
-    }
-  }
-
-  // 请求恢复快照（打开确认 Drawer）
-  const requestRestoreSnapshot = (snapshot: Snapshot) => {
-    setPendingRestoreSnapshot(snapshot)
-    setConfirmDrawerOpen(true)
-  }
-
-  // 确认恢复快照
-  const confirmRestoreSnapshot = async () => {
-    if (!pendingRestoreSnapshot) return
-    
-    setSyncStatus('syncing')
-    setMsg(t('sync.status.restoreSnapshot'))
-    setConfirmDrawerOpen(false)
-    setDrawerOpen(false)
-    
-    try {
-            await setIsRestoring(true)
-
-      // 先备份当前状态（本地快照恢复前）
-      const currentTree = await bookmarkRepository.getTree()
-      const currentCount = countBookmarks(currentTree)
-      await snapshotManager.createSnapshot(currentTree, currentCount, t('sync.confirmRestore.snapshotBackupReason'))
-      
-      await bookmarkRepository.restoreFromBackup(pendingRestoreSnapshot.tree)
-      
-      setSyncStatus('success')
-      setMsg(t('sync.toast.snapshotRestoreSuccess'))
-      loadCounts()
-      loadSnapshots()
-      toast.success(t('sync.toast.snapshotRestoreSuccess'))
-    } catch (e) {
-      setSyncStatus('error')
-      setMsg(t('sync.toast.restoreFailed'))
-      toast.error(t('sync.toast.restoreFailed'), { description: (e as Error).message })
-    } finally {
-            await holdRestoringUntil()
-
-      setPendingRestoreSnapshot(null)
-    }
-  }
-
   // 取消恢复
   const cancelRestore = () => {
-    setPendingRestoreSnapshot(null)
-    setPendingRestoreCloudBackup(null)
+    snapshotsApi.clearPendingRestoreSnapshot()
+    cloudBackupsApi.clearPendingRestoreCloudBackup()
     setConfirmDrawerOpen(false)
   }
 
@@ -286,7 +167,7 @@ export function SyncView() {
   const openCloudBackups = () => {
     setDrawerMode('cloudBackups')
     setDrawerOpen(true)
-    loadCloudBackups()
+    cloudBackupsApi.loadCloudBackups()
   }
 
   // --- 智能无感同步逻辑 ---
@@ -368,7 +249,7 @@ export function SyncView() {
               setMsg(translateSyncMessage(locale, result.message))
               setDrawerOpen(false)
               loadCounts()
-              loadSnapshots() // 刷新快照列表
+              snapshotsApi.loadSnapshots() // 刷新快照列表
               
               // 重置定时同步计时器
               await resetScheduledSync()
@@ -422,7 +303,7 @@ export function SyncView() {
               setMsg(translateSyncMessage(locale, result.message))
               setDrawerOpen(false)
               loadCounts()
-              loadSnapshots() // 刷新快照列表
+              snapshotsApi.loadSnapshots() // 刷新快照列表
               
               // 重置定时同步计时器
               await resetScheduledSync()
@@ -450,6 +331,25 @@ export function SyncView() {
   }
 
   const isSyncBusy = syncStatus === 'checking' || syncStatus === 'syncing'
+
+  // 视图上下文：向 hooks 提供状态提示、确认抽屉与计数刷新
+  const viewCtx = {
+    t,
+    setSyncStatus,
+    setMsg,
+    setDrawerOpen,
+    openConfirm: () => setConfirmDrawerOpen(true),
+    closeConfirm: () => setConfirmDrawerOpen(false),
+    loadCounts,
+  }
+  const snapshotsApi = useSnapshots(viewCtx)
+  const cloudBackupsApi = useCloudBackups({
+    ...viewCtx,
+    isConfigured,
+    getConfig: getSyncConfig,
+    locale,
+    loadSnapshots: snapshotsApi.loadSnapshots,
+  })
 
   return (
     <>
@@ -585,16 +485,16 @@ export function SyncView() {
         ) : drawerMode === 'cloudBackups' ? (
             <CloudBackupsPanel
                 t={t}
-                cloudBackups={cloudBackups}
-                loadingCloudBackups={loadingCloudBackups}
-                requestRestoreCloudBackup={requestRestoreCloudBackup}
+                cloudBackups={cloudBackupsApi.cloudBackups}
+                loadingCloudBackups={cloudBackupsApi.loadingCloudBackups}
+                requestRestoreCloudBackup={cloudBackupsApi.requestRestoreCloudBackup}
             />
         ) : drawerMode === 'history' ? (
             <SnapshotHistoryPanel
                 t={t}
-                snapshots={snapshots}
-                loadSnapshots={loadSnapshots}
-                requestRestoreSnapshot={requestRestoreSnapshot}
+                snapshots={snapshotsApi.snapshots}
+                loadSnapshots={snapshotsApi.loadSnapshots}
+                requestRestoreSnapshot={snapshotsApi.requestRestoreSnapshot}
                 snapshotManager={snapshotManager}
             />
         ) : drawerMode === 'conflict' ? (
@@ -626,10 +526,10 @@ export function SyncView() {
     <RestoreConfirmDrawer
       isOpen={confirmDrawerOpen}
       onClose={cancelRestore}
-      snapshot={pendingRestoreSnapshot}
-      cloudBackup={pendingRestoreCloudBackup}
-      onConfirmSnapshot={confirmRestoreSnapshot}
-      onConfirmCloudBackup={confirmRestoreCloudBackup}
+      snapshot={snapshotsApi.pendingRestoreSnapshot}
+      cloudBackup={cloudBackupsApi.pendingRestoreCloudBackup}
+      onConfirmSnapshot={snapshotsApi.confirmRestoreSnapshot}
+      onConfirmCloudBackup={cloudBackupsApi.confirmRestoreCloudBackup}
       t={t}
     />
     </>
