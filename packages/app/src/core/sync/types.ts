@@ -93,3 +93,14 @@ export const SYNC_LOCK_KEY = "sync_lock";
 /** 锁超时：大书签集 + 慢 WebDAV 时单次同步可能超过 1 分钟，
  * 60 秒会让下一次同步强抢锁并发执行，提到 5 分钟 */
 export const LOCK_TIMEOUT_MS = 300000; // 5 分钟超时自动释放
+
+/**
+ * 常量（自 application/constants 下沉：同步域状态键与恢复窗口参数）
+ */
+export const SYNC_STATE_KEY = "syncState";
+export const RESTORING_KEY = "isRestoring";
+/** 恢复状态超时（与同步锁 LOCK_TIMEOUT_MS 对齐：恢复操作含下载和上千次书签写入，
+ * 10 秒会让恢复中的书签事件过早重新触发上传） */
+export const RESTORING_TIMEOUT_MS = 300000;
+/** 重置恢复状态延迟（30秒，给浏览器原生书签同步留出收敛时间） */
+export const RESET_RESTORING_DELAY_MS = 30000;

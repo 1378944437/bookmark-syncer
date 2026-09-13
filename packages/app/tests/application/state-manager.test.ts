@@ -3,16 +3,16 @@
  * 测试恢复状态、WebDAV 配置获取、备份信息存取
  */
 import { __resetMockStore } from "@src/__mocks__/webextension-polyfill";
-import { RESTORING_KEY, RESTORING_TIMEOUT_MS } from "@src/application/constants";
+import { RESTORING_KEY, RESTORING_TIMEOUT_MS } from "@src/core/sync/types";
+import { getWebDAVConfig } from "@src/application/state-manager";
 import {
   clearLastBackupFileInfo,
   getBackupFileInterval,
   getIsRestoring,
   getLastBackupFileInfo,
-  getWebDAVConfig,
   saveLastBackupFileInfo,
   setIsRestoring,
-} from "@src/application/state-manager";
+} from "@src/core/sync/sync-settings";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import browser from "webextension-polyfill";
 

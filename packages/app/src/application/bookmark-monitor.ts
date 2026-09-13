@@ -8,7 +8,8 @@ import {
   DEBOUNCE_ALARM_FALLBACK_MS,
   DEBOUNCE_DELAY_MS,
 } from "./constants";
-import { getIsRestoring, getWebDAVConfig } from "./state-manager";
+import { getIsRestoring } from "../core/sync/sync-settings";
+import { getWebDAVConfig } from "./state-manager";
 import { executeUpload } from "./sync-executor";
 
 // 防抖快速通道的定时器（模块级，SW 存活期内有效）

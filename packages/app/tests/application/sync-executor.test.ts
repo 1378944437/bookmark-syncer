@@ -29,6 +29,10 @@ vi.mock("@src/core/sync", () => ({
   smartPull: (...args: any[]) => mocks.smartPull(...args),
 }));
 
+vi.mock("@src/core/sync/sync-settings", () => ({
+  getIsRestoring: (...args: any[]) => mocks.getIsRestoring(...args),
+}));
+
 vi.mock("@src/core/bookmark", () => ({
   bookmarkRepository: {
     getTree: (...args: any[]) => mocks.getTree(...args),
@@ -228,6 +232,11 @@ describe("executeAutoPull", () => {
     mocks.getSyncState.mockResolvedValue(null);
     mocks.getTree.mockResolvedValue([]);
     mocks.computeTreeHash.mockResolvedValue("hash-a");
+    mocks.smartPush.mockResolvedValue({
+      success: true,
+      action: "uploaded",
+      message: "ok",
+    });
     mocks.smartPull.mockResolvedValue({
       success: true,
       action: "downloaded",

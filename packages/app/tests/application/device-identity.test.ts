@@ -4,7 +4,7 @@
 import { __resetMockStore } from "@src/__mocks__/webextension-polyfill";
 import {
   getDeviceIdentity,
-} from "@src/application/state-manager";
+} from "@src/core/sync/sync-settings";
 import browser from "webextension-polyfill";
 import { beforeEach, describe, expect, it } from "vitest";
 

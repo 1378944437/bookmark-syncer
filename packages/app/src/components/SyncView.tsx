@@ -3,7 +3,7 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus'
 
 import { motion } from 'framer-motion'
 import { AlertTriangle, Cloud, Download, FilePlus, History, MoreHorizontal, RefreshCw, RotateCcw, ShieldCheck, Trash2, WifiOff } from 'lucide-react'
-import { clearLastBackupFileInfo, holdRestoringUntil, setIsRestoring } from '../application/state-manager'
+import { clearLastBackupFileInfo, holdRestoringUntil, setIsRestoring } from '../core/sync/sync-settings'
 import { resetScheduledSync } from '../application'
 import {
   restoreCloudBackupInBackground,

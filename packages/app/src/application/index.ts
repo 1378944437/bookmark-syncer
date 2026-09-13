@@ -137,7 +137,6 @@ export function initializeAutoSync(): void {
 export { resetScheduledSync, startScheduledSync, stopScheduledSync, updateScheduledSync } from "./scheduler";
 
 // 导出设备身份（设置页展示/编辑设备备注）
-export { getDeviceIdentity } from "./state-manager";
-
-// 导出 WebDAV 配置与备份窗口清理（设置页端到端加密的立即加密上传使用）
-export { clearLastBackupFileInfo, getWebDAVConfig } from "./state-manager";
+// 导出设备身份与备份窗口清理（实现已下沉 core/sync/sync-settings）
+export { clearLastBackupFileInfo, getDeviceIdentity } from "../core/sync/sync-settings";
+export { getWebDAVConfig } from "./state-manager";

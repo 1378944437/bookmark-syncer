@@ -10,6 +10,7 @@ const {
   mockRelease,
   mockClient,
   mockGetSyncState,
+  mockGetE2ESettings,
   mockSetSyncState,
   mockGetBackupFileInterval,
   mockGetLastBackupFileInfo,
@@ -46,6 +47,7 @@ const {
       deleteFile: vi.fn(async () => {}),
     },
     mockGetSyncState: vi.fn(async () => null),
+    mockGetE2ESettings: vi.fn(async () => ({ enabled: false, passphrase: "" })),
     mockSetSyncState: vi.fn(async () => {}),
     mockGetBackupFileInterval: vi.fn(async () => 1),
     mockGetLastBackupFileInfo: vi.fn(async () => null),
@@ -72,14 +74,14 @@ const {
 });
 
 // --- Mock 模块 ---
-vi.mock("@src/application/state-manager", () => ({
-  getBackupFileInterval: mockGetBackupFileInterval,
-  getLastBackupFileInfo: mockGetLastBackupFileInfo,
-  saveLastBackupFileInfo: mockSaveLastBackupFileInfo,
+vi.mock("@src/core/sync/sync-settings", () => ({
+  getBackupFileInterval: (...args: any[]) => mockGetBackupFileInterval(...args),
+  getLastBackupFileInfo: (...args: any[]) => mockGetLastBackupFileInfo(...args),
+  saveLastBackupFileInfo: (...args: any[]) => mockSaveLastBackupFileInfo(...args),
   getDeviceIdentity: vi.fn(async () => ({ deviceId: "testdevice123", deviceName: "测试设备" })),
   saveLastRemoteDevice: vi.fn(async () => {}),
   getSyncScope: vi.fn(async () => ({ "bookmarks-bar": true, other: false, mobile: false })),
-  getE2ESettings: vi.fn(async () => ({ enabled: false, passphrase: "" })),
+  getE2ESettings: (...args: any[]) => mockGetE2ESettings(...args),
 }));
 
 vi.mock("@src/infrastructure/browser/info", () => ({
@@ -346,8 +348,7 @@ describe("smartPush - 云端数据损坏时中止", () => {
 
 describe("smartPush - 端到端加密", () => {
   it("加密开启时上传 .enc 加密备份（内容可用密码解回）", async () => {
-    const sm = await import("@src/application/state-manager");
-    vi.mocked(sm.getE2ESettings).mockResolvedValueOnce({
+    mockGetE2ESettings.mockResolvedValueOnce({
       enabled: true,
       passphrase: "test-pass",
     });

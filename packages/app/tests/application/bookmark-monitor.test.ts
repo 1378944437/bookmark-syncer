@@ -10,8 +10,11 @@ const mocks = vi.hoisted(() => ({
   executeUpload: vi.fn(),
 }));
 
-vi.mock("@src/application/state-manager", () => ({
+vi.mock("@src/core/sync/sync-settings", () => ({
   getIsRestoring: (...args: any[]) => mocks.getIsRestoring(...args),
+}));
+
+vi.mock("@src/application/state-manager", () => ({
   getWebDAVConfig: (...args: any[]) => mocks.getWebDAVConfig(...args),
 }));
 

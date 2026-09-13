@@ -7,7 +7,7 @@ import { getLastSyncTime, getSyncState, setSyncState } from "../state-manager";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { fetchValidatedCloudBackup } from "../utils/cloud-data-helper";
 import { CloudBackup } from "../../../types";
-import { getE2ESettings, getSyncScope } from "../../../application/state-manager";
+import { getE2ESettings, getSyncScope } from "../sync-settings";
 import { E2EDecryptError, E2EPasswordRequiredError } from "../../../infrastructure/utils/crypto";
 import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
 import { fileManager } from "../../storage";

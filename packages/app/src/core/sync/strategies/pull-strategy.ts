@@ -4,7 +4,7 @@
  */
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import type { BookmarkNode } from "../../../types";
-import { getE2ESettings, getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring } from "../../../application/state-manager";
+import { getE2ESettings, getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring } from "../sync-settings";
 import { snapshotManager } from "../../backup";
 import {
   bookmarkRepository,

@@ -2,7 +2,7 @@
  * 推送策略
  * 智能上传：检查内容差异，只有真正有变化时才上传
  */
-import { getBackupFileInterval, getDeviceIdentity, getE2ESettings, getLastBackupFileInfo, getSyncScope, saveLastBackupFileInfo, saveLastRemoteDevice } from "../../../application/state-manager";
+import { getBackupFileInterval, getDeviceIdentity, getE2ESettings, getLastBackupFileInfo, getSyncScope, saveLastBackupFileInfo, saveLastRemoteDevice } from "../sync-settings";
 
 import { getBrowserInfo, isSameBrowser } from "../../../infrastructure/browser/info";
 import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";

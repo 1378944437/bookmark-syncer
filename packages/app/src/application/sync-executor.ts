@@ -10,7 +10,8 @@ import {
     LOCK_HOLDER_AUTO,
     POST_PULL_UPLOAD_SUPPRESSION_MS,
 } from "./constants";
-import { getIsRestoring, getWebDAVConfig } from "./state-manager";
+import { getIsRestoring } from "../core/sync/sync-settings";
+import { getWebDAVConfig } from "./state-manager";
 
 /**
  * 执行上传同步 (Push)

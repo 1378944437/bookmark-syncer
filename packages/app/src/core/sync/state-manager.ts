@@ -3,7 +3,7 @@
  * 管理上次同步时间、URL、类型等状态信息
  */
 import browser from "webextension-polyfill";
-import { SYNC_STATE_KEY } from "../../application/constants";
+import { SYNC_STATE_KEY } from "./types";
 import type { SyncState } from "./types";
 
 /**
