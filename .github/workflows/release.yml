@@ -61,8 +61,11 @@ jobs:
           fi
 
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            marksync-chrome-v${{ steps.version.outputs.version }}.zip
-            marksync-firefox-v${{ steps.version.outputs.version }}.xpi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          gh release upload "v$VERSION" "marksync-chrome-v$VERSION.zip" --clobber
+          if [ -f "marksync-firefox-v$VERSION.xpi" ]; then
+            gh release upload "v$VERSION" "marksync-firefox-v$VERSION.xpi" --clobber
+          fi
