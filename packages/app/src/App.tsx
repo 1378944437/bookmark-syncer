@@ -7,44 +7,53 @@ import { SyncView } from './components/SyncView'
 import { TabNav } from './components/TabNav'
 import { ThemeProvider } from './components/ThemeProvider'
 import { Toaster } from './components/Toaster'
+import { FullTabConsole } from './components/fulltab/FullTabConsole'
+import { useDisplayMode } from './hooks/useDisplayMode'
 import { I18nProvider } from './i18n'
 
 function App() {
+  const { isFullTab } = useDisplayMode()
   const [activeTab, setActiveTab] = useState<'sync' | 'settings'>('sync')
 
   return (
     // 边界放最外层：I18nProvider 等基础 Provider 的初始化错误也要显示出来，
     // 而不是渲染成一块空的暗色面板
     <ErrorBoundary>
-    <I18nProvider>
-    <ThemeProvider>
-    <LayoutWrapper>
-      {/* Top Nav */}
-      <div className="pt-6 pb-2 px-4 z-20">
-        <TabNav activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
+      <I18nProvider>
+        <ThemeProvider>
+          <LayoutWrapper isFullTab={isFullTab}>
+            {isFullTab ? (
+              <FullTabConsole />
+            ) : (
+              <>
+                {/* 弹窗顶部导航 */}
+                <div className="pt-6 pb-2 px-4 z-20">
+                  <TabNav activeTab={activeTab} onTabChange={setActiveTab} />
+                </div>
 
-      {/* Content Area */}
-      <div className="flex-1 relative overflow-hidden px-4">
-        <AnimatePresence mode="wait">
-            <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, x: activeTab === 'sync' ? -20 : 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: activeTab === 'sync' ? 20 : -20 }}
-                transition={{ duration: 0.2 }}
-                className="h-full"
-            >
-                {activeTab === 'sync' ? <SyncView /> : <SettingsView />}
-            </motion.div>
-        </AnimatePresence>
-      </div>
+                {/* 弹窗主内容区 */}
+                <div className="flex-1 relative overflow-hidden px-4">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeTab}
+                      initial={{ opacity: 0, x: activeTab === 'sync' ? -20 : 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: activeTab === 'sync' ? 20 : -20 }}
+                      transition={{ duration: 0.2 }}
+                      className="h-full"
+                    >
+                      {activeTab === 'sync' ? <SyncView /> : <SettingsView />}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </>
+            )}
 
-      {/* Toast Notifications */}
-      <Toaster position="bottom-center" duration={2000} />
-    </LayoutWrapper>
-    </ThemeProvider>
-    </I18nProvider>
+            {/* Toast 提示 */}
+            <Toaster position={isFullTab ? 'bottom-right' : 'bottom-center'} duration={2000} />
+          </LayoutWrapper>
+        </ThemeProvider>
+      </I18nProvider>
     </ErrorBoundary>
   )
 }

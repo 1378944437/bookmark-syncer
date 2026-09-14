@@ -18,21 +18,15 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { cn } from '../infrastructure/utils/format'
 import { Drawer } from './Drawer'
 import { OverwriteConfirmDrawer, RestoreConfirmDrawer } from './sync/ConfirmDrawers'
-import { ActionsPanel, CloudBackupsPanel, ConflictPanel, SnapshotHistoryPanel } from './sync/SyncDrawerPanels'
+import { ActionsPanel, CloudBackupsPanel, ConflictPanel, SnapshotHistoryPanel, SyncActivityPanel } from './sync/SyncDrawerPanels'
 import { StatsCard } from './StatsCard'
+import { SafetyConfirmationCard } from './sync/SafetyConfirmationCard'
 import { SyncMainAction } from './sync/SyncMainAction'
 import { SyncStatusFeedback } from './sync/SyncStatusFeedback'
 import { SyncFooter } from './sync/SyncFooter'
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
-}
-
-const item = {
-  hidden: { y: 16, opacity: 0 },
-  show: { y: 0, opacity: 1 },
-}
+const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } }
+const item = { hidden: { y: 16, opacity: 0 }, show: { y: 0, opacity: 1 } }
 
 export function SyncView() {
   const { t, locale } = useI18n()
@@ -135,6 +129,14 @@ export function SyncView() {
           </motion.div>
         )}
 
+        {/* 防误删安全熔断拦截卡片 */}
+        <SafetyConfirmationCard
+          t={t}
+          getConfig={getSyncConfig}
+          onOpenHistory={actionsApi.openHistory}
+          loadCounts={countsApi.loadCounts}
+        />
+
         {/* 书签统计卡片（支持点击直达快照历史与云端备份列表） */}
         <motion.div variants={item} className="grid grid-cols-2 gap-3 px-1">
           <StatsCard
@@ -222,6 +224,8 @@ export function SyncView() {
             ? t('sync.drawer.title.cloudBackups')
             : actionsApi.drawerMode === 'actions'
             ? t('sync.drawer.title.actions')
+            : actionsApi.drawerMode === 'activity'
+            ? '近期同步活动与热力图'
             : t('sync.drawer.title.conflict')
         }
       >
@@ -234,6 +238,7 @@ export function SyncView() {
             localCount={countsApi.localCount}
             openCloudBackups={actionsApi.openCloudBackups}
             requestForcePush={actionsApi.requestForcePush}
+            openActivity={actionsApi.openActivity}
           />
         ) : actionsApi.drawerMode === 'cloudBackups' ? (
           <CloudBackupsPanel
@@ -250,6 +255,8 @@ export function SyncView() {
             requestRestoreSnapshot={snapshotsApi.requestRestoreSnapshot}
             snapshotManager={snapshotManager}
           />
+        ) : actionsApi.drawerMode === 'activity' ? (
+          <SyncActivityPanel />
         ) : actionsApi.drawerMode === 'conflict' ? (
           <ConflictPanel
             t={t}

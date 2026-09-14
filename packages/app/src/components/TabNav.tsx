@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
-import { Cloud, Monitor, Moon, Settings, Sun } from 'lucide-react'
+import { Cloud, ExternalLink, Monitor, Moon, Settings, Sun } from 'lucide-react'
+import { openInFullTab } from '../hooks/useDisplayMode'
 import { useTheme } from '../hooks/useTheme'
 import { useI18n } from '../i18n'
 import { cn } from '../infrastructure/utils/format'
@@ -64,17 +65,30 @@ export function TabNav({ activeTab, onTabChange }: TabNavProps) {
         </button>
       </div>
 
-      {/* 主题切换按钮 */}
-      <button
-        onClick={cycleTheme}
-        className={cn(
-          "p-2 rounded-full transition-all border shadow-sm",
-          "bg-muted border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
-        )}
-        title={t('theme.current', { theme: theme === 'dark' ? t('theme.dark') : theme === 'light' ? t('theme.light') : t('theme.system') })}
-      >
-        <ThemeIcon className="w-4 h-4" />
-      </button>
+      {/* 右侧快捷操作 */}
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => openInFullTab()}
+          className={cn(
+            "p-2 rounded-full transition-all border shadow-sm",
+            "bg-muted border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+          )}
+          title={t('tab.openFullTab') || '在新标签页打开控制台'}
+        >
+          <ExternalLink className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={cycleTheme}
+          className={cn(
+            "p-2 rounded-full transition-all border shadow-sm",
+            "bg-muted border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+          )}
+          title={t('theme.current', { theme: theme === 'dark' ? t('theme.dark') : theme === 'light' ? t('theme.light') : t('theme.system') })}
+        >
+          <ThemeIcon className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   )
 }

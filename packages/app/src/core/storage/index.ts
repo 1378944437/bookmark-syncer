@@ -16,6 +16,14 @@ export type {
 
 export { STORAGE_CONSTANTS } from "./types";
 
+// 存储提供者契约
+export type {
+  IStorageProvider,
+  StorageProviderType,
+  RemoteFileInfo,
+  ConnectionTestResult,
+} from "./provider-interface";
+
 // 缓存管理
 export { CacheManager, cacheManager } from "./cache-manager";
 

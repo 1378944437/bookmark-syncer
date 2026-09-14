@@ -45,3 +45,7 @@ export { createChildren, mergeNodes } from "./merger-basic";
 
 // 仓储层（推荐使用）
 export { BookmarkRepository, bookmarkRepository } from "./repository";
+
+// 差分计算
+export type { BookmarkDiffStats, FlatBookmarkItem } from "./diff-calculator";
+export { calculateBookmarkDiff, flattenBookmarks } from "./diff-calculator";

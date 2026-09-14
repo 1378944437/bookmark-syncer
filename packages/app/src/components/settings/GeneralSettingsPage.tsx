@@ -11,6 +11,8 @@ import { useTheme } from '../../hooks/useTheme'
 import { cn } from '../../infrastructure/utils/format'
 import { SubPageHeader } from './SettingsShared'
 import { SettingGroup } from './SettingRow'
+import { SettingsMigrationSection } from './SettingsMigrationSection'
+import { DangerZoneSection } from './DangerZoneSection'
 import { Input } from '../Input'
 import { Label } from '../Label'
 
@@ -113,6 +115,12 @@ export function GeneralSettingsPage({ onBack }: { onBack: () => void }) {
             )}
           </div>
         </SettingGroup>
+
+        {/* 配置迁移与备份 */}
+        <SettingsMigrationSection />
+
+        {/* 危险操作区 */}
+        <DangerZoneSection />
       </div>
     </div>
   )

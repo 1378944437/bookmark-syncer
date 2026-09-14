@@ -8,7 +8,7 @@
 import type { IWebDAVClient } from "../../../infrastructure/http/webdav-client";
 import { getBrowserInfo, isSameBrowser } from "../../../infrastructure/browser/info";
 import { E2EDecryptError, E2EPasswordRequiredError } from "../../../infrastructure/utils/crypto";
-import { countBookmarks, compareWithCloud, computeTreeHash, filterTreeByScope, type SyncScope } from "../../bookmark";
+import { countBookmarks, compareWithCloud, computeTreeHash, filterTreeByScope, calculateBookmarkDiff, type SyncScope } from "../../bookmark";
 import type { BookmarkNode } from "../../../types";
 import { fileManager } from "../../storage";
 import { getSyncState, setSyncState } from "../state-manager";
@@ -18,6 +18,7 @@ import { CloudDataError } from "../types";
 import { saveLastRemoteDevice } from "../sync-settings";
 import type { E2ESettings } from "../sync-settings";
 import type { SyncResult } from "../types";
+import { evaluateSafetyBreaker } from "./safety-guard";
 
 export type CloudStateCheck =
   | { kind: "proceed" }
@@ -32,6 +33,7 @@ export interface CloudStateCheckParams {
   scopedLocalTree: BookmarkNode[];
   e2e: E2ESettings;
   syncScope: SyncScope;
+  skipSafetyGuard?: boolean;
 }
 
 /**
@@ -103,7 +105,29 @@ export async function checkCloudStateBeforeUpload(
     );
 
     if (!isIdentical) {
-      console.log("[PushStrategy] Content differs, will upload");
+      console.log("[PushStrategy] Content differs, checking safety guard...");
+      const scopedCloudTree = filterTreeByScope(cloudData.data, syncScope);
+      const diff = calculateBookmarkDiff(scopedCloudTree, scopedLocalTree);
+
+      const safetyCheck = await evaluateSafetyBreaker({
+        deletedCount: diff.deleted,
+        totalBefore: cloudCount,
+        skipSafetyGuard: params.skipSafetyGuard,
+      });
+
+      if (!safetyCheck.allowed) {
+        console.warn(`[PushStrategy] Safety breaker triggered: ${safetyCheck.reason}`);
+        return {
+          kind: "abort",
+          result: {
+            success: false,
+            action: "error",
+            message: safetyCheck.reason || "触发防误删安全保护，已暂停同步",
+          },
+        };
+      }
+
+      console.log("[PushStrategy] Safety check passed, will upload");
       return { kind: "proceed" };
     }
 

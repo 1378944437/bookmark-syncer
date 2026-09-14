@@ -11,6 +11,7 @@ import { encryptText } from "../../../infrastructure/utils/crypto";
 import { snapshotManager } from "../../backup";
 import { bookmarkRepository, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
 import { checkCloudStateBeforeUpload } from "../utils/upload-precheck";
+import { clearPendingSafetyConfirmation } from "../utils/safety-guard";
 import type { WebDAVConfig } from "../../storage";
 import { fileManager, STORAGE_CONSTANTS } from "../../storage";
 import { cacheManager } from "../../storage/cache-manager";
@@ -26,11 +27,12 @@ const DIR = STORAGE_CONSTANTS.BACKUP_DIR;
  * @param config WebDAV 配置
  * @param lockHolder 锁持有者标识
  * @param options.skipLock 是否跳过锁管理（由上层 smartSync 传递锁时使用）
+ * @param options.skipSafetyGuard 是否跳过防误删熔断保护（二次确认时使用）
  */
 export async function smartPush(
   config: WebDAVConfig,
   lockHolder: string,
-  options?: { skipLock?: boolean },
+  options?: { skipLock?: boolean; skipSafetyGuard?: boolean },
 ): Promise<SyncResult> {
   const startTime = Date.now();
   const skipLock = options?.skipLock ?? false;
@@ -92,6 +94,7 @@ export async function smartPush(
       scopedLocalTree,
       e2e,
       syncScope,
+      skipSafetyGuard: options?.skipSafetyGuard,
     });
     if (check.kind === "abort") return check.result;
     if (check.kind === "skip") return check.result;
@@ -272,6 +275,7 @@ export async function smartPush(
       localHash: await computeTreeHash(scopedLocalTree),
     });
 
+    await clearPendingSafetyConfirmation();
     const elapsed = Date.now() - startTime;
     console.log(`[PushStrategy] Push completed in ${elapsed}ms`);
     return { success: true, action: "uploaded", message: "上传成功" };

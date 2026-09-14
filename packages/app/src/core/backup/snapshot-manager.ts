@@ -4,11 +4,13 @@
  */
 import { IDBPDatabase, openDB } from "idb";
 import type { BookmarkNode } from "../../types";
+import { calculateBookmarkDiff } from "../bookmark/diff-calculator";
 import { getMaxLocalSnapshots } from "../sync/sync-settings";
 import type {
     CreateSnapshotParams,
     Snapshot,
-    SnapshotConfig
+    SnapshotConfig,
+    SnapshotDiffStats
 } from "./types";
 import { DEFAULT_SNAPSHOT_CONFIG } from "./types";
 
@@ -63,15 +65,32 @@ export class SnapshotManager {
   async createSnapshot(
     tree: BookmarkNode[],
     count: number,
-    reason: string = "auto-backup"
+    reason: string = "auto-backup",
+    diff?: SnapshotDiffStats
   ): Promise<number> {
     const db = await this.getDb();
     
+    // 自动比对上一快照差分变动（若上层未显式传入）
+    let calculatedDiff = diff;
+    if (!calculatedDiff) {
+      try {
+        const latest = await this.getLatestSnapshot();
+        if (latest && Array.isArray(latest.tree)) {
+          calculatedDiff = calculateBookmarkDiff(latest.tree, tree);
+        } else {
+          calculatedDiff = { added: count, updated: 0, deleted: 0 };
+        }
+      } catch (err) {
+        console.warn("[SnapshotManager] Failed to auto calculate diff:", err);
+      }
+    }
+
     const snapshot: CreateSnapshotParams = {
       timestamp: Date.now(),
       tree,
       reason,
       count,
+      ...(calculatedDiff ? { diff: calculatedDiff } : {}),
     };
     
     const id = await db.add(this.config.storeName, snapshot);

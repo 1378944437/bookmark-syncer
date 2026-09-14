@@ -19,6 +19,10 @@ const manifest = defineManifest({
       "128": "icon.png",
     },
   },
+  options_ui: {
+    page: "index.html",
+    open_in_tab: true,
+  },
   permissions: ["bookmarks", "storage", "alarms"],
   host_permissions: ["<all_urls>"],
   // 内容脚本：同步完成时在网页底部中央弹出轻提示

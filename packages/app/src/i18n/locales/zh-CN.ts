@@ -1,8 +1,11 @@
+import { fullTabZh } from "./fulltab-zh";
+
 /**
  * 中文（默认）词典
  * key 命名：<页面>.<区块>.<文案>
  */
 export const dictionary: Record<string, string> = {
+  ...fullTabZh,
   // ─── 通用 ───
   "common.cancel": "取消",
   "common.confirm": "确认",
@@ -261,8 +264,23 @@ export const dictionary: Record<string, string> = {
   "settings.sync.maxLocalSnapshots": "本地快照保留份数",
   "settings.sync.maxLocalSnapshotsDesc": "超出配额自动清理最早的本地快照（最低保底 5 份）",
   "settings.sync.maxCloudBackups": "云端备份保留份数",
-  "settings.sync.maxCloudBackupsDesc": "每次推送成功后自动清理多余的旧备份（最低保底 5 份）",
   "settings.sync.copies": "份",
+
+  // ─── 防误删安全防护 ───
+  "safety.banner.title": "触发防误删安全保护",
+  "safety.banner.desc": "检测到删除了 {deleted} 个书签（占比 {percent}%），已达设定的 {threshold}% 阈值。已暂停同步，防止云端备份被异常覆盖。",
+  "safety.banner.confirmPush": "确认继续上传",
+  "safety.banner.restoreSnapshot": "一键从快照恢复",
+  "safety.banner.dismiss": "关闭提醒",
+  "safety.banner.pushSuccess": "已放行并成功上传",
+  "safety.banner.restoreSuccess": "已成功恢复快照",
+
+  // ─── 安全防护设置 ───
+  "settings.safety.group": "防误删安全防御",
+  "settings.safety.enable": "开启防误删熔断保护",
+  "settings.safety.enableDesc": "单次删除超过 10 个书签且比例达到阈值时自动阻断上传",
+  "settings.safety.threshold": "删除熔断阈值",
+  "settings.safety.thresholdDesc": "单次删除占总书签比例达到此值时触发熔断（推荐 20%）",
 
   // ─── 关于页 ───
   "settings.about.title": "关于",

@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n'
 import { useStorage } from '../../hooks/useStorage'
 import { SubPageHeader } from './SettingsShared'
 import { E2EEncryptionSection } from './E2EEncryptionSection'
+import { SafetyGuardSection } from './SafetyGuardSection'
 
 export function SecuritySettingsPage({ onBack }: { onBack: () => void }) {
   const { t } = useI18n()
@@ -38,6 +39,9 @@ export function SecuritySettingsPage({ onBack }: { onBack: () => void }) {
 
         {/* 核心加密配置表单区块 */}
         <E2EEncryptionSection />
+
+        {/* 防误删安全防御区块 */}
+        <SafetyGuardSection />
       </div>
     </div>
   )

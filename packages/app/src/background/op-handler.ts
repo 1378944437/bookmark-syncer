@@ -32,7 +32,9 @@ async function dispatch(message: BackgroundOpMessage): Promise<unknown> {
     }
 
     case "sync:push":
-      return smartPush(message.config, "manual");
+      return message.options
+        ? smartPush(message.config, "manual", message.options)
+        : smartPush(message.config, "manual");
 
     case "sync:pull":
       return smartPull(message.config, "manual", message.mode);

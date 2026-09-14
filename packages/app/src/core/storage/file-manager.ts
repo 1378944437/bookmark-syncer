@@ -2,9 +2,17 @@
  * 文件管理器
  * 负责备份文件的命名、解析、查询和清理
  */
-import type { IWebDAVClient } from "../../infrastructure/http/webdav-client";
+import type { IStorageProvider, RemoteFileInfo } from "./provider-interface";
 import type { BackupFileMetadata, CloudBackupFile, WebDAVFile } from "./types";
 import { STORAGE_CONSTANTS } from "./types";
+
+/**
+ * 抽象文件客户端（兼容 IStorageProvider 及 IWebDAVClient）
+ */
+export type StorageClient = IStorageProvider | {
+  listFiles: (dirPath: string) => Promise<RemoteFileInfo[] | WebDAVFile[]>;
+  deleteFile?: (path: string) => Promise<void>;
+};
 
 /**
  * 安全地将设备名称转换为 URL 安全的 Base64 标识（支持中文字符）
@@ -150,21 +158,21 @@ export class FileManager {
 
   /**
    * 列出所有备份文件
-   * @param client WebDAV 客户端
+   * @param client 存储客户端（IStorageProvider 或 IWebDAVClient）
    * @returns 备份文件列表
    */
-  async listBackupFiles(client: IWebDAVClient): Promise<WebDAVFile[]> {
+  async listBackupFiles(client: StorageClient): Promise<(RemoteFileInfo | WebDAVFile)[]> {
     const files = await client.listFiles(this.backupDir);
     return files.filter((file) => this.isBackupFile(file.name));
   }
 
   /**
    * 获取最新的备份文件
-   * @param client WebDAV 客户端
+   * @param client 存储客户端
    * @returns 最新备份文件的路径与服务器修改时间，如果没有则返回 null
    */
   async getLatestBackupFile(
-    client: IWebDAVClient
+    client: StorageClient
   ): Promise<{ path: string; lastModified: number } | null> {
     try {
       const backupFiles = await this.listBackupFiles(client);
@@ -190,11 +198,11 @@ export class FileManager {
   }
 
   /**
-   * 将 WebDAV 文件转换为云端备份文件信息
-   * @param file WebDAV 文件
+   * 将远程存储文件转换为云端备份文件信息
+   * @param file 远程文件信息
    * @returns 云端备份文件信息
    */
-  toCloudBackupFile(file: WebDAVFile): CloudBackupFile {
+  toCloudBackupFile(file: RemoteFileInfo | WebDAVFile): CloudBackupFile {
     const metadata = this.parseBackupFileName(file.name);
     
     return {
@@ -212,12 +220,12 @@ export class FileManager {
 
   /**
    * 清理多余的旧备份文件（双轨防空法则：至少保留 minToKeep 份，最多保留 maxToKeep 份）
-   * @param client WebDAV 客户端
+   * @param client 存储客户端
    * @param optionsOrDays 配置选项或保留天数（兼容数字参数）
    * @returns 删除的文件数量
    */
   async cleanOldBackups(
-    client: IWebDAVClient,
+    client: StorageClient,
     optionsOrDays?: number | { minToKeep?: number; maxToKeep?: number; daysToKeep?: number }
   ): Promise<number> {
     try {
@@ -265,9 +273,10 @@ export class FileManager {
       let deletedCount = 0;
       for (const file of filesToDelete) {
         try {
-          await client.deleteFile(file.path);
-          console.log(`[FileManager] Deleted old backup: ${file.name}`);
-          deletedCount++;
+          if (client.deleteFile) {
+            await client.deleteFile(file.path);
+            deletedCount++;
+          }
         } catch (error) {
           console.error(`[FileManager] Failed to delete ${file.name}:`, error);
         }

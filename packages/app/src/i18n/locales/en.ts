@@ -1,8 +1,11 @@
+import { fullTabEn } from "./fulltab-en";
+
 /**
  * English dictionary
  * Keys must stay in sync with zh-CN.ts
  */
 export const dictionary: Record<string, string> = {
+  ...fullTabEn,
   // ─── Common ───
   "common.cancel": "Cancel",
   "common.confirm": "Confirm",
@@ -261,8 +264,23 @@ export const dictionary: Record<string, string> = {
   "settings.sync.maxLocalSnapshots": "Local snapshots retention",
   "settings.sync.maxLocalSnapshotsDesc": "Automatically clean oldest local snapshots when exceeded (min 5)",
   "settings.sync.maxCloudBackups": "Cloud backups retention",
-  "settings.sync.maxCloudBackupsDesc": "Automatically clean oldest cloud backups after push (min 5)",
   "settings.sync.copies": "copies",
+
+  // ─── Anti-Deletion Safety Guard ───
+  "safety.banner.title": "Safety Guard Triggered",
+  "safety.banner.desc": "Detected deletion of {deleted} bookmarks ({percent}%), reaching the {threshold}% safety threshold. Auto-sync is paused to protect your cloud backup.",
+  "safety.banner.confirmPush": "Proceed & Push",
+  "safety.banner.restoreSnapshot": "Restore from Snapshot",
+  "safety.banner.dismiss": "Dismiss",
+  "safety.banner.pushSuccess": "Pushed successfully with safety override",
+  "safety.banner.restoreSuccess": "Snapshot restored successfully",
+
+  // ─── Safety Settings ───
+  "settings.safety.group": "Anti-Deletion Safety Guard",
+  "settings.safety.enable": "Enable Deletion Circuit Breaker",
+  "settings.safety.enableDesc": "Halt sync if bulk deletion exceeds 10 bookmarks and reaches safety threshold",
+  "settings.safety.threshold": "Deletion Circuit Threshold",
+  "settings.safety.thresholdDesc": "Trigger safety breaker when deletion percentage reaches this value (recommended 20%)",
 
   // ─── About page ───
   "settings.about.title": "About",

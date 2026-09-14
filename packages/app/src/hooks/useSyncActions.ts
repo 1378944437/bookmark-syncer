@@ -17,7 +17,7 @@ import type { Locale } from '../i18n'
 import type { WebDAVConfig } from '../core/storage/types'
 
 export type SyncStatus = 'idle' | 'checking' | 'syncing' | 'success' | 'error'
-export type DrawerMode = 'conflict' | 'history' | 'cloudBackups' | 'actions'
+export type DrawerMode = 'conflict' | 'history' | 'cloudBackups' | 'actions' | 'activity'
 
 export interface SyncRefreshers {
   loadSnapshots: () => void | Promise<void>
@@ -260,5 +260,6 @@ export function useSyncActions(ctx: SyncActionsContext) {
     confirmForcePush,
     openMoreActions,
     openCloudBackups,
+    openActivity: () => { setDrawerMode('activity'); setDrawerOpen(true) },
   }
 }

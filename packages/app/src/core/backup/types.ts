@@ -2,6 +2,12 @@
  * 备份领域类型定义
  */
 import type { BookmarkNode } from "../../types";
+import type { BookmarkDiffStats } from "../bookmark/diff-calculator";
+
+/**
+ * 快照差分统计别名
+ */
+export type SnapshotDiffStats = BookmarkDiffStats;
 
 /**
  * 快照信息
@@ -22,6 +28,9 @@ export interface Snapshot {
   
   /** 书签总数 */
   count: number;
+
+  /** 相比上一快照的差分变动（新增、修改、删除） */
+  diff?: SnapshotDiffStats;
 }
 
 /**

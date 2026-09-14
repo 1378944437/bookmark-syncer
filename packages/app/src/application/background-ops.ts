@@ -17,7 +17,7 @@ import type { SmartSyncResult, SyncResult } from "../core/sync/types";
 
 export type BackgroundOpMessage =
   | { type: "webdav:test"; config: WebDAVConfig }
-  | { type: "sync:push"; config: WebDAVConfig }
+  | { type: "sync:push"; config: WebDAVConfig; options?: { skipSafetyGuard?: boolean } }
   | { type: "sync:pull"; config: WebDAVConfig; mode: "overwrite" | "merge" }
   | { type: "sync:smart"; config: WebDAVConfig }
   | { type: "sync:restoreCloudBackup"; config: WebDAVConfig; path: string };
@@ -58,9 +58,12 @@ export async function smartSyncInBackground(config: WebDAVConfig): Promise<Smart
 }
 
 /** 在后台执行上传（Push） */
-export async function smartPushInBackground(config: WebDAVConfig): Promise<SyncResult> {
+export async function smartPushInBackground(
+  config: WebDAVConfig,
+  options?: { skipSafetyGuard?: boolean }
+): Promise<SyncResult> {
   return sendBackgroundOp<SyncResult>(
-    { type: "sync:push", config },
+    { type: "sync:push", config, options },
     { success: false, action: "error", message: "无法连接扩展后台服务" },
   );
 }

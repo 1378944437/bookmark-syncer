@@ -40,6 +40,11 @@ const browser = {
           delete localStore[key];
         }
       }),
+      clear: vi.fn(async () => {
+        for (const key of Object.keys(localStore)) {
+          delete localStore[key];
+        }
+      }),
     },
     session: {
       get: vi.fn(async (keys?: string | string[] | Record<string, unknown>) => {
@@ -66,6 +71,11 @@ const browser = {
       remove: vi.fn(async (keys: string | string[]) => {
         const keyArray = Array.isArray(keys) ? keys : [keys];
         for (const key of keyArray) {
+          delete sessionStore[key];
+        }
+      }),
+      clear: vi.fn(async () => {
+        for (const key of Object.keys(sessionStore)) {
           delete sessionStore[key];
         }
       }),
@@ -108,10 +118,14 @@ const browser = {
   tabs: {
     query: vi.fn(async () => []),
     sendMessage: vi.fn(async () => undefined),
+    create: vi.fn(async (props: { url?: string }) => ({ id: 1, ...props })),
+    getCurrent: vi.fn(async () => undefined),
   },
   runtime: {
     getManifest: vi.fn(() => ({ version: "1.0.0" })),
     sendMessage: vi.fn(async () => undefined),
+    getURL: vi.fn((path: string) => `chrome-extension://mock-id/${path}`),
+    openOptionsPage: vi.fn(async () => undefined),
     onMessage: {
       addListener: vi.fn(),
       removeListener: vi.fn(),

@@ -109,3 +109,5 @@ apps/chrome-extension/web-ext-artifacts/
 apps/firefox-extension/*.xpi
 apps/firefox-extension/web-ext-artifacts/
 **/.test-profile/
+示例/
+*.crx

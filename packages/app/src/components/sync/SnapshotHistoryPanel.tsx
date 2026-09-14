@@ -113,9 +113,41 @@ export function SnapshotHistoryPanel({
                   )}
                 </div>
 
-                <span className="text-[10px] text-muted-foreground mt-1">
-                  {new Date(s.timestamp).toLocaleString()}
-                </span>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(s.timestamp).toLocaleString()}
+                  </span>
+
+                  {/* 差分变动微标：绿色 +X，蓝色 ~Y，红色 -Z */}
+                  {s.diff && (s.diff.added > 0 || s.diff.updated > 0 || s.diff.deleted > 0) && (
+                    <div className="flex items-center gap-1 font-mono text-[9px] font-semibold leading-none">
+                      {s.diff.added > 0 && (
+                        <span
+                          title={`新增 ${s.diff.added} 个书签`}
+                          className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1 py-0.5 rounded border border-emerald-500/20"
+                        >
+                          +{s.diff.added}
+                        </span>
+                      )}
+                      {s.diff.updated > 0 && (
+                        <span
+                          title={`更新 ${s.diff.updated} 个书签`}
+                          className="text-sky-600 dark:text-sky-400 bg-sky-500/10 px-1 py-0.5 rounded border border-sky-500/20"
+                        >
+                          ~{s.diff.updated}
+                        </span>
+                      )}
+                      {s.diff.deleted > 0 && (
+                        <span
+                          title={`删除 ${s.diff.deleted} 个书签`}
+                          className="text-rose-600 dark:text-rose-400 bg-rose-500/10 px-1 py-0.5 rounded border border-rose-500/20"
+                        >
+                          -{s.diff.deleted}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* 右侧数量徽章与展开箭头 */}

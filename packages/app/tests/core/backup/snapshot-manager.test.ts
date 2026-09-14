@@ -199,4 +199,26 @@ describe("SnapshotManager", () => {
       expect(await manager.getSnapshotCount()).toBe(2);
     });
   });
+
+  // ─── diff 自动计算 ───
+
+  describe("diff 自动计算", () => {
+    it("自动计算连续快照之间的差分变动", async () => {
+      const tree1: BookmarkNode[] = [
+        { id: "1", title: "A", url: "https://a.com" },
+      ];
+      const tree2: BookmarkNode[] = [
+        { id: "1", title: "A", url: "https://a.com" },
+        { id: "2", title: "B", url: "https://b.com" },
+      ];
+
+      const id1 = await manager.createSnapshot(tree1, 1, "first");
+      const snap1 = await manager.getSnapshotById(id1);
+      expect(snap1?.diff).toEqual({ added: 1, updated: 0, deleted: 0 });
+
+      const id2 = await manager.createSnapshot(tree2, 2, "second");
+      const snap2 = await manager.getSnapshotById(id2);
+      expect(snap2?.diff).toEqual({ added: 1, updated: 0, deleted: 0 });
+    });
+  });
 });

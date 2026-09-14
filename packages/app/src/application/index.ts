@@ -7,6 +7,7 @@ import { registerBookmarkListeners } from "./bookmark-monitor";
 import { maybeRunScheduledSync, registerAlarmListener, registerConfigWatcher } from "./scheduler";
 import { getWebDAVConfig } from "./state-manager";
 import { executeAutoPull } from "./sync-executor";
+import { initSafetyAlertBadgeListener } from "./sync-indicator";
 
 /**
  * storage.session 中的"本次浏览器会话已执行启动检查"标志
@@ -125,6 +126,7 @@ export function initializeAutoSync(): void {
   registerBookmarkListeners();
   registerAlarmListener();
   registerConfigWatcher();
+  initSafetyAlertBadgeListener();
   // 每次 SW 唤醒都做一次到期对账：
   // - 闹钟丢失或周期与配置不符 → 重建
   // - 距上次定时检查已超过配置间隔 → 补跑一次定时同步
@@ -136,7 +138,7 @@ export function initializeAutoSync(): void {
 // 导出定时同步相关函数
 export { resetScheduledSync, startScheduledSync, stopScheduledSync, updateScheduledSync } from "./scheduler";
 
-// 导出设备身份（设置页展示/编辑设备备注）
-// 导出设备身份与备份窗口清理（实现已下沉 core/sync/sync-settings）
+// 导出设备身份与安全指示器
 export { clearLastBackupFileInfo, getDeviceIdentity } from "../core/sync/sync-settings";
 export { getWebDAVConfig } from "./state-manager";
+export { initSafetyAlertBadgeListener, setSafetyAlertBadge, clearSafetyAlertBadge } from "./sync-indicator";
