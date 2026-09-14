@@ -13,19 +13,23 @@ import type { BackgroundOpMessage } from "../application/background-ops";
 import { smartPull, smartPush, smartSync, restoreFromCloudBackup } from "../core/sync";
 import { notifySyncCompleted } from "../application/sync-indicator";
 import type { SyncResult } from "../core/sync/types";
-import { getWebDAVClient } from "../infrastructure/http/webdav-client";
+import { createStorageProvider } from "../infrastructure/storage/provider-factory";
 
 /** 防止重复注册（模块可能被多个入口引入） */
 let registered = false;
 
 async function dispatch(message: BackgroundOpMessage): Promise<unknown> {
   switch (message.type) {
+    case "storage:test":
     case "webdav:test": {
       // 连接测试的错误单独包装：popup 需要区分「认证失败」等具体原因
       try {
-        const client = getWebDAVClient(message.config);
-        const ok = await client.testConnection();
-        return { ok };
+        const provider = createStorageProvider(message.config);
+        const res = await provider.testConnection();
+        if (!res.ok) {
+          return { ok: false, error: res.message || "连接失败" };
+        }
+        return { ok: true };
       } catch (error) {
         return { ok: false, error: (error as Error).message || "连接失败" };
       }
@@ -53,6 +57,7 @@ async function dispatch(message: BackgroundOpMessage): Promise<unknown> {
 
 /** 处理的消息类型（用于过滤无关消息） */
 const HANDLED_TYPES = new Set([
+  "storage:test",
   "webdav:test",
   "sync:push",
   "sync:pull",

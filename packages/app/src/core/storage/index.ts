@@ -6,6 +6,8 @@
 // 类型定义
 export type {
   WebDAVConfig,
+  GistConfig,
+  StorageConfig,
   WebDAVFile,
   CloudBackupFile,
   CloudInfo,
@@ -14,7 +16,7 @@ export type {
   BackupFileMetadata,
 } from "./types";
 
-export { STORAGE_CONSTANTS } from "./types";
+export { STORAGE_CONSTANTS, getStorageIdentifier } from "./types";
 
 // 存储提供者契约
 export type {

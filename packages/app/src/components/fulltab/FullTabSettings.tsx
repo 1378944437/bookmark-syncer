@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { Cloud, Info, RefreshCw, ShieldCheck, Sliders } from 'lucide-react'
 import { cn } from '../../infrastructure/utils/format'
-import { WebDAVPage } from '../settings/WebDAVPage'
+import { CloudStoragePage } from '../settings/CloudStoragePage'
 import { SecuritySettingsPage } from '../settings/SecuritySettingsPage'
 import { SyncSettingsPage } from '../settings/SyncSettingsPage'
 import { GeneralSettingsPage } from '../settings/GeneralSettingsPage'
@@ -17,7 +17,7 @@ export function FullTabSettings() {
   const [activeTab, setActiveTab] = useState<SettingsTabKey>('webdav')
 
   const tabs = [
-    { key: 'webdav' as const, label: 'WebDAV 凭证', icon: Cloud },
+    { key: 'webdav' as const, label: '云端存储服务', icon: Cloud },
     { key: 'security' as const, label: '安全与防误删', icon: ShieldCheck },
     { key: 'sync' as const, label: '同步策略与范围', icon: RefreshCw },
     { key: 'general' as const, label: '常规迁移与危险区', icon: Sliders },
@@ -28,7 +28,7 @@ export function FullTabSettings() {
     const noop = () => {}
     switch (activeTab) {
       case 'webdav':
-        return <WebDAVPage onBack={noop} />
+        return <CloudStoragePage onBack={noop} />
       case 'security':
         return <SecuritySettingsPage onBack={noop} />
       case 'sync':

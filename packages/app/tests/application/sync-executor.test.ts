@@ -20,6 +20,7 @@ vi.mock("@src/application/state-manager", () => ({
   getIsRestoring: (...args: any[]) => mocks.getIsRestoring(...args),
   setIsRestoring: (...args: any[]) => mocks.setIsRestoring(...args),
   getWebDAVConfig: (...args: any[]) => mocks.getWebDAVConfig(...args),
+  getActiveStorageConfig: (...args: any[]) => mocks.getWebDAVConfig(...args),
 }));
 
 vi.mock("@src/core/sync", () => ({

@@ -11,7 +11,7 @@ import { Cloud, Info, RefreshCw, ShieldCheck, Sliders } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n } from '../i18n'
 import { SettingGroup, SettingRow } from './settings/SettingRow'
-import { WebDAVPage } from './settings/WebDAVPage'
+import { CloudStoragePage } from './settings/CloudStoragePage'
 import { SecuritySettingsPage } from './settings/SecuritySettingsPage'
 import { SyncSettingsPage } from './settings/SyncSettingsPage'
 import { GeneralSettingsPage } from './settings/GeneralSettingsPage'
@@ -114,7 +114,7 @@ export function SettingsView() {
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="flex-1 overflow-hidden"
           >
-            <WebDAVPage onBack={() => setSubPage('main')} />
+            <CloudStoragePage onBack={() => setSubPage('main')} />
           </motion.div>
         )}
 

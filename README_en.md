@@ -25,12 +25,12 @@
 
 ## 💡 Why MarkSync?
 
-Your bookmarks represent private digital assets. **MarkSync** removes third-party relay servers completely, returning total data sovereignty to you. Sync seamlessly between **Chrome, Edge, Firefox**, and mobile devices via your personal **WebDAV** storage (Nutstore, Nextcloud, Synology NAS, InfiniCLOUD, Alist, or self-hosted servers).
+Your bookmarks represent private digital assets. **MarkSync** removes third-party relay servers completely, returning total data sovereignty to you. Sync seamlessly between **Chrome, Edge, Firefox**, and mobile devices via your personal **WebDAV** storage (Nutstore, Nextcloud, Synology NAS, InfiniCLOUD, Alist) or **GitHub Gist (secret snippets)**.
 
 ```
 ┌──────────────────┐        E2E Encrypted Channel (TLS + AES-256-GCM)        ┌─────────────────────────┐
-│  Local Browser   │ ◄─────────────────────────────────────────────────────► │  Private WebDAV Cloud   │
-│  (Chrome/Edge/FF)│           Zero Relay Servers · 100% Data Sovereignty    │  (Nutstore/NAS/Nextcloud)│
+│  Local Browser   │ ◄─────────────────────────────────────────────────────► │  Private Cloud Storage  │
+│  (Chrome/Edge/FF)│           Zero Relay Servers · 100% Data Sovereignty    │  (WebDAV / GitHub Gist) │
 └──────────────────┘                                                         └─────────────────────────┘
 ```
 
@@ -40,9 +40,10 @@ Your bookmarks represent private digital assets. **MarkSync** removes third-part
 
 | Feature | Description |
 | :--- | :--- |
+| ☁️ **Multi-Protocol Cloud Storage** | Seamlessly switch between **WebDAV** and **GitHub Gist**; 1-click auto-creation of secret Gists with custom API proxy endpoint support. |
 | 🔐 **End-to-End Encryption (E2E)** | Authenticated **AES-256-GCM + PBKDF2**. Bookmarks are encrypted before leaving your browser; zero-knowledge storage in the cloud with real-time strength indication. |
 | ⚡ **Smart Incremental Sync** | Tree-level **SHA-256 hash** comparison detects minimal deltas in milliseconds. Smart folder normalization prevents duplicate bloating. |
-| 🛡️ **Dual-Track Disaster Recovery** | **Local snapshots (IndexedDB)** and **cloud multi-version backups (WebDAV)**. **Guaranteed minimum 5 copies protection** with custom quota and auto-rotation. |
+| 🛡️ **Dual-Track Disaster Recovery** | **Local snapshots (IndexedDB)** and **cloud multi-version backups (WebDAV/Gist)**. **Guaranteed minimum 5 copies protection** with custom quota and auto-rotation. |
 | 🎯 **Direct Access & Device Tags** | Click dashboard cards to directly open snapshots/backups. Native parsing of custom device names (e.g. `💻 Living Room PC (Edge) · 157 bookmarks`). |
 | 📱 **Responsive & Mobile-Ready** | Optimized 380px desktop popup; fully responsive layout for mobile browsers (Firefox Android / Kiwi) with numeric keypad support and overflow protection. |
 | 🔌 **1-Click Cloud Presets** | Built-in templates for Nutstore, Nextcloud, Synology NAS, InfiniCLOUD, and Alist — no manual URL construction needed. |
@@ -55,10 +56,14 @@ Your bookmarks represent private digital assets. **MarkSync** removes third-part
 - **Chrome / Edge / Chromium-based**: Download `marksync-chrome-v*.zip` from [Releases](https://github.com/1378944437/marksync/releases/latest), unpack it, and click "Load unpacked" on `chrome://extensions` (with Developer mode enabled).
 - **Firefox**: Download Mozilla-signed `marksync-firefox-v*.xpi` from [Releases](https://github.com/1378944437/marksync/releases/latest) and drag it into your browser window.
 
-### 2. Connect WebDAV
-Click the MarkSync icon ➔ **Settings** ➔ **Provider & Connection**:
-- Choose your provider preset (e.g. Nutstore or Nextcloud) to auto-fill the server URL;
-- Enter your username and **app-specific password**, then click "Save & Test Connection".
+### 2. Connect Cloud Storage (Choose Either)
+Click the MarkSync icon ➔ **Settings** ➔ **Cloud Storage**:
+- **Option A: WebDAV**
+  - Choose your provider preset (e.g. Nutstore or Nextcloud) to auto-fill the server URL;
+  - Enter your username and **app-specific password**, then click "Save & Test Connection".
+- **Option B: GitHub Gist**
+  - Enter your Personal Access Token (PAT) with `gist` scope;
+  - Click "Auto Create" to set up a private Gist, then click "Test Gist Connection".
 
 ### 3. Sync
 Return to the main page and click **Sync Now**. Enable **Auto Sync** in settings to keep changes continuously synced in the background.

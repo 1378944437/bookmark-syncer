@@ -5,6 +5,7 @@
  * 格式损坏/结构无效抛出 CloudDataError（调用方一律中止，不得覆盖云端）
  */
 import type { IWebDAVClient } from "../../../infrastructure/http/webdav-client";
+import type { IStorageProvider } from "../../storage/provider-interface";
 import type { CloudBackup } from "../../../types";
 import { CloudDataError } from "../types";
 import { queueManager } from "../../storage/queue-manager";
@@ -12,13 +13,13 @@ import { queueManager } from "../../storage/queue-manager";
 /**
  * 下载并校验云端备份
  *
- * @param client WebDAV 客户端
+ * @param client 存储客户端（IStorageProvider 或 IWebDAVClient）
  * @param path 备份文件路径（.json.gz 或加密的 .json.gz.enc）
  * @param opts.passphrase 端到端加密密码（.enc 备份必需，缺失时队列层抛出开启提示）
  * @returns 解析后的备份数据；文件内容为空时返回 null
  */
 export async function fetchValidatedCloudBackup(
-  client: IWebDAVClient,
+  client: IStorageProvider | IWebDAVClient,
   path: string,
   opts: { passphrase?: string } = {},
 ): Promise<CloudBackup | null> {

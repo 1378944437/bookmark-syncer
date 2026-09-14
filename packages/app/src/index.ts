@@ -27,6 +27,8 @@ export { SnapshotManager, snapshotManager } from "./core/backup";
 export type { Snapshot } from "./core/backup";
 export { getWebDAVClient, WebDAVClient, createWebDAVClient } from "./infrastructure/http/webdav-client";
 export type { IWebDAVClient } from "./infrastructure/http/webdav-client";
+export { createStorageProvider, GistClient, GistStorageProvider, WebDAVStorageProvider } from "./infrastructure/storage";
+export type { IStorageProvider, StorageConfig, GistConfig, WebDAVConfig } from "./core/storage";
 // 导出 Bookmark 领域（推荐使用）
 export { bookmarkRepository } from "./core/bookmark";
 

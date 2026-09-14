@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { snapshotManager } from '../core/backup'
 import { useI18n } from '../i18n'
 import { useStorage } from '../hooks/useStorage'
+import { useActiveStorage } from '../hooks/useActiveStorage'
 import { useSnapshots } from '../hooks/useSnapshots'
 import { useCloudBackups } from '../hooks/useCloudBackups'
 import { useBookmarkCounts } from '../hooks/useBookmarkCounts'
@@ -30,15 +31,12 @@ const item = { hidden: { y: 16, opacity: 0 }, show: { y: 0, opacity: 1 } }
 
 export function SyncView() {
   const { t, locale } = useI18n()
-  const [webdavUrl] = useStorage('webdav_url', '')
-  const [username] = useStorage('webdav_username', '')
-  const [password] = useStorage('webdav_password', '')
+  const { isConfigured, getConfig } = useActiveStorage()
   const [syncState] = useStorage<{ time: number; url: string; type: string } | null>('syncState', null)
   const [lastRemoteDevice] = useStorage<{ deviceId?: string; deviceName?: string; time: number } | null>('last_remote_device', null)
   const isOnline = useOnlineStatus()
 
   useSyncCompletionToast(syncState, t('sync.toast.completed'))
-  const isConfigured = !!webdavUrl
 
   // 取消恢复流程
   const cancelRestore = () => {
@@ -47,15 +45,8 @@ export function SyncView() {
     actionsApi.closeConfirm()
   }
 
-  // 获取 WebDAV 连接配置
-  const getSyncConfig = () => ({
-    url: webdavUrl.trim(),
-    username: username.trim(),
-    password,
-  })
-
   // 计数加载 hook
-  const countsApi = useBookmarkCounts({ t, isConfigured, getConfig: getSyncConfig })
+  const countsApi = useBookmarkCounts({ t, isConfigured, getConfig })
 
   // 跨 hook 刷新回调（ref 延迟取用，避免循环依赖）
   const refreshersRef = useRef({ loadSnapshots: () => {}, loadCloudBackups: () => {} })
@@ -67,7 +58,7 @@ export function SyncView() {
     isConfigured,
     isOnline,
     localCount: countsApi.localCount,
-    getConfig: getSyncConfig,
+    getConfig,
     loadCounts: countsApi.loadCounts,
     setCloudMeta: countsApi.setCloudMeta,
     refreshers: refreshersRef,
@@ -88,7 +79,7 @@ export function SyncView() {
   const cloudBackupsApi = useCloudBackups({
     ...viewCtx,
     isConfigured,
-    getConfig: getSyncConfig,
+    getConfig,
     locale,
     loadSnapshots: snapshotsApi.loadSnapshots,
   })
@@ -98,13 +89,13 @@ export function SyncView() {
     loadCloudBackups: cloudBackupsApi.loadCloudBackups,
   }
 
-  // WebDAV 凭据与同步状态联动刷新（在 countsApi 与 snapshotsApi 声明后按序执行，无 TDZ 风险）
+  // 存储凭据与同步状态联动刷新（在 countsApi 与 snapshotsApi 声明后按序执行，无 TDZ 风险）
   useEffect(() => {
     const signal = { aborted: false }
     countsApi.loadCounts(signal)
     snapshotsApi.loadSnapshots()
     return () => { signal.aborted = true }
-  }, [webdavUrl, username, password, syncState?.time])
+  }, [isConfigured, syncState?.time])
 
   // 两端书签是否完全一致
   const isSynced =
@@ -132,7 +123,7 @@ export function SyncView() {
         {/* 防误删安全熔断拦截卡片 */}
         <SafetyConfirmationCard
           t={t}
-          getConfig={getSyncConfig}
+          getConfig={getConfig}
           onOpenHistory={actionsApi.openHistory}
           loadCounts={countsApi.loadCounts}
         />

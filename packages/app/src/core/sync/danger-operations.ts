@@ -5,13 +5,13 @@
  */
 import browser from "webextension-polyfill";
 import { BrowserBookmarksAPI } from "../../infrastructure/browser/api";
-import { getWebDAVClient } from "../../infrastructure/http/webdav-client";
+import { createStorageProvider } from "../../infrastructure/storage/provider-factory";
 import { snapshotManager } from "../backup";
 import { countBookmarks } from "../bookmark";
 import { cacheManager } from "../storage/cache-manager";
 import { STORAGE_CONSTANTS } from "../storage/types";
 import { clearLastBackupFileInfo } from "./sync-settings";
-import type { WebDAVConfig } from "../storage/types";
+import type { StorageConfig } from "../storage/types";
 
 /**
  * 清空所有本地书签（保留系统根目录，如书签栏、其他书签等）
@@ -58,17 +58,16 @@ export async function clearLocalBookmarks(): Promise<{ deletedCount: number; sna
 }
 
 /**
- * 清空 WebDAV 云端上的所有历史备份文件
- * 删除整个 BookmarkSyncer 目录下的所有文件并重置缓存
+ * 清空云端存储上的所有历史备份文件
+ * 删除整个备份目录下的所有文件并重置缓存
  */
-export async function clearCloudBackups(config: WebDAVConfig): Promise<{ deletedCount: number }> {
-  const client = getWebDAVClient(config);
+export async function clearCloudBackups(config: StorageConfig): Promise<{ deletedCount: number }> {
+  const client = createStorageProvider(config);
   const dir = STORAGE_CONSTANTS.BACKUP_DIR;
 
   let deletedCount = 0;
   try {
-    const exists = await client.exists(dir);
-    if (!exists) {
+    if (client.exists && !(await client.exists(dir))) {
       return { deletedCount: 0 };
     }
 
@@ -77,8 +76,10 @@ export async function clearCloudBackups(config: WebDAVConfig): Promise<{ deleted
       // 仅清理备份文件，防止误伤其他文件
       if (file.name.endsWith(".json") || file.name.endsWith(".json.gz") || file.name.endsWith(".enc")) {
         try {
-          await client.deleteFile(file.path);
-          deletedCount++;
+          if (client.deleteFile) {
+            await client.deleteFile(file.path);
+            deletedCount++;
+          }
         } catch (err) {
           console.warn(`[DangerOperations] Failed to delete cloud file ${file.path}:`, err);
         }

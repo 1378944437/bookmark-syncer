@@ -2,7 +2,7 @@
  * 云端操作
  * 获取云端信息、备份列表、恢复指定备份
  */
-import { getWebDAVClient } from "../../infrastructure/http/webdav-client";
+import { createStorageProvider } from "../../infrastructure/storage/provider-factory";
 import type { BookmarkNode } from "../../types";
 import { getE2ESettings, getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring, saveLastRemoteDevice } from "./sync-settings";
 import { snapshotManager } from "../backup";
@@ -15,7 +15,8 @@ import {
 import { fetchValidatedCloudBackup } from "./utils/cloud-data-helper";
 import { fileManager, STORAGE_CONSTANTS } from "../storage";
 import { cacheManager } from "../storage/cache-manager";
-import type { CloudBackupFile, CloudInfo, WebDAVConfig } from "../storage/types";
+import type { CloudBackupFile, CloudInfo, StorageConfig } from "../storage/types";
+import { getStorageIdentifier } from "../storage/types";
 import { acquireSyncLock, releaseSyncLock } from "./lock-manager";
 import { setSyncState } from "./state-manager";
 import type { SyncBasis } from "./types";
@@ -26,10 +27,10 @@ const DIR = STORAGE_CONSTANTS.BACKUP_DIR;
 /**
  * 获取云端备份信息
  * 使用 getCloudBackupList 来获取列表，支持强制刷新
- * @param config WebDAV 配置
+ * @param config 存储配置（WebDAV 或 Gist）
  * @param forceRefresh 是否强制刷新（跳过缓存），默认 false
  */
-export async function getCloudInfo(config: WebDAVConfig, forceRefresh = false): Promise<CloudInfo> {
+export async function getCloudInfo(config: StorageConfig, forceRefresh = false): Promise<CloudInfo> {
   if (!navigator.onLine) {
     console.log("[CloudOperations] getCloudInfo: offline");
     return { exists: false };
@@ -65,9 +66,9 @@ export async function getCloudInfo(config: WebDAVConfig, forceRefresh = false): 
 
 /**
  * 获取所有云端备份文件列表
- * 优先使用缓存（5分钟），避免频繁 PROPFIND
+ * 优先使用缓存（5分钟），避免频繁网络请求
  */
-export async function getCloudBackupList(config: WebDAVConfig, forceRefresh = false): Promise<CloudBackupFile[]> {
+export async function getCloudBackupList(config: StorageConfig, forceRefresh = false): Promise<CloudBackupFile[]> {
   if (!navigator.onLine) {
     console.log("[CloudOperations] getCloudBackupList: offline");
     return [];
@@ -81,9 +82,9 @@ export async function getCloudBackupList(config: WebDAVConfig, forceRefresh = fa
     }
   }
 
-  // 缓存未命中或已过期，执行 PROPFIND
+  // 缓存未命中或已过期，获取远端列表
   console.log("[CloudOperations] Fetching backup list from cloud...");
-  const client = getWebDAVClient(config);
+  const client = createStorageProvider(config);
   const files = await client.listFiles(DIR);
 
   // 过滤出备份文件（.json.gz 与端到端加密的 .json.gz.enc）
@@ -125,7 +126,7 @@ export async function getCloudBackupList(config: WebDAVConfig, forceRefresh = fa
  * 从指定的云端备份文件恢复
  */
 export async function restoreFromCloudBackup(
-  config: WebDAVConfig,
+  config: StorageConfig,
   backupPath: string,
   lockHolder: string,
 ): Promise<SyncResult> {
@@ -147,7 +148,7 @@ export async function restoreFromCloudBackup(
 
   try {
     await setIsRestoring(true);
-    const client = getWebDAVClient(config);
+    const client = createStorageProvider(config);
 
     // 路径问题已修复，理论上不再需要智能等待
     // 保留简化版本作为保险（如果还有 409，说明有其他问题）
@@ -236,7 +237,7 @@ export async function restoreFromCloudBackup(
     // 4. 更新同步时间
     await setSyncState({
       time: Date.now(),
-      url: config.url,
+      url: getStorageIdentifier(config),
       type: "restore",
       basis,
       localHash,

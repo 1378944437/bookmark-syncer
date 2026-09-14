@@ -2,7 +2,7 @@
  * 拉取策略
  * 智能下载：拉取云端数据并恢复到本地
  */
-import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
+import { createStorageProvider } from "../../../infrastructure/storage/provider-factory";
 import type { BookmarkNode } from "../../../types";
 import { getE2ESettings, getMissingFolderFallback, getSyncScope, holdRestoringUntil, setIsRestoring } from "../sync-settings";
 import { snapshotManager } from "../../backup";
@@ -13,7 +13,7 @@ import {
   filterTreeByScope,
 } from "../../bookmark";
 import { fetchValidatedCloudBackup } from "../utils/cloud-data-helper";
-import type { WebDAVConfig } from "../../storage";
+import { getStorageIdentifier, type StorageConfig } from "../../storage/types";
 import { fileManager } from "../../storage";
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
 import { setSyncState } from "../state-manager";
@@ -21,13 +21,13 @@ import type { SyncResult } from "../types";
 
 /**
  * 智能下载：拉取云端数据并恢复到本地
- * @param config WebDAV 配置
+ * @param config 存储配置
  * @param lockHolder 锁持有者标识
  * @param mode 恢复模式：覆盖或合并
  * @param options.skipLock 是否跳过锁管理（由上层 smartSync 传递锁时使用）
  */
 export async function smartPull(
-  config: WebDAVConfig,
+  config: StorageConfig,
   lockHolder: string,
   mode: "overwrite" | "merge" = "overwrite",
   options?: { skipLock?: boolean },
@@ -54,7 +54,7 @@ export async function smartPull(
   try {
     await setIsRestoring(true);
 
-    const client = getWebDAVClient(config);
+    const client = createStorageProvider(config);
     // 同步范围（每台设备独立）：范围外系统文件夹不参与本次拉取
     const syncScope = await getSyncScope();
 
@@ -141,7 +141,7 @@ export async function smartPull(
     // 4. 更新同步时间（基线 = 所拉取文件的服务器时间）
     await setSyncState({
       time: Date.now(),
-      url: config.url,
+      url: getStorageIdentifier(config),
       type: "download",
       basis: { mtime: latest.lastModified, filePath: latest.path },
       localHash,

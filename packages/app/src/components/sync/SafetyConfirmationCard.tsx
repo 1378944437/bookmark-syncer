@@ -11,12 +11,12 @@ import {
   type PendingSafetyConfirmation,
 } from "../../core/sync/utils/safety-guard";
 import { smartPushInBackground } from "../../application/background-ops";
-import type { WebDAVConfig } from "../../core/storage/types";
+import type { StorageConfig } from "../../core/storage/types";
 import { Button } from "../Button";
 
 export interface SafetyConfirmationCardProps {
   t: (key: string, vars?: Record<string, string | number>) => string;
-  getConfig: () => WebDAVConfig;
+  getConfig: () => StorageConfig;
   onOpenHistory: () => void;
   loadCounts?: () => void;
 }

@@ -4,6 +4,7 @@
  * 提供超时保护和队列状态管理
  */
 import type { IWebDAVClient } from "../../infrastructure/http/webdav-client";
+import type { IStorageProvider } from "./provider-interface";
 import { decryptText, E2EPasswordRequiredError } from "../../infrastructure/utils/crypto";
 import { decompressText } from "../../infrastructure/utils/compression";
 import { STORAGE_CONSTANTS } from "./types";
@@ -25,13 +26,13 @@ export class QueueManager {
    * 带去重的文件下载
    * 如果同一文件正在下载，会复用现有的下载 Promise
    *
-   * @param client WebDAV 客户端
+   * @param client 存储客户端（IStorageProvider 或 IWebDAVClient）
    * @param path 文件路径
    * @param opts.passphrase 端到端加密密码（.enc 备份必需，缺失时抛出提示开启的错误）
    * @returns 文件内容（已解密解压的 JSON 字符串）
    */
   async getFileWithDedup(
-    client: IWebDAVClient,
+    client: IStorageProvider | IWebDAVClient,
     path: string,
     opts?: { passphrase?: string },
   ): Promise<string> {

@@ -11,7 +11,8 @@ import {
     POST_PULL_UPLOAD_SUPPRESSION_MS,
 } from "./constants";
 import { getIsRestoring } from "../core/sync/sync-settings";
-import { getWebDAVConfig } from "./state-manager";
+import { getActiveStorageConfig, getWebDAVConfig } from "./state-manager";
+import { getStorageIdentifier } from "../core/storage";
 
 /**
  * 执行上传同步 (Push)
@@ -32,20 +33,24 @@ export async function executeUpload(): Promise<void> {
       return;
     }
 
-    // 获取配置
-    const { config, autoSyncEnabled } = await getWebDAVConfig();
+    // 获取配置（优先多驱动配置，兼容仅 mock getWebDAVConfig 的单测环境）
+    const fetchConfig = typeof getActiveStorageConfig === "function" ? getActiveStorageConfig : getWebDAVConfig;
+    const active = await fetchConfig();
+    const config = active?.config;
     if (!config) {
       console.log("[SyncExecutor] Skipped upload: no config");
       return;
     }
 
-    if (!autoSyncEnabled) {
+    if (active?.autoSyncEnabled === false) {
       console.log("[SyncExecutor] Skipped upload: auto sync disabled");
       return;
     }
 
+    const storageId = getStorageIdentifier(config);
+
     // 检查云端是否有未同步的更新
-    const syncState = await getSyncState(config.url);
+    const syncState = await getSyncState(storageId);
 
     if (
       syncState &&
@@ -69,7 +74,7 @@ export async function executeUpload(): Promise<void> {
       isCloudNewerThanBasis(
         { path: latest.path, lastModified: latest.timestamp },
         syncState,
-        config.url,
+        storageId,
       )
     ) {
       console.log(
@@ -120,17 +125,20 @@ export async function executeAutoPull(): Promise<void> {
       return;
     }
 
-    // 获取配置
-    const { config } = await getWebDAVConfig();
+    // 获取配置（优先多驱动配置，兼容仅 mock getWebDAVConfig 的单测环境）
+    const fetchConfig = typeof getActiveStorageConfig === "function" ? getActiveStorageConfig : getWebDAVConfig;
+    const active = await fetchConfig();
+    const config = active?.config;
     if (!config) {
       console.log("[SyncExecutor] Skipped pull: no config");
       return;
     }
 
-    console.log("[SyncExecutor] Using WebDAV config");
+    const storageId = getStorageIdentifier(config);
+    console.log(`[SyncExecutor] Using storage config (${storageId})`);
 
     // 获取本地同步记录
-    const syncState = await getSyncState(config.url);
+    const syncState = await getSyncState(storageId);
 
     // 获取云端信息（强制刷新，避免旧缓存漏检远端更新）
     const backupList = await getCloudBackupList(config, true);
@@ -147,7 +155,7 @@ export async function executeAutoPull(): Promise<void> {
       !isCloudNewerThanBasis(
         { path: latest.path, lastModified: latest.timestamp },
         syncState,
-        config.url,
+        storageId,
       )
     ) {
       console.log(

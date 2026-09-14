@@ -1,4 +1,5 @@
 import { fullTabEn } from "./fulltab-en";
+import { storageEn } from "./storage-en";
 
 /**
  * English dictionary
@@ -6,6 +7,7 @@ import { fullTabEn } from "./fulltab-en";
  */
 export const dictionary: Record<string, string> = {
   ...fullTabEn,
+  ...storageEn,
   // ─── Common ───
   "common.cancel": "Cancel",
   "common.confirm": "Confirm",
@@ -192,29 +194,6 @@ export const dictionary: Record<string, string> = {
   "settings.general.currentLocale": "Current",
   "settings.general.language.zh-CN": "简体中文",
   "settings.general.language.en": "English",
-
-  // ─── WebDAV page ───
-  "settings.webdav.title": "WebDAV settings",
-  "settings.webdav.providerTemplates": "Popular Providers",
-  "settings.webdav.providerJianguo": "Jianguoyun",
-  "settings.webdav.providerNextcloud": "Nextcloud",
-  "settings.webdav.providerInfini": "InfiniCLOUD",
-  "settings.webdav.jianguoTip": "Tip: Generate an App Password in Account Security",
-  "settings.webdav.serverUrl": "Server URL",
-  "settings.webdav.username": "Username",
-  "settings.webdav.password": "Password",
-  "settings.webdav.showPassword": "Show password",
-  "settings.webdav.hidePassword": "Hide password",
-  "settings.webdav.testBtn": "Save and test connection",
-  "settings.webdav.testing": "Testing...",
-  "settings.webdav.urlInvalid": "Invalid URL",
-  "settings.webdav.urlInvalidDesc": "Enter an address starting with http:// or https://",
-  "settings.webdav.connectFailed": "Connection failed",
-  "settings.webdav.connected": "Connected",
-  "settings.webdav.connectedDesc": "Successfully connected to the WebDAV server",
-  "settings.webdav.connectedBackupDesc": "Connected to the WebDAV server and created a backup",
-  "settings.webdav.connectedNoBackupDesc": "Connected to the WebDAV server (backup failed)",
-  "settings.webdav.configChanged": "Configuration changed, creating backup...",
 
   // ─── Sync settings page ───
   "settings.sync.title": "Sync Policy",

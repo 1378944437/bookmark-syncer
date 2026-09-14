@@ -4,14 +4,14 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import type { WebDAVConfig } from '../core/storage/types'
+import type { StorageConfig } from '../core/storage/types'
 import { bookmarkRepository } from '../core/bookmark'
 import { getCloudInfo } from '../core/sync'
 
 export interface BookmarkCountsContext {
   t: (key: string, vars?: Record<string, string | number>) => string
   isConfigured: boolean
-  getConfig: () => WebDAVConfig
+  getConfig: () => StorageConfig
 }
 
 export function useBookmarkCounts(ctx: BookmarkCountsContext) {

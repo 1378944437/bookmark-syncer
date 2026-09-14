@@ -4,17 +4,17 @@
  */
 import type { ConnectionTestResult, IStorageProvider, RemoteFileInfo } from '../../core/storage/provider-interface'
 import type { WebDAVConfig } from '../../core/storage/types'
-import { getWebDAVClient, WebDAVClient } from '../http/webdav-client'
+import { getWebDAVClient, type IWebDAVClient } from '../http/webdav-client'
 
 export class WebDAVStorageProvider implements IStorageProvider {
   readonly type = 'webdav' as const
-  private client: WebDAVClient
+  private client: IWebDAVClient
 
-  constructor(configOrClient: WebDAVConfig | WebDAVClient) {
-    if (configOrClient instanceof WebDAVClient) {
-      this.client = configOrClient
+  constructor(configOrClient: WebDAVConfig | IWebDAVClient) {
+    if (configOrClient && typeof (configOrClient as IWebDAVClient).getFile === 'function') {
+      this.client = configOrClient as IWebDAVClient
     } else {
-      this.client = getWebDAVClient(configOrClient)
+      this.client = getWebDAVClient(configOrClient as WebDAVConfig)
     }
   }
 
@@ -75,7 +75,7 @@ export class WebDAVStorageProvider implements IStorageProvider {
   /**
    * 获取底层原始客户端
    */
-  getClient(): WebDAVClient {
+  getClient(): IWebDAVClient {
     return this.client
   }
 }

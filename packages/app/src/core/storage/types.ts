@@ -7,10 +7,26 @@
  * WebDAV 配置
  */
 export interface WebDAVConfig {
+  type?: 'webdav';
   url: string;
   username: string;
   password: string;
 }
+
+/**
+ * GitHub Gist 存储配置
+ */
+export interface GistConfig {
+  type?: 'gist';
+  token: string;
+  gistId: string;
+  endpoint?: string;
+}
+
+/**
+ * 通用云端存储配置联合类型
+ */
+export type StorageConfig = WebDAVConfig | GistConfig;
 
 /**
  * WebDAV 文件信息
@@ -124,3 +140,17 @@ export const STORAGE_CONSTANTS = {
   /** 最后备份文件信息存储键 */
   LAST_BACKUP_FILE_KEY: 'last_backup_file_info',
 } as const;
+
+/**
+ * 获取云端存储目标的唯一标识符（用于同步状态、基线及缓存区分）
+ */
+export function getStorageIdentifier(config: StorageConfig): string {
+  if ('token' in config || 'gistId' in config) {
+    const gist = config as GistConfig;
+    return `gist://${gist.gistId || 'default'}`;
+  }
+  if ('url' in config) {
+    return (config as WebDAVConfig).url || '';
+  }
+  return '';
+}

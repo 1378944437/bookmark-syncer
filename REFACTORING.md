@@ -372,5 +372,5 @@ packages/app/src/
 - **仓储模式** - BookmarkRepository 封装数据访问
 - **策略模式** - Push/Pull/SmartSync 策略
 - **管理器模式** - SnapshotManager、CacheManager 等
-- **面向接口** - WebDAV 操作面向 `IWebDAVClient` 接口（多存储后端的 `IStorageProvider` 抽象未实现，如需引入再做）
+- **面向接口** - 抽象统一的 `IStorageProvider` 存储提供者接口，并提供 `createStorageProvider` 工厂模式，已原生接入 WebDAV 与 GitHub Gist 双驱动，实现无缝切换与扩展
 - **同步范围** - 每设备可配置参与的系统文件夹（默认仅书签栏），范围外内容保留本地

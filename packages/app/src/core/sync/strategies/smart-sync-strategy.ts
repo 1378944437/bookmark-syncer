@@ -4,14 +4,14 @@
  */
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
 import { getLastSyncTime, getSyncState, setSyncState } from "../state-manager";
-import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
+import { createStorageProvider } from "../../../infrastructure/storage/provider-factory";
 import { fetchValidatedCloudBackup } from "../utils/cloud-data-helper";
 import { CloudBackup } from "../../../types";
 import { getE2ESettings, getSyncScope } from "../sync-settings";
 import { E2EDecryptError, E2EPasswordRequiredError } from "../../../infrastructure/utils/crypto";
 import { bookmarkRepository, compareWithCloud, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
 import { fileManager } from "../../storage";
-import type { CloudInfo, WebDAVConfig } from "../../storage/types";
+import { getStorageIdentifier, type CloudInfo, type StorageConfig } from "../../storage/types";
 import type { SmartSyncResult } from "../types";
 import { isCloudNewerThanBasis, isLocalDirty } from "../utils/sync-basis";
 import { smartPull } from "./pull-strategy";
@@ -21,7 +21,7 @@ import { smartPush } from "./push-strategy";
  * 智能同步：自动判断推送或拉取
  */
 export async function smartSync(
-  config: WebDAVConfig,
+  config: StorageConfig,
   lockHolder: string,
 ): Promise<SmartSyncResult> {
   const startTime = Date.now();
@@ -41,7 +41,8 @@ export async function smartSync(
   }
 
   try {
-    const client = getWebDAVClient(config);
+    const client = createStorageProvider(config);
+    const storageId = getStorageIdentifier(config);
 
     // 1. 获取本地书签
     console.log("[SmartSyncStrategy] Getting local bookmarks...");
@@ -113,7 +114,7 @@ export async function smartSync(
       console.log("[SmartSyncStrategy] Content identical, no sync needed");
       await setSyncState({
         time: Date.now(),
-        url: config.url,
+        url: storageId,
         type: "skip_identical",
         basis: { mtime: latest.lastModified, filePath: latest.path },
       });
@@ -126,8 +127,8 @@ export async function smartSync(
     }
 
     // 4. 检查是否需要用户选择
-    const lastSyncTime = await getLastSyncTime(config.url);
-    const syncState = await getSyncState(config.url);
+    const lastSyncTime = await getLastSyncTime(storageId);
+    const syncState = await getSyncState(storageId);
 
     console.log(
       `[SmartSyncStrategy] Sync times - Last: ${new Date(lastSyncTime).toISOString()}, Cloud(server): ${new Date(latest.lastModified).toISOString()}`,
@@ -151,7 +152,7 @@ export async function smartSync(
 
     // 5. 智能判断（传递锁给子策略，避免释放后重新获取的竞态窗口）
     // 时间基准：服务器记录的文件时间，与设备本地时钟无关
-    if (isCloudNewerThanBasis(latest, syncState, config.url)) {
+    if (isCloudNewerThanBasis(latest, syncState, storageId)) {
       // 云端比本地新 → 拉取。但先判断本地是否有未同步的修改：
       // 有 → 绝不静默覆盖（否则本地未上传的新增/修改会被删掉），交给用户选择方向
       const currentTreeHash = await computeTreeHash(filterTreeByScope(localTree, syncScope));

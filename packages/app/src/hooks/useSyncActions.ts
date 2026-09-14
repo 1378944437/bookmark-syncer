@@ -14,7 +14,7 @@ import {
 } from '../application/background-ops'
 import { translateSyncMessage } from '../i18n/sync-messages'
 import type { Locale } from '../i18n'
-import type { WebDAVConfig } from '../core/storage/types'
+import type { StorageConfig } from '../core/storage/types'
 
 export type SyncStatus = 'idle' | 'checking' | 'syncing' | 'success' | 'error'
 export type DrawerMode = 'conflict' | 'history' | 'cloudBackups' | 'actions' | 'activity'
@@ -31,7 +31,7 @@ export interface SyncActionsContext {
   isOnline: boolean
   /** 当前本地书签数（守卫用，渲染期取值） */
   localCount: number
-  getConfig: () => WebDAVConfig
+  getConfig: () => StorageConfig
   loadCounts: () => void | Promise<void>
   setCloudMeta: (meta: { time: number; device: string; count: number; browser?: string } | null) => void
   /** 其余 hooks 的刷新函数（ref 延迟取用，避免 hook 间循环依赖） */

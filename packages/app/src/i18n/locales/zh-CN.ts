@@ -1,4 +1,5 @@
 import { fullTabZh } from "./fulltab-zh";
+import { storageZh } from "./storage-zh";
 
 /**
  * 中文（默认）词典
@@ -6,6 +7,7 @@ import { fullTabZh } from "./fulltab-zh";
  */
 export const dictionary: Record<string, string> = {
   ...fullTabZh,
+  ...storageZh,
   // ─── 通用 ───
   "common.cancel": "取消",
   "common.confirm": "确认",
@@ -192,29 +194,6 @@ export const dictionary: Record<string, string> = {
   "settings.general.currentLocale": "当前语言",
   "settings.general.language.zh-CN": "简体中文",
   "settings.general.language.en": "English",
-
-  // ─── WebDAV 配置页 ───
-  "settings.webdav.title": "WebDAV 配置",
-  "settings.webdav.providerTemplates": "常见服务商",
-  "settings.webdav.providerJianguo": "坚果云",
-  "settings.webdav.providerNextcloud": "Nextcloud",
-  "settings.webdav.providerInfini": "InfiniCLOUD",
-  "settings.webdav.jianguoTip": "提示：请在「账户信息-安全设置」中生成应用专用密码",
-  "settings.webdav.serverUrl": "服务器地址 (URL)",
-  "settings.webdav.username": "用户名",
-  "settings.webdav.password": "密码",
-  "settings.webdav.showPassword": "显示密码",
-  "settings.webdav.hidePassword": "隐藏密码",
-  "settings.webdav.testBtn": "保存并测试连接",
-  "settings.webdav.testing": "测试中...",
-  "settings.webdav.urlInvalid": "URL 格式无效",
-  "settings.webdav.urlInvalidDesc": "请输入以 http:// 或 https:// 开头的地址",
-  "settings.webdav.connectFailed": "连接失败",
-  "settings.webdav.connected": "连接成功",
-  "settings.webdav.connectedDesc": "已成功连接到 WebDAV 服务器",
-  "settings.webdav.connectedBackupDesc": "已成功连接到 WebDAV 服务器并创建备份",
-  "settings.webdav.connectedNoBackupDesc": "已成功连接到 WebDAV 服务器（备份失败）",
-  "settings.webdav.configChanged": "检测到配置变更，正在创建备份...",
 
   // ─── 同步设置页 ───
   "settings.sync.title": "同步策略",

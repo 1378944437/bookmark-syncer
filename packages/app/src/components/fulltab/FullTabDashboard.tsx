@@ -22,6 +22,7 @@ import { useOnlineStatus } from '../../hooks/useOnlineStatus'
 import { useBookmarkCounts } from '../../hooks/useBookmarkCounts'
 import { useSyncActions } from '../../hooks/useSyncActions'
 import { useI18n } from '../../i18n'
+import { useActiveStorage } from '../../hooks/useActiveStorage'
 import { cn } from '../../infrastructure/utils/format'
 import { Button } from '../Button'
 import { SafetyConfirmationCard } from '../sync/SafetyConfirmationCard'
@@ -29,24 +30,15 @@ import { SyncActivityPanel } from '../analytics/SyncActivityPanel'
 
 export function FullTabDashboard() {
   const { t, locale } = useI18n()
-  const [webdavUrl] = useStorage('webdav_url', '')
-  const [username] = useStorage('webdav_username', '')
-  const [password] = useStorage('webdav_password', '')
+  const { isConfigured, getConfig, hostLabel, accountLabel } = useActiveStorage()
   const [syncState] = useStorage<{ time: number; url: string; type: string } | null>('syncState', null)
   const [lastRemoteDevice] = useStorage<{ deviceId?: string; deviceName?: string; time: number } | null>(
     'last_remote_device',
     null
   )
   const isOnline = useOnlineStatus()
-  const isConfigured = !!webdavUrl
 
-  const getSyncConfig = () => ({
-    url: webdavUrl.trim(),
-    username: username.trim(),
-    password,
-  })
-
-  const countsApi = useBookmarkCounts({ t, isConfigured, getConfig: getSyncConfig })
+  const countsApi = useBookmarkCounts({ t, isConfigured, getConfig })
   const refreshersRef = useRef({ loadSnapshots: () => {}, loadCloudBackups: () => {} })
 
   const actionsApi = useSyncActions({
@@ -55,7 +47,7 @@ export function FullTabDashboard() {
     isConfigured,
     isOnline,
     localCount: countsApi.localCount,
-    getConfig: getSyncConfig,
+    getConfig,
     loadCounts: countsApi.loadCounts,
     setCloudMeta: countsApi.setCloudMeta,
     refreshers: refreshersRef,
@@ -67,7 +59,7 @@ export function FullTabDashboard() {
     return () => {
       signal.aborted = true
     }
-  }, [webdavUrl, username, password, syncState?.time])
+  }, [isConfigured, syncState?.time])
 
   const isSynced =
     isConfigured &&
@@ -87,15 +79,6 @@ export function FullTabDashboard() {
     }
   }
 
-  // 格式化服务器主机名
-  const hostLabel = (() => {
-    try {
-      return webdavUrl ? new URL(webdavUrl).host : '未配置 WebDAV'
-    } catch {
-      return '自定义服务器'
-    }
-  })()
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
       {/* 左栏：核心同步控制与状态卡片 */}
@@ -103,7 +86,7 @@ export function FullTabDashboard() {
         {/* 安全熔断二次确认卡片（如触发防误删保护） */}
         <SafetyConfirmationCard
           t={t}
-          getConfig={getSyncConfig}
+          getConfig={getConfig}
           onOpenHistory={() => {}}
           loadCounts={countsApi.loadCounts}
         />
@@ -116,7 +99,7 @@ export function FullTabDashboard() {
               <div>
                 <h3 className="text-sm font-semibold text-foreground">{hostLabel}</h3>
                 <p className="text-[11px] text-muted-foreground">
-                  {username ? `用户: ${username}` : '请在设置中配置服务凭证'}
+                  {accountLabel}
                 </p>
               </div>
             </div>

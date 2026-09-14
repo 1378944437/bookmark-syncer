@@ -6,6 +6,7 @@
  * 端到端加密的提示/解密错误原样抛出（调用方不得用明文覆盖加密现场）
  */
 import type { IWebDAVClient } from "../../../infrastructure/http/webdav-client";
+import type { IStorageProvider } from "../../storage/provider-interface";
 import { getBrowserInfo, isSameBrowser } from "../../../infrastructure/browser/info";
 import { E2EDecryptError, E2EPasswordRequiredError } from "../../../infrastructure/utils/crypto";
 import { countBookmarks, compareWithCloud, computeTreeHash, filterTreeByScope, calculateBookmarkDiff, type SyncScope } from "../../bookmark";
@@ -26,7 +27,7 @@ export type CloudStateCheck =
   | { kind: "skip"; result: SyncResult };
 
 export interface CloudStateCheckParams {
-  client: IWebDAVClient;
+  client: IStorageProvider | IWebDAVClient;
   configUrl: string;
   lockHolder: string;
   /** 已按同步范围过滤的本地树 */

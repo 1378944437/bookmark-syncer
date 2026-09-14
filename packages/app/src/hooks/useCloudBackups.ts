@@ -4,7 +4,7 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import type { WebDAVConfig } from '../core/storage/types'
+import type { StorageConfig } from '../core/storage/types'
 import { getCloudBackupList, getDeviceIdentity, type CloudBackupFile } from '../core/sync'
 import { restoreCloudBackupInBackground } from '../application/background-ops'
 import { translateSyncMessage } from '../i18n/sync-messages'
@@ -13,7 +13,7 @@ import type { SyncViewContext } from './useSnapshots'
 
 export interface CloudBackupsContext extends SyncViewContext {
   isConfigured: boolean
-  getConfig: () => WebDAVConfig | null
+  getConfig: () => StorageConfig | null
   locale: Locale
   /** 恢复成功后刷新快照列表（可选） */
   loadSnapshots?: () => void | Promise<void>
@@ -31,8 +31,11 @@ export function useCloudBackups(ctx: CloudBackupsContext) {
 
     setLoadingCloudBackups(true)
     try {
-      // 使用缓存，避免频繁 PROPFIND
-      const list = await getCloudBackupList(getConfig() as WebDAVConfig, false)
+      const config = getConfig()
+      if (!config) return
+
+      // 使用缓存，避免频繁远端请求
+      const list = await getCloudBackupList(config, false)
 
       // 尝试匹配本机或已知设备名称，提升云端列表可读性
       try {
@@ -81,7 +84,10 @@ export function useCloudBackups(ctx: CloudBackupsContext) {
     })
 
     try {
-      const result = await restoreCloudBackupInBackground(getConfig() as WebDAVConfig, pendingRestoreCloudBackup.path)
+      const config = getConfig()
+      if (!config) throw new Error('云端配置未就绪')
+
+      const result = await restoreCloudBackupInBackground(config, pendingRestoreCloudBackup.path)
 
       toast.dismiss(loadingToast)
 

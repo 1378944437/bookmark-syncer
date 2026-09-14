@@ -3,16 +3,15 @@
  * 智能上传：检查内容差异，只有真正有变化时才上传
  */
 import { getBackupFileInterval, getDeviceIdentity, getE2ESettings, getLastBackupFileInfo, getMaxCloudBackups, getSyncScope, saveLastBackupFileInfo } from "../sync-settings";
-
 import { getBrowserInfo } from "../../../infrastructure/browser/info";
-import { getWebDAVClient } from "../../../infrastructure/http/webdav-client";
+import { createStorageProvider } from "../../../infrastructure/storage/provider-factory";
 import { compressText } from "../../../infrastructure/utils/compression";
 import { encryptText } from "../../../infrastructure/utils/crypto";
 import { snapshotManager } from "../../backup";
 import { bookmarkRepository, computeTreeHash, countBookmarks, filterTreeByScope } from "../../bookmark";
 import { checkCloudStateBeforeUpload } from "../utils/upload-precheck";
 import { clearPendingSafetyConfirmation } from "../utils/safety-guard";
-import type { WebDAVConfig } from "../../storage";
+import { getStorageIdentifier, type StorageConfig } from "../../storage/types";
 import { fileManager, STORAGE_CONSTANTS } from "../../storage";
 import { cacheManager } from "../../storage/cache-manager";
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
@@ -24,13 +23,13 @@ const DIR = STORAGE_CONSTANTS.BACKUP_DIR;
 
 /**
  * 智能上传：检查内容差异，只有真正有变化时才上传
- * @param config WebDAV 配置
+ * @param config 存储配置
  * @param lockHolder 锁持有者标识
  * @param options.skipLock 是否跳过锁管理（由上层 smartSync 传递锁时使用）
  * @param options.skipSafetyGuard 是否跳过防误删熔断保护（二次确认时使用）
  */
 export async function smartPush(
-  config: WebDAVConfig,
+  config: StorageConfig,
   lockHolder: string,
   options?: { skipLock?: boolean; skipSafetyGuard?: boolean },
 ): Promise<SyncResult> {
@@ -54,7 +53,7 @@ export async function smartPush(
   }
 
   try {
-    const client = getWebDAVClient(config);
+    const client = createStorageProvider(config);
     // 端到端加密设置：预检解密与上传加密共用
     const e2e = await getE2ESettings();
 
@@ -89,7 +88,7 @@ export async function smartPush(
     // 2. 上传前云端状态预检（云端更新判断、内容比对、加密提示；见 utils/upload-precheck）
     const check = await checkCloudStateBeforeUpload({
       client,
-      configUrl: config.url,
+      configUrl: getStorageIdentifier(config),
       lockHolder,
       scopedLocalTree,
       e2e,
@@ -122,9 +121,9 @@ export async function smartPush(
     }
 
     // 确保目录存在
-    if (!(await client.exists(DIR))) {
+    if (client.exists && !(await client.exists(DIR))) {
       console.log(`[PushStrategy] Creating directory: ${DIR}`);
-      await client.createDirectory(DIR);
+      if (client.createDirectory) await client.createDirectory(DIR);
     }
 
     // 获取配置的时间间隔（分钟）
@@ -215,7 +214,7 @@ export async function smartPush(
     await client.putFile(targetFilePath, fileContent);
 
     // 上传成功后删除旧文件（后删，保证至少有一个有效备份存在）
-    if (oldFileToDelete) {
+    if (oldFileToDelete && client.deleteFile) {
       try {
         await client.deleteFile(oldFileToDelete);
         console.log(`[PushStrategy] Deleted old file: ${oldFileToDelete}`);
@@ -268,7 +267,7 @@ export async function smartPush(
 
     await setSyncState({
       time: Date.now(),
-      url: config.url,
+      url: getStorageIdentifier(config),
       type: "upload",
       basis,
       // 记录上传时的本地树签名（按同步范围过滤），作为下次拉取前脏检测的基准
@@ -281,16 +280,10 @@ export async function smartPush(
     return { success: true, action: "uploaded", message: "上传成功" };
   } catch (error) {
     const elapsed = Date.now() - startTime;
-    const errorMessage = (error as Error).message || "上传失败";
+    const message = (error as Error).message || "上传失败";
     console.error(`[PushStrategy] Push failed after ${elapsed}ms:`, error);
-    return {
-      success: false,
-      action: "error",
-      message: errorMessage,
-    };
+    return { success: false, action: "error", message };
   } finally {
-    if (!skipLock) {
-      await releaseSyncLock(lockHolder);
-    }
+    if (!skipLock) await releaseSyncLock(lockHolder);
   }
 }

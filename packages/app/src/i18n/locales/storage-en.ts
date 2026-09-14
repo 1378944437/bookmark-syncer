@@ -1,0 +1,57 @@
+/**
+ * Storage services (WebDAV / GitHub Gist) English locale dictionary
+ */
+export const storageEn: Record<string, string> = {
+  // ─── Storage Common & Switch ───
+  "settings.storage.tabWebdav": "WebDAV Service",
+  "settings.storage.tabGist": "GitHub Gist",
+
+  // ─── WebDAV page ───
+  "settings.webdav.title": "WebDAV settings",
+  "settings.webdav.providerTemplates": "Popular Providers",
+  "settings.webdav.providerJianguo": "Jianguoyun",
+  "settings.webdav.providerNextcloud": "Nextcloud",
+  "settings.webdav.providerInfini": "InfiniCLOUD",
+  "settings.webdav.jianguoTip": "Tip: Generate an App Password in Account Security",
+  "settings.webdav.serverUrl": "Server URL",
+  "settings.webdav.username": "Username",
+  "settings.webdav.password": "Password",
+  "settings.webdav.showPassword": "Show password",
+  "settings.webdav.hidePassword": "Hide password",
+  "settings.webdav.testBtn": "Save and test connection",
+  "settings.webdav.testing": "Testing...",
+  "settings.webdav.urlInvalid": "Invalid URL",
+  "settings.webdav.urlInvalidDesc": "Enter an address starting with http:// or https://",
+  "settings.webdav.connectFailed": "Connection failed",
+  "settings.webdav.connected": "Connected",
+  "settings.webdav.connectedDesc": "Successfully connected to the WebDAV server",
+  "settings.webdav.connectedBackupDesc": "Connected to the WebDAV server and created a backup",
+  "settings.webdav.connectedNoBackupDesc": "Connected to the WebDAV server (backup failed)",
+  "settings.webdav.configChanged": "Configuration changed, creating backup...",
+
+  // ─── GitHub Gist page ───
+  "settings.gist.title": "GitHub Gist Storage",
+  "settings.gist.bannerTitle": "Fast Private Sync · Native Version History",
+  "settings.gist.bannerDesc": "Only requires a Personal Access Token with gist scope. MarkSync never requests repository access.",
+  "settings.gist.tokenLabel": "GitHub Token (PAT)",
+  "settings.gist.generateToken": "Generate Token",
+  "settings.gist.tokenPlaceholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
+  "settings.gist.idLabel": "Gist ID",
+  "settings.gist.idPlaceholder": "Leave blank to auto-create",
+  "settings.gist.autoCreate": "Auto Create",
+  "settings.gist.autoCreateTooltip": "Automatically create a secret Gist under your GitHub account",
+  "settings.gist.viewHistory": "View version history on GitHub Gist",
+  "settings.gist.advancedExpand": "Advanced options (Custom API proxy endpoint)",
+  "settings.gist.advancedCollapse": "Collapse advanced options",
+  "settings.gist.endpointLabel": "API Endpoint (Base URL)",
+  "settings.gist.endpointDesc": "Configure custom Cloudflare Workers proxy URL if network access is restricted.",
+  "settings.gist.testBtn": "Test Gist Connection",
+  "settings.gist.testing": "Probing GitHub connection...",
+  "settings.gist.tokenRequired": "Please enter your GitHub Personal Access Token (PAT)",
+  "settings.gist.tokenRequiredAuto": "Please enter a valid GitHub Token before auto-creating Gist",
+  "settings.gist.connected": "GitHub Gist connected successfully!",
+  "settings.gist.connectFailed": "Connection failed",
+  "settings.gist.connectError": "Connection error",
+  "settings.gist.created": "Secret Gist created successfully!",
+  "settings.gist.createFailed": "Failed to create Gist",
+};

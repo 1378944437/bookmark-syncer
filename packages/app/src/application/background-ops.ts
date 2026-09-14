@@ -10,17 +10,18 @@
  * 真正的执行逻辑在 background/op-handler.ts（按需加载，不进 popup bundle）。
  */
 import browser from "webextension-polyfill";
-import type { WebDAVConfig } from "../core/storage/types";
+import type { StorageConfig, WebDAVConfig } from "../core/storage/types";
 import type { SmartSyncResult, SyncResult } from "../core/sync/types";
 
 // ─── 消息定义 ───
 
 export type BackgroundOpMessage =
+  | { type: "storage:test"; config: StorageConfig }
   | { type: "webdav:test"; config: WebDAVConfig }
-  | { type: "sync:push"; config: WebDAVConfig; options?: { skipSafetyGuard?: boolean } }
-  | { type: "sync:pull"; config: WebDAVConfig; mode: "overwrite" | "merge" }
-  | { type: "sync:smart"; config: WebDAVConfig }
-  | { type: "sync:restoreCloudBackup"; config: WebDAVConfig; path: string };
+  | { type: "sync:push"; config: StorageConfig; options?: { skipSafetyGuard?: boolean } }
+  | { type: "sync:pull"; config: StorageConfig; mode: "overwrite" | "merge" }
+  | { type: "sync:smart"; config: StorageConfig }
+  | { type: "sync:restoreCloudBackup"; config: StorageConfig; path: string };
 
 /** WebDAV 连接测试（登录）结果 */
 export type WebDAVTestResult =
@@ -41,16 +42,21 @@ async function sendBackgroundOp<T>(message: BackgroundOpMessage, fallback: T): P
   }
 }
 
-/** 在后台测试 WebDAV 连接（登录验证） */
-export async function webdavTestInBackground(config: WebDAVConfig): Promise<WebDAVTestResult> {
+/** 在后台测试存储连接（登录/鉴权验证） */
+export async function storageTestInBackground(config: StorageConfig): Promise<WebDAVTestResult> {
   return sendBackgroundOp<WebDAVTestResult>(
-    { type: "webdav:test", config },
+    { type: "storage:test", config },
     { ok: false, error: "无法连接扩展后台服务" },
   );
 }
 
+/** 在后台测试 WebDAV 连接（登录验证，向后兼容） */
+export async function webdavTestInBackground(config: WebDAVConfig): Promise<WebDAVTestResult> {
+  return storageTestInBackground(config);
+}
+
 /** 在后台执行智能同步 */
-export async function smartSyncInBackground(config: WebDAVConfig): Promise<SmartSyncResult> {
+export async function smartSyncInBackground(config: StorageConfig): Promise<SmartSyncResult> {
   return sendBackgroundOp<SmartSyncResult>(
     { type: "sync:smart", config },
     { success: false, action: "error", message: "无法连接扩展后台服务" },
@@ -59,7 +65,7 @@ export async function smartSyncInBackground(config: WebDAVConfig): Promise<Smart
 
 /** 在后台执行上传（Push） */
 export async function smartPushInBackground(
-  config: WebDAVConfig,
+  config: StorageConfig,
   options?: { skipSafetyGuard?: boolean }
 ): Promise<SyncResult> {
   return sendBackgroundOp<SyncResult>(
@@ -70,7 +76,7 @@ export async function smartPushInBackground(
 
 /** 在后台执行下载（Pull） */
 export async function smartPullInBackground(
-  config: WebDAVConfig,
+  config: StorageConfig,
   mode: "overwrite" | "merge",
 ): Promise<SyncResult> {
   return sendBackgroundOp<SyncResult>(
@@ -81,7 +87,7 @@ export async function smartPullInBackground(
 
 /** 在后台从指定云端备份恢复 */
 export async function restoreCloudBackupInBackground(
-  config: WebDAVConfig,
+  config: StorageConfig,
   path: string,
 ): Promise<SyncResult> {
   return sendBackgroundOp<SyncResult>(

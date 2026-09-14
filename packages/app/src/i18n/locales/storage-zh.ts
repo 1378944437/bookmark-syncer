@@ -1,0 +1,57 @@
+/**
+ * 存储服务（WebDAV / GitHub Gist）中文词条
+ */
+export const storageZh: Record<string, string> = {
+  // ─── 存储通用与切换 ───
+  "settings.storage.tabWebdav": "WebDAV 服务",
+  "settings.storage.tabGist": "GitHub Gist",
+
+  // ─── WebDAV 配置页 ───
+  "settings.webdav.title": "WebDAV 配置",
+  "settings.webdav.providerTemplates": "常见服务商",
+  "settings.webdav.providerJianguo": "坚果云",
+  "settings.webdav.providerNextcloud": "Nextcloud",
+  "settings.webdav.providerInfini": "InfiniCLOUD",
+  "settings.webdav.jianguoTip": "提示：请在「账户信息-安全设置」中生成应用专用密码",
+  "settings.webdav.serverUrl": "服务器地址 (URL)",
+  "settings.webdav.username": "用户名",
+  "settings.webdav.password": "密码",
+  "settings.webdav.showPassword": "显示密码",
+  "settings.webdav.hidePassword": "隐藏密码",
+  "settings.webdav.testBtn": "保存并测试连接",
+  "settings.webdav.testing": "测试中...",
+  "settings.webdav.urlInvalid": "URL 格式无效",
+  "settings.webdav.urlInvalidDesc": "请输入以 http:// 或 https:// 开头的地址",
+  "settings.webdav.connectFailed": "连接失败",
+  "settings.webdav.connected": "连接成功",
+  "settings.webdav.connectedDesc": "已成功连接到 WebDAV 服务器",
+  "settings.webdav.connectedBackupDesc": "已成功连接到 WebDAV 服务器并创建备份",
+  "settings.webdav.connectedNoBackupDesc": "已成功连接到 WebDAV 服务器（备份失败）",
+  "settings.webdav.configChanged": "检测到配置变更，正在创建备份...",
+
+  // ─── GitHub Gist 配置页 ───
+  "settings.gist.title": "GitHub Gist 存储",
+  "settings.gist.bannerTitle": "极速隐私同步 · 原生多版本回滚",
+  "settings.gist.bannerDesc": "仅需申请具备 gist 权限的 Personal Access Token。MarkSync 不会申请您的任何代码仓库权限。",
+  "settings.gist.tokenLabel": "GitHub Token (PAT)",
+  "settings.gist.generateToken": "点此一键生成 Token",
+  "settings.gist.tokenPlaceholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
+  "settings.gist.idLabel": "Gist ID",
+  "settings.gist.idPlaceholder": "留空可点击右侧自动创建",
+  "settings.gist.autoCreate": "自动创建",
+  "settings.gist.autoCreateTooltip": "在您的 GitHub 账号下自动新建一个私密 Gist",
+  "settings.gist.viewHistory": "在 GitHub Gist 网页端查看版本历史",
+  "settings.gist.advancedExpand": "展开高级选项 (自定义 API 反代加速端点)",
+  "settings.gist.advancedCollapse": "收起高级选项",
+  "settings.gist.endpointLabel": "API 端点 (Base URL)",
+  "settings.gist.endpointDesc": "如遇网络连接不稳定，可填写自建 Cloudflare Workers 反向代理地址。",
+  "settings.gist.testBtn": "测试 Gist 连通性",
+  "settings.gist.testing": "正在探测 GitHub 连接...",
+  "settings.gist.tokenRequired": "请先输入 GitHub Personal Access Token (PAT)",
+  "settings.gist.tokenRequiredAuto": "请先输入有效的 GitHub Token，才能执行自动创建",
+  "settings.gist.connected": "GitHub Gist 连接与鉴权成功！",
+  "settings.gist.connectFailed": "连接失败",
+  "settings.gist.connectError": "连接异常",
+  "settings.gist.created": "已成功自动创建私密 Gist！",
+  "settings.gist.createFailed": "创建 Gist 失败",
+};

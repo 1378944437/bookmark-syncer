@@ -4,7 +4,7 @@
  */
 import { __resetMockStore } from "@src/__mocks__/webextension-polyfill";
 import { RESTORING_KEY, RESTORING_TIMEOUT_MS } from "@src/core/sync/types";
-import { getWebDAVConfig } from "@src/application/state-manager";
+import { getActiveStorageConfig, getWebDAVConfig } from "@src/application/state-manager";
 import {
   clearLastBackupFileInfo,
   getBackupFileInterval,
@@ -211,4 +211,42 @@ describe("Application StateManager", () => {
       expect(result.config!.password).toBe("");
     });
   });
+
+  describe("getActiveStorageConfig", () => {
+    it("默认未配置时返回 null", async () => {
+      const active = await getActiveStorageConfig();
+      expect(active.config).toBeNull();
+      expect(active.storageType).toBe("webdav");
+    });
+
+    it("storage_type 为 gist 且填满 token 与 gistId 时返回 GistConfig", async () => {
+      await browser.storage.local.set({
+        storage_type: "gist",
+        gist_token: "  ghp_token_abc  ",
+        gist_id: "  gist_12345  ",
+        gist_endpoint: "  https://github.company.com/api/v3  ",
+      });
+
+      const active = await getActiveStorageConfig();
+      expect(active.storageType).toBe("gist");
+      expect(active.config).toEqual({
+        type: "gist",
+        token: "ghp_token_abc",
+        gistId: "gist_12345",
+        endpoint: "https://github.company.com/api/v3",
+      });
+    });
+
+    it("storage_type 为 gist 但缺失 token 时返回 null", async () => {
+      await browser.storage.local.set({
+        storage_type: "gist",
+        gist_token: "",
+        gist_id: "gist_12345",
+      });
+
+      const active = await getActiveStorageConfig();
+      expect(active.config).toBeNull();
+    });
+  });
 });
+
