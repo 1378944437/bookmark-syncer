@@ -3,7 +3,7 @@
  * 整合设备身份备注、外观主题与界面语言
  */
 import { useEffect, useState } from 'react'
-import { Laptop, Languages, Monitor, Moon, Sun } from 'lucide-react'
+import { Check, Copy, Laptop, Languages, Monitor, Moon, Sun } from 'lucide-react'
 import { useI18n, writeLanguageSetting, type LanguageSetting } from '../../i18n'
 import { getDeviceIdentity } from '../../application'
 import { useStorage } from '../../hooks/useStorage'
@@ -27,11 +27,27 @@ export function GeneralSettingsPage({ onBack }: { onBack: () => void }) {
   const [languageSetting, setLanguageSetting] = useStorage<LanguageSetting>('app_language', 'auto')
   const [deviceName, setDeviceName] = useStorage('device_name', '')
   const [deviceIdShort, setDeviceIdShort] = useState('')
+  const [fullDeviceId, setFullDeviceId] = useState('')
+  const [copied, setCopied] = useState(false)
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
-    getDeviceIdentity().then((d) => setDeviceIdShort(d.deviceId.slice(0, 8)))
+    getDeviceIdentity().then((d) => {
+      setDeviceIdShort(d.deviceId.slice(0, 8))
+      setFullDeviceId(d.deviceId)
+    })
   }, [])
+
+  const handleCopyDeviceId = async () => {
+    if (!fullDeviceId) return
+    try {
+      await navigator.clipboard.writeText(fullDeviceId)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // 容错降级
+    }
+  }
 
   const handleLanguageChange = async (value: LanguageSetting) => {
     setLanguageSetting(value)
@@ -51,9 +67,19 @@ export function GeneralSettingsPage({ onBack }: { onBack: () => void }) {
                   <Laptop className="w-3.5 h-3.5" />
                   <span>{t('settings.sync.deviceName')}</span>
                 </Label>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  ID: {deviceIdShort || '········'}
-                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyDeviceId}
+                  title={fullDeviceId || 'Device ID'}
+                  className="text-[10px] text-muted-foreground font-mono flex items-center gap-1 hover:text-foreground transition-colors px-1.5 py-0.5 rounded bg-muted/40 hover:bg-muted/70 cursor-pointer"
+                >
+                  <span>ID: {deviceIdShort || '········'}</span>
+                  {copied ? (
+                    <Check className="w-3 h-3 text-emerald-500" />
+                  ) : (
+                    <Copy className="w-3 h-3 opacity-70" />
+                  )}
+                </button>
               </div>
               <Input
                 type="text"

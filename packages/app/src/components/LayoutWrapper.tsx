@@ -12,7 +12,7 @@ interface LayoutWrapperProps {
 export const LayoutWrapper = ({ children, isFullTab = false }: LayoutWrapperProps) => {
   if (isFullTab) {
     return (
-      <div className="relative min-h-screen w-full bg-background text-foreground font-sans flex flex-col transition-colors duration-300 overflow-x-hidden">
+      <div className="relative min-h-[100dvh] w-full bg-background text-foreground font-sans flex flex-col transition-colors duration-300 overflow-x-hidden pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
         {/* 大屏环境背景微光 */}
         <div
           className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full pointer-events-none transition-opacity duration-700 opacity-70 dark:opacity-60"
@@ -30,7 +30,7 @@ export const LayoutWrapper = ({ children, isFullTab = false }: LayoutWrapperProp
         {/* 顶部高光边界 */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/5 to-transparent dark:via-white/15 pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="relative z-10 flex flex-col flex-1 w-full max-w-[1440px] 2xl:max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-10 xl:px-12 py-3 sm:py-7">
           {children}
         </div>
       </div>

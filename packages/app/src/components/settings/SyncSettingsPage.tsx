@@ -9,6 +9,7 @@ import { updateScheduledSync } from '../../application'
 import { SYNC_SCOPE_KEYS, type SyncScope } from '../../core/bookmark'
 import { useI18n } from '../../i18n'
 import { useStorage } from '../../hooks/useStorage'
+import { cn } from '../../infrastructure/utils/format'
 import { SubPageHeader } from './SettingsShared'
 import { SettingGroup, SettingRow } from './SettingRow'
 import { Input } from '../Input'
@@ -106,12 +107,48 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
                 }}
                 className="h-8 text-xs"
               />
+              {/* 快捷间隔预设 Pill */}
+              <div className="flex items-center gap-1.5 pt-1">
+                {[15, 30, 60, 120].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setScheduledSyncInterval(mins)}
+                    className={cn(
+                      'px-2 py-0.5 rounded text-[10px] font-mono border transition-colors',
+                      scheduledSyncInterval === mins
+                        ? 'bg-primary text-primary-foreground border-primary font-bold shadow-sm'
+                        : 'bg-muted/60 text-muted-foreground border-border hover:text-foreground'
+                    )}
+                  >
+                    {mins}m
+                  </button>
+                ))}
+              </div>
               <p className="text-[10px] text-muted-foreground">{t('settings.sync.intervalHint')}</p>
             </div>
           )}
         </SettingGroup>
 
-        {/* 快照与容灾配额 */}
+        {/* 2. 同步范围 */}
+        <SettingGroup title={t('settings.sync.groupScope')}>
+          <div className="px-3.5 py-2 bg-muted/20 border-b border-border/50">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{t('settings.sync.scopeHint')}</p>
+          </div>
+          {SYNC_SCOPE_KEYS.map((key) => (
+            <SettingRow
+              key={key}
+              icon={FolderTree}
+              iconColor="text-emerald-600 bg-emerald-500/10 dark:text-emerald-400"
+              label={t(`settings.sync.scope_${key.replace(/-/g, '_')}`)}
+              type="switch"
+              checked={syncScope[key]}
+              onCheckedChange={(checked) => updateSyncScope(key, checked)}
+            />
+          ))}
+        </SettingGroup>
+
+        {/* 3. 快照与容灾配额 */}
         <SettingGroup title={t('settings.sync.groupBackup')}>
           <SettingRow
             icon={History}
@@ -215,25 +252,7 @@ export function SyncSettingsPage({ onBack }: { onBack: () => void }) {
           </SettingRow>
         </SettingGroup>
 
-        {/* 同步范围 */}
-        <SettingGroup title={t('settings.sync.groupScope')}>
-          <div className="px-3.5 py-2 bg-muted/20 border-b border-border/50">
-            <p className="text-[11px] text-muted-foreground leading-relaxed">{t('settings.sync.scopeHint')}</p>
-          </div>
-          {SYNC_SCOPE_KEYS.map((key) => (
-            <SettingRow
-              key={key}
-              icon={FolderTree}
-              iconColor="text-emerald-600 bg-emerald-500/10 dark:text-emerald-400"
-              label={t(`settings.sync.scope_${key.replace(/-/g, '_')}`)}
-              type="switch"
-              checked={syncScope[key]}
-              onCheckedChange={(checked) => updateSyncScope(key, checked)}
-            />
-          ))}
-        </SettingGroup>
-
-        {/* 高级规则 */}
+        {/* 4. 高级容错规则 */}
         <SettingGroup title={t('settings.sync.groupAdvanced')}>
           <SettingRow
             icon={Sliders}

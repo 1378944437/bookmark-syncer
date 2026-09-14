@@ -42,31 +42,31 @@ export function FullTabHeader({
   ]
 
   return (
-    <header className="w-full flex flex-col md:flex-row md:items-center justify-between pb-6 mb-6 border-b border-border/60 gap-4">
+    <header className="w-full flex flex-col md:flex-row md:items-center justify-between pb-4 sm:pb-6 mb-4 sm:mb-6 border-b border-border/60 gap-3 sm:gap-4">
       {/* 品牌与标题 */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-          <Bookmark className="w-5 h-5" />
+        <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
+          <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
+            <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground">
               {t('fulltab.title')}
             </h1>
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+            <span className="text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
               Console
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
             {t('fulltab.subtitle')}
           </p>
         </div>
       </div>
 
       {/* 导航与快捷操作 */}
-      <div className="flex items-center justify-between md:justify-end gap-3">
+      <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-3 w-full md:w-auto">
         {/* 导航 Pills */}
-        <nav className="flex bg-muted/70 backdrop-blur-md p-1 rounded-full border border-border shadow-sm">
+        <nav className="flex-1 md:flex-initial flex items-center justify-between bg-muted/80 backdrop-blur-md p-1 rounded-full border border-border shadow-sm">
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = activeNav === item.key
@@ -76,30 +76,30 @@ export function FullTabHeader({
                 type="button"
                 onClick={() => onNavChange(item.key)}
                 className={cn(
-                  'relative px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors z-10 flex items-center gap-1.5',
-                  isActive ? 'text-white' : 'text-muted-foreground hover:text-foreground'
+                  'relative flex-1 md:flex-initial px-2.5 sm:px-4 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-colors z-10 flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap',
+                  isActive ? 'text-white font-semibold' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 {isActive && (
                   <motion.div
                     layoutId="fullTabActiveNav"
-                    className="absolute inset-0 bg-indigo-600 rounded-full -z-10 shadow-[0_2px_8px_rgba(99,102,241,0.3)]"
+                    className="absolute inset-0 bg-indigo-600 rounded-full -z-10 shadow-[0_2px_10px_rgba(99,102,241,0.35)]"
                     transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
                   />
                 )}
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="text-[11px] sm:text-xs md:text-sm">{item.label}</span>
               </button>
             )
           })}
         </nav>
 
         {/* 状态徽标与主题切换 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* 在线状态 */}
           <div
             className={cn(
-              'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border shadow-sm',
+              'hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border shadow-sm',
               !isOnline
                 ? 'bg-destructive/10 text-destructive border-destructive/20'
                 : !isConfigured
@@ -121,7 +121,7 @@ export function FullTabHeader({
           <button
             type="button"
             onClick={cycleTheme}
-            className="p-2 rounded-full transition-all border shadow-sm bg-muted/80 border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
+            className="p-2 sm:p-2.5 rounded-full transition-all border shadow-sm bg-muted/80 border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
             title={t('theme.current', {
               theme:
                 theme === 'dark'

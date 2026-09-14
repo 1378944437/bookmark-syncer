@@ -123,8 +123,8 @@ export function FullTabSnapshots() {
         </div>
       </div>
 
-      {/* 快照卡片网格 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {/* 快照卡片网格：电脑宽屏 3~4 列饱满呈现，移动端单列整齐排列 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5">
         {filteredSnapshots.map((s) => {
           const parsed = parseSnapshotReason(s.reason, '自动备份')
           const isDeleting = confirmDeleteId === s.id
