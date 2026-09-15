@@ -19,10 +19,12 @@ export function FullTabConsole() {
     <FullTabSidebar activeNav={activeNav} onNavigate={setActiveNav} />
     <main id="console-content" className="console-main" aria-labelledby="console-page-title" tabIndex={-1}>
       <FullTabHeader activeNav={activeNav} isOnline={isOnline} isConfigured={isConfigured} />
-      {activeNav === 'dashboard' && <FullTabDashboard onNavigate={setActiveNav} />}
-      {activeNav === 'activity' && <FullTabActivity />}
-      {activeNav === 'snapshots' && <FullTabSnapshots />}
-      {activeNav === 'settings' && <FullTabSettings />}
+      <div className="console-view-slot" key={activeNav}>
+        {activeNav === 'dashboard' && <FullTabDashboard onNavigate={setActiveNav} />}
+        {activeNav === 'activity' && <FullTabActivity />}
+        {activeNav === 'snapshots' && <FullTabSnapshots />}
+        {activeNav === 'settings' && <FullTabSettings />}
+      </div>
     </main>
   </div>
 }

@@ -83,7 +83,7 @@ Local repairs and isolated validation are complete, including Edge integration, 
 
 Use the [actual usage checklist](docs/ACTUAL_USAGE_CHECKLIST.md) when validating in a real environment.
 
-Version 1.6.0 redesigns the standalone desktop console and fixes the mobile dashboard snapshot entry layout. See the [release page](https://github.com/1378944437/marksync/releases/tag/v1.6.0) for packages.
+Version 1.6.2 improves navigation transitions in the standalone mobile console with a fade-in effect and disabled scroll anchoring in the content area. See the [release page](https://github.com/1378944437/marksync/releases/tag/v1.6.2) for packages.
 
 ## 🏢 Common WebDAV Provider Quick Reference
 

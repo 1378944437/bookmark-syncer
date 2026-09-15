@@ -83,7 +83,7 @@
 
 实际使用时请参考[验收清单](docs/ACTUAL_USAGE_CHECKLIST.md)。
 
-1.6.0 重构独立大屏控制台，并修复手机仪表盘快照入口布局。本地包与安装方式见[发布页面](https://github.com/1378944437/marksync/releases/tag/v1.6.0)。
+1.6.2 优化手机独立大屏控制台的导航切换，增加淡入过渡并关闭内容区滚动锚定。安装包见[发布页面](https://github.com/1378944437/marksync/releases/tag/v1.6.2)。
 
 ## 🏢 常用云盘配置速览
 
