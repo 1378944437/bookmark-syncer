@@ -22,7 +22,7 @@ export function SyncFooter({ t, snapshotCount, onOpenHistory }: SyncFooterProps)
           onOpenHistory()
         }
       }}
-      className="group mt-auto glass-panel border-x-0 border-b-0 rounded-b-none -mx-4 px-6 py-3 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors select-none"
+      className="sync-footer group mt-auto glass-panel border-x-0 border-b-0 rounded-b-none -mx-4 px-6 py-3 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors select-none"
     >
       <div className="flex items-center gap-2">
         <History className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />

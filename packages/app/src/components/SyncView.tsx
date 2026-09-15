@@ -115,7 +115,7 @@ export function SyncView() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="space-y-5 pt-3 h-full flex flex-col relative"
+        className="console-sync-view space-y-5 pt-3 h-full flex flex-col relative"
       >
         {/* 离线警示条 */}
         {!isOnline && (

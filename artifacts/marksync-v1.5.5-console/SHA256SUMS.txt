@@ -1,0 +1,2 @@
+b868a560a6233169c50465c65fe882046a8ba855448f75bfad9aab38d84ef86e  marksync-chrome-v1.5.5-console.zip
+9e94ae5c784d30b5a179300de1fb502086922186a56d9b0d29ea055702bf59d4  marksync-firefox-v1.5.5-console-unsigned.xpi
