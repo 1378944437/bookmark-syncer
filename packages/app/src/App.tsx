@@ -27,7 +27,7 @@ function App() {
             ) : (
               <>
                 {/* 弹窗顶部导航 */}
-                <div className="pt-6 pb-2 px-4 z-20">
+                <div className="shrink-0 pt-6 pb-2 px-4 z-20">
                   <TabNav activeTab={activeTab} onTabChange={setActiveTab} />
                 </div>
 

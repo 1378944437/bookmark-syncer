@@ -1,6 +1,6 @@
 /**
  * 扩展主容器
- * 智能响应式：弹窗模式下固定 360x560 视口；全屏独立标签页模式下自适应铺满
+ * 弹窗默认 360x560，较矮视口内收缩；全屏独立标签页模式下自适应铺满
  */
 import type { ReactNode } from 'react'
 
@@ -38,7 +38,7 @@ export const LayoutWrapper = ({ children, isFullTab = false }: LayoutWrapperProp
   }
 
   return (
-    <div className="relative w-[360px] max-w-full h-[560px] bg-background text-foreground font-sans overflow-hidden rounded-xl flex flex-col transition-colors duration-300 border border-border/70 dark:border-white/[0.08]">
+    <div className="relative w-[360px] max-w-full h-[560px] max-h-[100dvh] bg-background text-foreground font-sans overflow-hidden rounded-xl flex flex-col transition-colors duration-300 border border-border/70 dark:border-white/[0.08]">
       {/* 弹窗微光 */}
       <div
         className="absolute -top-20 -left-20 w-80 h-80 rounded-full pointer-events-none transition-opacity duration-700 opacity-90 dark:opacity-80"
@@ -54,7 +54,7 @@ export const LayoutWrapper = ({ children, isFullTab = false }: LayoutWrapperProp
       />
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/5 to-transparent dark:via-white/15 pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col h-full">
+      <div className="relative z-10 flex flex-col h-full min-h-0 pb-[env(safe-area-inset-bottom,0px)]">
         {children}
       </div>
     </div>

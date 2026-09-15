@@ -1,0 +1,34 @@
+{
+  "date": "2026-09-15T09:46:29.1045356Z",
+  "version": "1.5.3",
+  "baseCommit": "bd477d1",
+  "typesAndBuilds": "passed for Chrome and Firefox",
+  "packages": [
+    {
+      "file": "marksync-chrome-v1.5.3.zip",
+      "platform": "chrome",
+      "version": "1.5.3",
+      "bytes": 265592,
+      "files": 17,
+      "sha256": "18e703978aa9364ac549523f3cd31b4191efb46b4ce8728999426af1ec9257b8",
+      "runtimeFilesMatchDist": true,
+      "excludedBuildMetadata": ".vite/manifest.json",
+      "manifestResourcesPresent": true,
+      "signed": false
+    },
+    {
+      "file": "marksync-firefox-v1.5.3-unsigned.xpi",
+      "platform": "firefox",
+      "version": "1.5.3",
+      "bytes": 265166,
+      "files": 16,
+      "sha256": "1bd15d606b7407066007c297ad4d2e458c9ad6128c0919766e0cb3ae59250b93",
+      "runtimeFilesMatchDist": true,
+      "excludedBuildMetadata": ".vite/manifest.json",
+      "manifestResourcesPresent": true,
+      "signed": false
+    }
+  ],
+  "realValidation": "deferred_by_user",
+  "published": false
+}

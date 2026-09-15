@@ -1,0 +1,2 @@
+9765070f38149852210f6391714eed7e42619c79b113c178e0a60f9f8bb516b1  marksync-chrome-v1.5.4.zip
+3a013803492f27af3e2ceab42bbb6ab97ed19c80adf40596aa20dd414afaa59b  marksync-firefox-v1.5.4-unsigned.xpi

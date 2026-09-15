@@ -1,0 +1,39 @@
+{
+  "version": "1.5.3",
+  "browser": "153.0.4234.32",
+  "results": [
+    {
+      "name": "webdav-360x560",
+      "visible": false,
+      "hit": false,
+      "top": 612.875,
+      "bottom": 652.875,
+      "clips": [
+        {
+          "overflow": "auto",
+          "height": 524,
+          "content": 524,
+          "scroll": 0
+        },
+        {
+          "overflow": "hidden",
+          "height": 468,
+          "content": 578,
+          "scroll": 0
+        },
+        {
+          "overflow": "auto",
+          "height": 480,
+          "content": 480,
+          "scroll": 0
+        },
+        {
+          "overflow": "hidden",
+          "height": 558,
+          "content": 558,
+          "scroll": 0
+        }
+      ]
+    }
+  ]
+}

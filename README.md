@@ -83,6 +83,8 @@
 
 实际使用时请参考[验收清单](docs/ACTUAL_USAGE_CHECKLIST.md)。
 
+1.5.4 修复设置页底部裁切并完善手机主题适配。本地包与安装方式见[本地安装包说明](docs/LOCAL_PACKAGES_1.5.4.md)：Chrome/Edge 解压加载，Firefox 提供未签名临时测试包。
+
 ## 🏢 常用云盘配置速览
 
 | 服务商 | WebDAV 服务器 URL | 用户名 | 密码注意 |

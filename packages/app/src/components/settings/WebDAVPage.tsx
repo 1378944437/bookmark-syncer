@@ -112,7 +112,7 @@ export function WebDAVPage({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
+    <div className="flex flex-col">
       <SubPageHeader title={t('settings.webdav.title')} onBack={onBack} />
       <div className="space-y-4 pb-4">
         {/* 常见服务商快速配置模板标签 */}

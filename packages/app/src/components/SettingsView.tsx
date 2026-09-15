@@ -122,7 +122,7 @@ export function SettingsView() {
             animate="center"
             exit="exit"
             transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="flex-1 overflow-hidden"
+            className="flex-1 min-h-0 overflow-y-auto"
           >
             <CloudStoragePage onBack={() => setSubPage('main')} />
           </motion.div>

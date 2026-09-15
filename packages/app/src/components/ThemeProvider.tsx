@@ -30,7 +30,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // 统一应用主题到 DOM 根节点
   const applyTheme = useCallback((targetTheme: 'dark' | 'light') => {
     const root = document.documentElement
-    const themeColor = targetTheme === 'dark' ? '#090d16' : '#ffffff'
     if (targetTheme === 'dark') {
       root.classList.add('dark')
       root.classList.remove('light')
@@ -38,11 +37,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       root.classList.add('light')
       root.classList.remove('dark')
     }
-    // 动态同步移动端系统状态栏与底部手势区颜色
+    // 使用实际页面背景；无 media 限制，应用主题与系统主题不同时也能生效。
+    const themeColor = getComputedStyle(root).backgroundColor
     const metaThemeColor = document.querySelector('meta[name="theme-color"]')
     if (metaThemeColor) {
       metaThemeColor.setAttribute('content', themeColor)
     }
+    document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', targetTheme)
     setResolvedTheme(targetTheme)
   }, [])
 

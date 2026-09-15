@@ -5,6 +5,7 @@
 /* ===== Design Tokens (Light Mode: Clean & Bright) ===== */
 @layer base {
   :root {
+    color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 224 71% 4%;
     
@@ -37,6 +38,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     /* Dark Mode: Rich & Vibrant
        深色下刻意抬高 border/muted-foreground/destructive：
        原值（border 17%、destructive 31%）在近黑背景上几乎不可见，

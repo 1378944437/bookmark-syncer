@@ -83,6 +83,8 @@ Local repairs and isolated validation are complete, including Edge integration, 
 
 Use the [actual usage checklist](docs/ACTUAL_USAGE_CHECKLIST.md) when validating in a real environment.
 
+Version 1.5.4 fixes clipped settings controls and improves mobile theme integration. See the [local package guide](docs/LOCAL_PACKAGES_1.5.4.md) (Chinese): load the extracted package in Chrome/Edge; the unsigned Firefox package is for temporary testing.
+
 ## 🏢 Common WebDAV Provider Quick Reference
 
 | Provider | WebDAV Server URL | Username | Password Note |
