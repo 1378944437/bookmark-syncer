@@ -28,7 +28,7 @@ function App() {
               <>
                 {/* 弹窗顶部导航 */}
                 <div className="shrink-0 pt-6 pb-2 px-4 z-20">
-                  <TabNav activeTab={activeTab} onTabChange={setActiveTab} />
+                  <TabNav activeTab={activeTab} onTabChange={setActiveTab} isMobile={isMobile} />
                 </div>
 
                 {/* 弹窗主内容区 */}
@@ -36,10 +36,10 @@ function App() {
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={activeTab}
-                      initial={{ opacity: 0, x: activeTab === 'sync' ? -20 : 20 }}
+                      initial={{ opacity: 0, x: isMobile ? 0 : activeTab === 'sync' ? -20 : 20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: activeTab === 'sync' ? 20 : -20 }}
-                      transition={{ duration: 0.2 }}
+                      exit={{ opacity: 0, x: isMobile ? 0 : activeTab === 'sync' ? 20 : -20 }}
+                      transition={{ duration: isMobile ? 0.12 : 0.2, ease: 'easeOut' }}
                       className="h-full"
                     >
                       {activeTab === 'sync' ? <SyncView /> : <SettingsView />}

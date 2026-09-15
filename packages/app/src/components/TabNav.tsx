@@ -8,9 +8,10 @@ import { cn } from '../infrastructure/utils/format'
 interface TabNavProps {
   activeTab: 'sync' | 'settings'
   onTabChange: (tab: 'sync' | 'settings') => void
+  isMobile?: boolean
 }
 
-export function TabNav({ activeTab, onTabChange }: TabNavProps) {
+export function TabNav({ activeTab, onTabChange, isMobile = false }: TabNavProps) {
   const { theme, setTheme } = useTheme()
   const { t } = useI18n()
 
@@ -39,7 +40,7 @@ export function TabNav({ activeTab, onTabChange }: TabNavProps) {
             <motion.div
               layoutId="activeTab"
               className="absolute inset-0 bg-indigo-600 rounded-full -z-10 shadow-[0_2px_8px_rgba(99,102,241,0.3)]"
-              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              transition={isMobile ? { duration: 0.16, ease: 'easeOut' } : { type: "spring", bounce: 0.2, duration: 0.6 }}
             />
           )}
           <Cloud className="w-4 h-4" />
@@ -57,7 +58,7 @@ export function TabNav({ activeTab, onTabChange }: TabNavProps) {
             <motion.div
               layoutId="activeTab"
               className="absolute inset-0 bg-indigo-600 rounded-full -z-10 shadow-[0_2px_8px_rgba(99,102,241,0.3)]"
-              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              transition={isMobile ? { duration: 0.16, ease: 'easeOut' } : { type: "spring", bounce: 0.2, duration: 0.6 }}
             />
           )}
           <Settings className="w-4 h-4" />
