@@ -1,3 +1,6 @@
+import browser from 'webextension-polyfill'
+import { validateSettings } from '../../application/settings-validation'
+import { GistHistoryAdoption } from './GistHistoryAdoption'
 /**
  * GitHub Gist 存储配置子页面
  * 提供 Token 填写、一键自动创建私密 Gist、自定义端点与连通性测试
@@ -23,9 +26,9 @@ import { SubPageHeader } from './SettingsShared'
 
 export function GistSettingsPage({ onBack }: { onBack: () => void }) {
   const { t } = useI18n()
-  const [token, setToken] = useStorage('gist_token', '')
-  const [gistId, setGistId] = useStorage('gist_id', '')
-  const [endpoint, setEndpoint] = useStorage('gist_endpoint', 'https://api.github.com')
+  const [token] = useStorage('gist_token', '')
+  const [gistId] = useStorage('gist_id', '')
+  const [endpoint] = useStorage('gist_endpoint', 'https://api.github.com')
 
   // 本地受控输入状态
   const [localToken, setLocalToken] = useState(token)
@@ -46,6 +49,16 @@ export function GistSettingsPage({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     setLocalEndpoint((prev) => (prev === 'https://api.github.com' ? endpoint : prev))
   }, [endpoint])
+
+  const saveDraft = async () => {
+    try {
+      const values = { gist_token: localToken.trim(), gist_id: localGistId.trim(), gist_endpoint: localEndpoint.trim() }
+      validateSettings(values)
+      if (!values.gist_id || !values.gist_token) throw new Error(t('settings.gist.tokenRequired'))
+      await browser.storage.local.set(values)
+      toast.success(t('settings.security.savedToast'))
+    } catch (error) { toast.error((error as Error).message) }
+  }
 
   // 测试连通性
   const handleTest = async () => {
@@ -90,7 +103,6 @@ export function GistSettingsPage({ onBack }: { onBack: () => void }) {
       })
       const { id } = await client.createGist('MarkSync Bookmarks Sync (汇签云端私密书签备份)', false)
       setLocalGistId(id)
-      setGistId(id)
       toast.success(t('settings.gist.created'), { description: `Gist ID: ${id}` })
     } catch (err) {
       toast.error(t('settings.gist.createFailed'), { description: (err as Error).message })
@@ -117,7 +129,7 @@ export function GistSettingsPage({ onBack }: { onBack: () => void }) {
       {/* Token 输入 */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs">{t('settings.gist.tokenLabel')}</Label>
+          <Label htmlFor="gist-token" className="text-xs">{t('settings.gist.tokenLabel')}</Label>
           <a
             href="https://github.com/settings/tokens/new?scopes=gist&description=MarkSync"
             target="_blank"
@@ -132,15 +144,16 @@ export function GistSettingsPage({ onBack }: { onBack: () => void }) {
         <div className="relative">
           <Input
             type={showToken ? 'text' : 'password'}
+            id="gist-token"
             value={localToken}
             onChange={(e) => setLocalToken(e.target.value)}
-            onBlur={() => setToken(localToken.trim())}
             placeholder={t('settings.gist.tokenPlaceholder')}
             className="pr-9 font-mono text-xs"
           />
           <button
             type="button"
             onClick={() => setShowToken(!showToken)}
+            aria-label={t(showToken ? 'settings.webdav.hidePassword' : 'settings.webdav.showPassword')}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -150,12 +163,12 @@ export function GistSettingsPage({ onBack }: { onBack: () => void }) {
 
       {/* Gist ID 输入与自动创建 */}
       <div className="space-y-2">
-        <Label className="text-xs">{t('settings.gist.idLabel')}</Label>
+        <Label htmlFor="gist-id" className="text-xs">{t('settings.gist.idLabel')}</Label>
         <div className="flex gap-2">
           <Input
+            id="gist-id"
             value={localGistId}
             onChange={(e) => setLocalGistId(e.target.value)}
-            onBlur={() => setGistId(localGistId.trim())}
             placeholder={t('settings.gist.idPlaceholder')}
             className="font-mono text-xs flex-1"
           />
@@ -197,11 +210,11 @@ export function GistSettingsPage({ onBack }: { onBack: () => void }) {
 
         {showAdvanced && (
           <div className="mt-2.5 space-y-1.5 p-3 rounded-xl bg-muted/40 border border-border">
-            <Label className="text-xs">{t('settings.gist.endpointLabel')}</Label>
+            <Label htmlFor="gist-endpoint" className="text-xs">{t('settings.gist.endpointLabel')}</Label>
             <Input
-              value={localEndpoint}
+              id="gist-endpoint"
+            value={localEndpoint}
               onChange={(e) => setLocalEndpoint(e.target.value)}
-              onBlur={() => setEndpoint(localEndpoint.trim())}
               placeholder="https://api.github.com"
               className="font-mono text-xs"
             />
@@ -212,6 +225,8 @@ export function GistSettingsPage({ onBack }: { onBack: () => void }) {
         )}
       </div>
 
+      <Button onClick={saveDraft} disabled={testing || creating} className="w-full">{t('repair.saveDraft')}</Button>
+      <GistHistoryAdoption config={{ type: 'gist', token, gistId, endpoint }} />
       {/* 底部操作按钮 */}
       <div className="pt-2">
         <Button

@@ -6,8 +6,8 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Eye, EyeOff, KeyRound, Loader2, Lock } from 'lucide-react'
-import { clearLastBackupFileInfo, getWebDAVConfig } from '../../application'
-import { smartPushInBackground } from '../../application/background-ops'
+import { getActiveStorageConfig } from '../../application/state-manager'
+import { migrateEncryptionInBackground } from '../../application/background-ops'
 import { useI18n } from '../../i18n'
 import { useStorage } from '../../hooks/useStorage'
 import { Button } from '../Button'
@@ -21,8 +21,10 @@ import { HelpTip } from '../HelpTip'
 
 export function E2EEncryptionSection() {
   const { t } = useI18n()
-  const [e2eEnabled, setE2eEnabled] = useStorage('e2e_enabled', false)
-  const [e2ePassphrase, setE2ePassphrase] = useStorage('e2e_passphrase', '')
+  const [e2eEnabled] = useStorage('e2e_enabled', false)
+  const [e2ePassphrase] = useStorage('e2e_passphrase', '')
+
+  const [pending] = useStorage('encryption_migration', null)
 
   // 纯本地草稿状态：未点击保存前绝不写入持久化存储
   const [draftPassword, setDraftPassword] = useState('')
@@ -35,80 +37,34 @@ export function E2EEncryptionSection() {
 
   const isMismatch = draftConfirm.length > 0 && draftPassword !== draftConfirm
 
-  // 重新加密云端备份
-  const handleReupload = async () => {
+  const handleReupload = async (enabled = e2eEnabled, passphrase = e2ePassphrase) => {
+    if (reuploading) return
+    setReuploading(true)
     try {
-      setReuploading(true)
-      await clearLastBackupFileInfo()
-      const { config } = await getWebDAVConfig()
-      if (!config) {
-        toast.error(t('settings.sync.e2eNeedWebdav'))
-        return
-      }
-      const result = await smartPushInBackground(config)
-      if (result.success) {
-        toast.success(t('settings.sync.e2eReuploadDone'))
-      } else {
-        toast.error(result.message || t('settings.sync.e2eReuploadFailed'))
-      }
-    } catch (error) {
-      toast.error((error as Error).message || t('settings.sync.e2eReuploadFailed'))
-    } finally {
-      setReuploading(false)
-    }
+      const { config } = await getActiveStorageConfig()
+      if (!config) throw new Error(t('settings.sync.e2eNeedWebdav'))
+      const result = await migrateEncryptionInBackground(config, { enabled, passphrase })
+      if (!result.success) throw new Error(result.message)
+      setDraftPassword(''); setDraftConfirm(''); setShowDisableConfirm(false)
+      toast.success(result.message)
+    } catch (error) { toast.error((error as Error).message) }
+    finally { setReuploading(false) }
   }
-
-  // 首次启用并保存加密密码
   const handleEnableAndSave = () => {
-    if (draftPassword.length < 8) {
-      toast.error(t('settings.security.passwordMinLength'))
-      return
-    }
-    if (draftPassword !== draftConfirm) {
-      toast.error(t('settings.security.passwordMismatch'))
-      return
-    }
-    setE2ePassphrase(draftPassword)
-    setE2eEnabled(true)
-    setDraftPassword('')
-    setDraftConfirm('')
-    toast.success(t('settings.sync.e2eOnToast'))
-    void handleReupload()
+    if (draftPassword.length < 8 || draftPassword !== draftConfirm) return
+    void handleReupload(true, draftPassword)
   }
-
-  // 保存修改后的新密码
-  const handleSaveNewPassword = (newPass: string) => {
-    setE2ePassphrase(newPass)
-    toast.success(t('settings.security.savedToast'))
-    void handleReupload()
+  const handleSaveNewPassword = (passphrase: string) => { void handleReupload(true, passphrase) }
+  const handleToggleClick = (enabled: boolean) => {
+    if (!enabled) setShowDisableConfirm(true)
+    else if (e2ePassphrase.length >= 8) void handleReupload(true)
+    else toast.error(t('settings.security.passwordMinLength'))
   }
-
-  // 请求关闭开关时触发二次确认弹窗
-  const handleToggleClick = (nextChecked: boolean) => {
-    if (!nextChecked) {
-      setShowDisableConfirm(true)
-    } else {
-      // 若此前已有记忆密码，直接重新启用
-      if (e2ePassphrase && e2ePassphrase.length >= 8) {
-        setE2eEnabled(true)
-        toast.success(t('settings.sync.e2eOnToast'))
-        void handleReupload()
-      } else {
-        // 无有效密码时保持关闭，提醒用户先输入密码
-        toast.error(t('settings.security.passwordMinLength'))
-      }
-    }
-  }
-
-  // 确认关闭端到端加密（保留本地密码，仅停用加密行为）
-  const confirmDisable = () => {
-    setE2eEnabled(false)
-    setShowDisableConfirm(false)
-    toast.success(t('settings.sync.e2eOffToast'))
-  }
+  const confirmDisable = () => { void handleReupload(false, '') }
 
   return (
     <div className="space-y-4">
+      {pending && <Button disabled={reuploading} onClick={() => void handleReupload()}>{t('repair.resumeEncryption')}</Button>}
       {/* 核心卡片容器 */}
       <div className="p-4 surface-card space-y-4 border border-border/60 dark:border-white/[0.08]">
         {/* 顶部标题与主开关 */}
@@ -123,6 +79,8 @@ export function E2EEncryptionSection() {
           <label className="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
+              disabled={reuploading || !!pending}
+              aria-label={t('settings.sync.e2eSection')}
               checked={e2eEnabled}
               onChange={(e) => handleToggleClick(e.target.checked)}
               className="sr-only peer"

@@ -14,12 +14,33 @@ import { smartPull, smartPush, smartSync, restoreFromCloudBackup } from "../core
 import { notifySyncCompleted } from "../application/sync-indicator";
 import type { SyncResult } from "../core/sync/types";
 import { createStorageProvider } from "../infrastructure/storage/provider-factory";
+import { restoreLocalSnapshot } from '../core/sync/local-restore';
+import { runMaintenance } from '../core/sync/maintenance';
+import { acquireSyncLock, releaseSyncLock } from '../core/sync/lock-manager';
+import { fetchValidatedCloudBackup } from '../core/sync/utils/cloud-data-helper';
+import { getE2ESettings } from '../core/sync/sync-settings';
+import { migrateEncryption } from '../core/sync/encryption-migration';
+import { getStorageIdentifier } from '../core/storage/types';
 
 /** 防止重复注册（模块可能被多个入口引入） */
 let registered = false;
 
 async function dispatch(message: BackgroundOpMessage): Promise<unknown> {
   switch (message.type) {
+    case 'sync:encryption': return migrateEncryption(message.config, message.next);
+    case 'storage:maintenance': return runMaintenance(message.kind, message.config);
+    case 'storage:adopt': {
+      if (!await acquireSyncLock('adopt')) throw new Error('同步正在进行中');
+      try {
+        const client = createStorageProvider(message.config);
+        if (!client.adoptBackup) throw new Error('此存储不需要接管历史版本');
+        await fetchValidatedCloudBackup(client, message.path, { passphrase: (await getE2ESettings()).passphrase });
+        await client.adoptBackup(message.path);
+        return { success: true, action: 'skipped', message: '已选择当前版本' };
+      } finally { await releaseSyncLock('adopt'); }
+    }
+    case 'sync:restoreLocalSnapshot':
+      return restoreLocalSnapshot(message.id);
     case "storage:test":
     case "webdav:test": {
       // 连接测试的错误单独包装：popup 需要区分「认证失败」等具体原因
@@ -37,17 +58,19 @@ async function dispatch(message: BackgroundOpMessage): Promise<unknown> {
 
     case "sync:push":
       return message.options
-        ? smartPush(message.config, "manual", message.options)
+        ? smartPush(message.config, "manual", { skipSafetyGuard: message.options.skipSafetyGuard === true,
+            confirmationId: typeof message.options.confirmationId === 'string' ? message.options.confirmationId : undefined })
         : smartPush(message.config, "manual");
 
     case "sync:pull":
+      if (message.mode !== 'merge' && message.mode !== 'overwrite') throw new Error('无效的恢复模式');
       return smartPull(message.config, "manual", message.mode);
 
     case "sync:smart":
       return smartSync(message.config, "manual");
 
     case "sync:restoreCloudBackup":
-      return restoreFromCloudBackup(message.config, message.path, "manual");
+      return message.passphrase ? restoreFromCloudBackup(message.config, message.path, "manual", message.passphrase) : restoreFromCloudBackup(message.config, message.path, "manual");
 
     default:
       // 非本模块的消息，交给其他监听器
@@ -57,6 +80,9 @@ async function dispatch(message: BackgroundOpMessage): Promise<unknown> {
 
 /** 处理的消息类型（用于过滤无关消息） */
 const HANDLED_TYPES = new Set([
+  'sync:encryption',
+  'storage:maintenance', 'storage:adopt',
+  'sync:restoreLocalSnapshot',
   "storage:test",
   "webdav:test",
   "sync:push",
@@ -82,7 +108,13 @@ export function registerBackgroundOpHandler(): void {
 
     console.log(`[BackgroundOpHandler] Executing: ${typed.type}`);
     return dispatch(typed)
-      .then((result) => {
+      .catch((error) => ({ success: false, action: 'error', message: (error as Error).message || '后台操作失败' }))
+      .then(async (result) => {
+        if (result && typeof result === 'object' && 'success' in result && 'config' in typed && typed.config) {
+          await browser.storage.local.set({ last_background_result: {
+            target: getStorageIdentifier(typed.config), time: Date.now(), result,
+          } });
+        }
         // 手动同步成功后同样给出完成提示
         const syncResult = result as SyncResult | { ok: boolean } | undefined;
         if (
@@ -91,7 +123,7 @@ export function registerBackgroundOpHandler(): void {
           "action" in syncResult &&
           syncResult.success
         ) {
-          void notifySyncCompleted((syncResult as SyncResult).action);
+          void notifySyncCompleted((syncResult as SyncResult).action, { trigger: 'manual', message: (syncResult as SyncResult).message });
         }
         return result;
       })

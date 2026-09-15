@@ -25,21 +25,21 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
 export async function compressText(text: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
-  
+
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(data);
       controller.close();
     }
   });
-  
+
   const compressedStream = stream.pipeThrough(
     new CompressionStream('gzip')
   );
-  
+
   const chunks: Uint8Array[] = [];
   const reader = compressedStream.getReader();
-  
+
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -49,7 +49,7 @@ export async function compressText(text: string): Promise<string> {
   } finally {
     reader.releaseLock();
   }
-  
+
   // 合并所有 chunks
   const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
   const result = new Uint8Array(totalLength);
@@ -58,7 +58,7 @@ export async function compressText(text: string): Promise<string> {
     result.set(chunk, offset);
     offset += chunk.length;
   }
-  
+
   // 安全转为 Base64（分块处理，避免栈溢出）
   return uint8ArrayToBase64(result);
 }
@@ -68,7 +68,8 @@ export async function compressText(text: string): Promise<string> {
  * @param base64Data Base64 编码的压缩数据
  * @returns 解压后的文本
  */
-export async function decompressText(base64Data: string): Promise<string> {
+export async function decompressText(base64Data: string, maxBytes = 64 * 1024 * 1024): Promise<string> {
+  if (base64Data.length > 32 * 1024 * 1024) throw new Error('压缩备份超过 32 MiB');
   // Base64 解码
   let binaryString: string;
   try {
@@ -80,31 +81,34 @@ export async function decompressText(base64Data: string): Promise<string> {
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
-  
+
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(bytes);
       controller.close();
     }
   });
-  
+
   const decompressedStream = stream.pipeThrough(
     new DecompressionStream('gzip')
   );
-  
+
   const chunks: Uint8Array[] = [];
   const reader = decompressedStream.getReader();
-  
+  let expandedBytes = 0;
+
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      expandedBytes += value.byteLength;
+      if (expandedBytes > maxBytes) { await reader.cancel(); throw new Error('解压备份超过大小限制'); }
       chunks.push(value);
     }
   } finally {
     reader.releaseLock();
   }
-  
+
   // 合并并解码
   const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
   const result = new Uint8Array(totalLength);
@@ -113,7 +117,7 @@ export async function decompressText(base64Data: string): Promise<string> {
     result.set(chunk, offset);
     offset += chunk.length;
   }
-  
+
   const decoder = new TextDecoder();
   return decoder.decode(result);
 }

@@ -14,38 +14,18 @@ import type { SharedSyncState } from "./sync-item-types";
 export async function deleteUnprocessedNodes(
   shared: SharedSyncState,
 ): Promise<number> {
-  let deleted = 0;
-  for (const folderId of shared.visitedFolderIds) {
-    try {
-      const children = (await BrowserBookmarksAPI.getChildren(folderId)) as BookmarkNode[];
-      for (const child of children) {
-        if (!child.id || shared.processedLocalIds.has(child.id)) continue;
+  let deleted=0;
+  for(const folderId of shared.visitedFolderIds) {
+    const children=(await BrowserBookmarksAPI.getChildren(folderId)) as BookmarkNode[];
+    for(const child of children) {
+      if(!child.id||shared.processedLocalIds.has(child.id)) continue;
 
-        try {
-          const removeMethod = child.url
-            ? BrowserBookmarksAPI.remove(child.id)
-            : BrowserBookmarksAPI.removeTree(child.id);
+      const removeMethod=child.url
+        ? BrowserBookmarksAPI.remove(child.id)
+        :BrowserBookmarksAPI.removeTree(child.id);
 
-          await removeMethod;
-          deleted++;
-        } catch (error) {
-          const errorMsg = (error as Error).message || '';
-          const nodeType = child.url ? "bookmark" : "folder";
-          // 节点已被删除是正常情况（可能被其他操作处理过）
-          if (errorMsg.includes("Can't find bookmark")) {
-            console.log(
-              `[Merger] ${nodeType} ${child.id} already deleted, skipping`,
-            );
-          } else {
-            console.warn(
-              `[Merger] Failed to delete ${nodeType} ${child.id}:`,
-              error,
-            );
-          }
-        }
-      }
-    } catch (error) {
-      console.warn(`[Merger] Failed to get children of folder ${folderId}:`, error);
+      await removeMethod;
+      deleted++;
     }
   }
 
@@ -61,39 +41,21 @@ export async function deleteUnprocessedChildren(
   localParentId: string,
   processedLocalIds: Set<string>,
 ): Promise<number> {
-  let deleted = 0;
-  const finalLocalChildren = (await BrowserBookmarksAPI.getChildren(
+  let deleted=0;
+  const finalLocalChildren=(await BrowserBookmarksAPI.getChildren(
     localParentId,
   )) as BookmarkNode[];
 
-  for (const localNode of finalLocalChildren) {
-    if (!localNode.id || processedLocalIds.has(localNode.id)) continue;
+  for(const localNode of finalLocalChildren) {
+    if(!localNode.id||processedLocalIds.has(localNode.id)) continue;
 
     // 这个节点在云端不存在，删除它
-    try {
-      const removeMethod = localNode.url
-        ? BrowserBookmarksAPI.remove(localNode.id)
-        : BrowserBookmarksAPI.removeTree(localNode.id);
+    const removeMethod=localNode.url
+      ? BrowserBookmarksAPI.remove(localNode.id)
+      :BrowserBookmarksAPI.removeTree(localNode.id);
 
-      await removeMethod;
-      deleted++;
-    } catch (error) {
-      const errorMsg = (error as Error).message || '';
-      const nodeType = localNode.url ? "bookmark" : "folder";
-
-      // 节点已被删除是正常情况（可能被其他操作处理过）
-      if (errorMsg.includes("Can't find bookmark")) {
-        console.log(
-          `[Merger] ${nodeType} ${localNode.id} already deleted, skipping`,
-        );
-      } else {
-        // 其他错误才需要警告
-        console.warn(
-          `[Merger] Failed to delete ${nodeType} ${localNode.id}:`,
-          error,
-        );
-      }
-    }
+    await removeMethod;
+    deleted++;
   }
   return deleted;
 }

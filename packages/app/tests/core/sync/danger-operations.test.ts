@@ -26,8 +26,8 @@ vi.mock("@src/core/backup", () => ({
 const mockDeleteFile = vi.fn(async () => {});
 const mockExists = vi.fn(async () => true);
 const mockListFiles = vi.fn(async () => [
-  { name: "backup_1.json", path: "/BookmarkSyncer/backup_1.json" },
-  { name: "backup_2.json.gz", path: "/BookmarkSyncer/backup_2.json.gz" },
+  { name: "bookmarks_1.json.gz", path: "/BookmarkSyncer/bookmarks_1.json.gz" },
+  { name: "bookmarks_2.json.gz.enc", path: "/BookmarkSyncer/bookmarks_2.json.gz.enc" },
   { name: "other.txt", path: "/BookmarkSyncer/other.txt" },
 ]);
 
@@ -85,7 +85,7 @@ describe("DangerOperations - 危险操作领域服务", () => {
   });
 
   describe("clearCloudBackups", () => {
-    it("仅清理云端 .json 与 .json.gz 备份文件并重置本地缓存", async () => {
+    it("仅清理书签备份文件，不删除其他 JSON 文件", async () => {
       const config = {
         url: "https://dav.example.com",
         username: "user",
@@ -93,9 +93,9 @@ describe("DangerOperations - 危险操作领域服务", () => {
       };
 
       const result = await clearCloudBackups(config);
-      expect(result.deletedCount).toBe(2); // 只删 backup_1.json 与 backup_2.json.gz，忽略 other.txt
-      expect(mockDeleteFile).toHaveBeenCalledWith("/BookmarkSyncer/backup_1.json");
-      expect(mockDeleteFile).toHaveBeenCalledWith("/BookmarkSyncer/backup_2.json.gz");
+      expect(result.deletedCount).toBe(2); // 只删 bookmarks_1.json.gz 与 bookmarks_2.json.gz.enc，忽略 other.txt
+      expect(mockDeleteFile).toHaveBeenCalledWith("/BookmarkSyncer/bookmarks_1.json.gz");
+      expect(mockDeleteFile).toHaveBeenCalledWith("/BookmarkSyncer/bookmarks_2.json.gz.enc");
     });
   });
 

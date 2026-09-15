@@ -9,8 +9,8 @@
   - `packages/app`（`@marksync/app`）：全部核心逻辑，DDD 分层（`infrastructure` / `core` / `application` / `components` / `background`），测试在 `tests/`，目录镜像 `src/` 分层。
   - `apps/chrome-extension`、`apps/firefox-extension`：两个壳工程，仅入口与 manifest。
 - 技术栈：TypeScript（strict）+ React 19 + Vite 5 + Vitest 4 + Tailwind 3。
-- 当前目录**没有 .git 仓库**；`.github/` 配置在仓库重建后才生效。
-- 没有任何 lint / 格式化工具链，质量门只有 tsc strict。
+- 当前目录存在 `.git` 仓库（2026-09-14 核对）；默认不初始化、提交、推送或发布。
+- 没有任何 lint / 格式化工具链；静态质量门为 tsc strict，另有 Vitest 与构建检查。
 
 ## 2. 基本原则
 

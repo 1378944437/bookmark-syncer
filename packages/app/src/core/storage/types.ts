@@ -32,6 +32,7 @@ export type StorageConfig = WebDAVConfig | GistConfig;
  * WebDAV 文件信息
  */
 export interface WebDAVFile {
+  order?: number;
   name: string;
   path: string;
   lastModified: number;
@@ -58,6 +59,7 @@ export interface CloudBackupFile {
  * 云端信息
  */
 export interface CloudInfo {
+  filePath?: string;
   exists: boolean;
   timestamp?: number;
   totalCount?: number;
@@ -85,6 +87,7 @@ export interface CachedBackup {
  * 缓存的备份文件列表
  */
 export interface CachedBackupList {
+  target?: string;
   backups: CloudBackupFile[];
   cachedAt: number;
 }
@@ -108,6 +111,7 @@ export interface BackupFileMetadata {
  * 用于时间间隔备份策略
  */
 export interface LastBackupFileInfo {
+  target?: string;
   fileName: string;        // 文件名
   filePath: string;        // 完整路径
   createdAt: number;       // 创建时间戳
@@ -121,13 +125,13 @@ export const STORAGE_CONSTANTS = {
   /** 默认备份目录（v1.2.0 品牌重塑：由 BookmarkSyncer 更名，
    * 旧目录数据保留在 WebDAV 上作为备份，升级后首次上传会在新目录重新播种） */
   BACKUP_DIR: 'MarkSync',
-  
+
   /** 缓存有效期（毫秒）- 5分钟 */
   CACHE_EXPIRE_MS: 5 * 60 * 1000,
-  
+
   /** 下载超时时间（毫秒）- 30秒 */
   DOWNLOAD_TIMEOUT_MS: 30000,
-  
+
   /** 保留备份的天数 */
   DEFAULT_DAYS_TO_KEEP: 3,
 
@@ -136,7 +140,7 @@ export const STORAGE_CONSTANTS = {
 
   /** 云端备份总数上限（滑动窗口淘汰，默认15份） */
   DEFAULT_MAX_BACKUPS_TO_KEEP: 15,
-  
+
   /** 最后备份文件信息存储键 */
   LAST_BACKUP_FILE_KEY: 'last_backup_file_info',
 } as const;
@@ -147,10 +151,13 @@ export const STORAGE_CONSTANTS = {
 export function getStorageIdentifier(config: StorageConfig): string {
   if ('token' in config || 'gistId' in config) {
     const gist = config as GistConfig;
-    return `gist://${gist.gistId || 'default'}`;
+    return `gist:${(gist.endpoint || 'https://api.github.com').replace(/\/+$/, '')}/${gist.gistId}`;
   }
   if ('url' in config) {
-    return (config as WebDAVConfig).url || '';
+    const dav = config as WebDAVConfig;
+    const url = new URL(dav.url);
+    url.username = ''; url.password = ''; url.hash = '';
+    return `webdav:${url.href.replace(/\/+$/, '')}|${encodeURIComponent(dav.username.trim())}`;
   }
   return '';
 }

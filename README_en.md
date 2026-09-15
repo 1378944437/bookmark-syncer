@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/1378944437/marksync/releases/latest"><img src="https://img.shields.io/github/v/release/1378944437/marksync?color=2563eb&style=flat-square&logo=github" alt="Latest Release"></a>
   <a href="https://github.com/1378944437/marksync/releases"><img src="https://img.shields.io/github/downloads/1378944437/marksync/total?color=16a34a&style=flat-square&logo=github" alt="Downloads"></a>
-  <img src="https://img.shields.io/badge/tests-371%20passed-10b981?style=flat-square&logo=vitest" alt="371 Tests Passing">
+  <img src="https://img.shields.io/badge/tests-463%20passed-10b981?style=flat-square&logo=vitest" alt="463 Tests Passing">
   <img src="https://img.shields.io/badge/typescript-strict-3178c6?style=flat-square&logo=typescript" alt="TypeScript Strict">
   <img src="https://img.shields.io/badge/react-19-06b6d4?style=flat-square&logo=react" alt="React 19">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-amber?style=flat-square" alt="License"></a>
@@ -60,15 +60,28 @@ Your bookmarks represent private digital assets. **MarkSync** removes third-part
 Click the MarkSync icon ➔ **Settings** ➔ **Cloud Storage**:
 - **Option A: WebDAV**
   - Choose your provider preset (e.g. Nutstore or Nextcloud) to auto-fill the server URL;
-  - Enter your username and **app-specific password**, then click "Save & Test Connection".
+  - Enter your username and **app-specific password**, click "Test these inputs", then "Save connection settings". Testing does not save or upload.
 - **Option B: GitHub Gist**
   - Enter your Personal Access Token (PAT) with `gist` scope;
-  - Click "Auto Create" to set up a private Gist, then click "Test Gist Connection".
+  - Click "Auto Create" or enter an existing Gist ID, test, then save. For multiple unordered legacy backups, choose the current version under "Adopt legacy Gist backups".
 
 ### 3. Sync
 Return to the main page and click **Sync Now**. Enable **Auto Sync** in settings to keep changes continuously synced in the background.
 
 ---
+
+## Sync and recovery behavior
+
+- Only the bookmarks bar syncs by default. Comparison, upload and cloud restore use the same scope; excluded bookmarks are never moved or deleted. Full local snapshot restore is independent of cloud scope.
+- First use, account/target changes and scope changes require a direction choice when contents differ. Matching counts do not prove matching contents.
+- Changing, enabling or disabling encryption verifies and publishes a new backup before committing local settings. Historical encrypted files still require their original password. Use "Resume encryption migration" after interruption; do not delete migration records manually.
+- Failed restore writes pause auto sync and retain the safety snapshot. Restore it through the recovery notice or snapshot page. A failed snapshot prevents replacement.
+- New Gist backups use a version index. Unordered legacy files are not automatically deleted. Invalid indexes or unindexed old-client writes stop sync; coordinate upgrades across devices sharing a target.
+- "Create a new file on the next upload" does not upload immediately. Configuration export excludes passwords and Gist tokens by default. Imports missing credentials do not start auto sync.
+
+Local repairs and isolated validation are complete, including Edge integration, specific crash recovery scenarios and cross-browser functionality in Playwright Firefox. Validation against real providers and actual usage environments has been explicitly deferred to later use; these scenarios remain unverified. No signing or release was performed. See the [current delivery status](docs/DELIVERY_STATUS.md) for results, evidence and limitations (Chinese).
+
+Use the [actual usage checklist](docs/ACTUAL_USAGE_CHECKLIST.md) when validating in a real environment.
 
 ## 🏢 Common WebDAV Provider Quick Reference
 

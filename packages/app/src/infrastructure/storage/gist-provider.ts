@@ -1,118 +1,99 @@
-/**
- * GitHub Gist 存储驱动提供者 (GistStorageProvider)
- * 实现 IStorageProvider 契约，将 GistClient 适配到统一存储层
- */
-import type { ConnectionTestResult, IStorageProvider, RemoteFileInfo } from '../../core/storage/provider-interface'
-import type { GistConfig } from '../../core/storage/types'
-import { GistClient } from './gist-client'
+import type { ConnectionTestResult, IStorageProvider, RemoteFileInfo } from '../../core/storage/provider-interface';
+import type { GistConfig } from '../../core/storage/types';
+import { GistClient, type GistResponse } from './gist-client';
+import { INDEX_FILE, isBackupName, readIndex, type GistIndex } from './gist-index';
 
 export class GistStorageProvider implements IStorageProvider {
-  readonly type = 'gist' as const
-  private client: GistClient
-
-  constructor(config: GistConfig) {
-    this.client = new GistClient(config)
-  }
-
-  /**
-   * 连通性与权限测试
-   */
-  async testConnection(): Promise<ConnectionTestResult> {
-    return this.client.testConnection()
-  }
-
-  /**
-   * 下载 Gist 单文件内容
-   */
+  readonly type = 'gist' as const;
+  private client: GistClient;
+  private observedRevision: string | undefined;
+  constructor(config: GistConfig) { this.client = new GistClient(config); }
+  testConnection(): Promise<ConnectionTestResult> { return this.client.testConnection(); }
   async getFile(path: string, signal?: AbortSignal): Promise<string> {
-    const fileName = path.split('/').pop() || path
-    const gist = await this.client.getGist(signal)
-    const file = gist.files[fileName]
-
-    if (!file) {
-      throw new Error(`[GistStorageProvider] Gist 中未找到文件: ${fileName}`)
+    const name = path.split('/').pop()!;
+    const gist = await this.client.getGist(signal);
+    const file = gist.files[name];
+    if (!file) throw new Error('Gist 中未找到备份文件');
+    if (file.truncated) {
+      if (!file.raw_url) throw new Error('Gist 备份被截断且无下载地址');
+      return this.client.fetchRaw(file.raw_url, signal);
     }
-
-    if (file.truncated && file.raw_url) {
-      return this.client.fetchRaw(file.raw_url, signal)
-    }
-
-    return file.content ?? ''
+    if (typeof file.content !== 'string') throw new Error('Gist 备份内容缺失');
+    return file.content;
   }
-
-  /**
-   * 写入/更新 Gist 单文件内容（自动产生一次新 Git Revision）
-   */
+  private baseIndex(gist: GistResponse): GistIndex {
+    const index = readIndex(gist);
+    if (index) return index;
+    const names = Object.keys(gist.files).filter(isBackupName);
+    if (names.length > 1) throw new Error('请先在 Gist 设置中选择当前历史版本');
+    return { version: 1, revision: '', current: names[0] ?? null,
+      entries: names.map(name => ({ name, order: 1, timestamp: Date.parse(gist.updated_at) })) };
+  }
   async putFile(path: string, content: string): Promise<void> {
-    const fileName = path.split('/').pop() || path
-    await this.client.updateGist({
-      [fileName]: { content },
-    })
+    const name = path.split('/').pop()!;
+    if (!isBackupName(name)) throw new Error('只允许写入书签备份');
+    const gist = await this.client.getGist();
+    const index = this.baseIndex(gist);
+    if (this.observedRevision !== undefined && index.revision !== this.observedRevision) throw new Error('Gist 版本已变化，请重新同步');
+    if (gist.files[name]) throw new Error('备份文件已存在，请重新生成文件名');
+    const next: GistIndex = { ...index, revision: crypto.randomUUID(), current: name,
+      entries: [...index.entries, { name, order: Math.max(0, ...index.entries.map(e => e.order)) + 1, timestamp: Date.now() }] };
+    // 一次 PATCH 同时发布数据与索引；GitHub 无分布式 CAS，读回发现冲突即停止清理。
+    await this.client.updateGist({ [name]: { content }, [INDEX_FILE]: { content: JSON.stringify(next) } });
+    const verified = readIndex(await this.client.getGist());
+    if (verified?.revision !== next.revision || verified.current !== name) throw new Error('Gist 写入版本未确认，已保留历史备份');
+    this.observedRevision = next.revision;
   }
-
-  /**
-   * 创建远程目录（Gist 属于平铺文件集合，虚拟目录天然支持）
-   */
-  async createDirectory(): Promise<void> {
-    return Promise.resolve()
-  }
-
-  /**
-   * 检查文件是否存在
-   */
+  async createDirectory(): Promise<void> {}
   async exists(path: string): Promise<boolean> {
-    const fileName = path.split('/').pop() || path
-    // 顶层目录如 MarkSync/BookmarkSyncer 天然存在
-    if (!fileName || fileName === 'MarkSync' || fileName === 'BookmarkSyncer') {
-      return true
-    }
-
-    try {
-      const gist = await this.client.getGist()
-      return !!gist.files[fileName]
-    } catch {
-      return false
-    }
+    const name = path.split('/').pop();
+    if (!name || name === 'MarkSync' || name === 'BookmarkSyncer') return true;
+    return !!(await this.client.getGist()).files[name];
   }
-
-  /**
-   * 列出 Gist 中托管的所有文件
-   */
-  async listFiles(dirPath: string): Promise<RemoteFileInfo[]> {
-    try {
-      const gist = await this.client.getGist()
-      const lastModified = new Date(gist.updated_at).getTime()
-      const files: RemoteFileInfo[] = []
-
-      for (const [name, file] of Object.entries(gist.files)) {
-        files.push({
-          name: file.filename || name,
-          path: `${dirPath}/${file.filename || name}`,
-          lastModified,
-          size: file.size,
-        })
-      }
-      return files
-    } catch (err) {
-      console.warn('[GistStorageProvider] Failed to list files:', err)
-      return []
-    }
+  async listFiles(dir: string): Promise<RemoteFileInfo[]> {
+    const gist = await this.client.getGist();
+    const index = readIndex(gist);
+    this.observedRevision = index?.revision ?? '';
+    return Object.entries(gist.files).filter(([name]) => isBackupName(name)).map(([name, file]) => {
+      const entry = index?.entries.find(e => e.name === name);
+      return { name, path: `${dir}/${name}`, size: file.size,
+        order: index?.current === name ? Number.MAX_SAFE_INTEGER : entry?.legacy ? 0 : entry?.order ?? 0,
+        lastModified: entry?.timestamp ?? Date.parse(gist.updated_at) };
+    });
   }
-
-  /**
-   * 删除 Gist 中的指定文件
-   */
   async deleteFile(path: string): Promise<void> {
-    const fileName = path.split('/').pop() || path
-    await this.client.updateGist({
-      [fileName]: null,
-    })
+    const name = path.split('/').pop()!;
+    const gist = await this.client.getGist();
+    const index = readIndex(gist);
+    if (!index || index.current === name) throw new Error('禁止自动删除当前版本或未索引的 Gist 备份');
+    if (this.observedRevision !== undefined && index.revision !== this.observedRevision) throw new Error('Gist 版本已变化，停止清理');
+    if (index.entries.find(entry => entry.name === name)?.legacy) throw new Error('禁止自动删除顺序未知的历史备份');
+    if (!index.entries.some(entry => entry.name === name)) throw new Error('文件不属于备份索引');
+    const next = { ...index, revision: crypto.randomUUID(), entries: index.entries.filter(entry => entry.name !== name) };
+    await this.client.updateGist({ [name]: null, [INDEX_FILE]: { content: JSON.stringify(next) } });
+    if (readIndex(await this.client.getGist())?.revision !== next.revision) throw new Error('Gist 清理版本未确认');
+    this.observedRevision = next.revision;
   }
-
-  /**
-   * 获取底层 GistClient 实例（供专属操作如一键自动创建 Gist 使用）
-   */
-  getClient(): GistClient {
-    return this.client
+  async adoptBackup(path: string): Promise<void> {
+    const name = path.split('/').pop()!;
+    const gist = await this.client.getGist();
+    if (readIndex(gist)) throw new Error('Gist 已有版本索引，无需接管');
+    const names = Object.keys(gist.files).filter(isBackupName);
+    if (!names.includes(name)) throw new Error('选定的备份不存在');
+    // 历史顺序未知：所有历史条目保留，选定项作为唯一当前版本。
+    const index: GistIndex = { version: 1, revision: crypto.randomUUID(), current: name,
+      entries: names.map((n, i) => ({ name: n, order: i + 1, timestamp: Date.parse(gist.updated_at), legacy: true })) };
+    await this.client.updateGist({ [INDEX_FILE]: { content: JSON.stringify(index) } });
+    if (readIndex(await this.client.getGist())?.revision !== index.revision) throw new Error('Gist 接管结果未确认');
+  }
+  getClient(): GistClient { return this.client; }
+  async clearBackups(): Promise<number> {
+    const gist = await this.client.getGist();
+    readIndex(gist);
+    const names = Object.keys(gist.files).filter(isBackupName);
+    const index: GistIndex = { version: 1, revision: crypto.randomUUID(), current: null, entries: [] };
+    await this.client.updateGist({ ...Object.fromEntries(names.map(name => [name, null])), [INDEX_FILE]: { content: JSON.stringify(index) } });
+    if (readIndex(await this.client.getGist())?.revision !== index.revision) throw new Error('Gist 清空结果未确认');
+    return names.length;
   }
 }

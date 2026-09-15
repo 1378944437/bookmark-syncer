@@ -78,7 +78,7 @@ describe("annotateSystemFolders（Chrome 真实结构）", () => {
     expect(tree[0].children[1].folderType).toBeUndefined();
   });
 
-  it("旧版云端数据（顶层无 id）按位置推断", () => {
+  it("旧版云端数据（顶层无 id）按已知标题识别", () => {
     // 旧版 Chrome 上传：assignHashToNode 未识别系统根 → 顶层无 id 无 folderType
     const tree = [
       {

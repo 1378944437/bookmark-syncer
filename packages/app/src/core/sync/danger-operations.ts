@@ -12,6 +12,8 @@ import { cacheManager } from "../storage/cache-manager";
 import { STORAGE_CONSTANTS } from "../storage/types";
 import { clearLastBackupFileInfo } from "./sync-settings";
 import type { StorageConfig } from "../storage/types";
+import { beginRecovery, finishRecovery } from './recovery';
+import { fileManager } from '../storage/file-manager';
 
 /**
  * 清空所有本地书签（保留系统根目录，如书签栏、其他书签等）
@@ -28,6 +30,7 @@ export async function clearLocalBookmarks(): Promise<{ deletedCount: number; sna
     "清空本地书签前自动备份"
   );
   console.warn(`[DangerOperations] Created backup snapshot #${snapshotId} before wiping local bookmarks`);
+  await beginRecovery(snapshotId, 'clear-local');
 
   let deletedCount = 0;
   // 获取顶层根节点（通常只有1个顶级根）
@@ -46,6 +49,7 @@ export async function clearLocalBookmarks(): Promise<{ deletedCount: number; sna
               deletedCount++;
             } catch (err) {
               console.warn(`[DangerOperations] Failed to remove item ${item.id}:`, err);
+              throw err;
             }
           }
         }
@@ -54,6 +58,7 @@ export async function clearLocalBookmarks(): Promise<{ deletedCount: number; sna
   }
 
   console.warn(`[DangerOperations] Wiped local bookmarks. Total items deleted: ${deletedCount}`);
+  await finishRecovery();
   return { deletedCount, snapshotId };
 }
 
@@ -72,9 +77,15 @@ export async function clearCloudBackups(config: StorageConfig): Promise<{ delete
     }
 
     const files = await client.listFiles(dir);
+    if (client.clearBackups) {
+      deletedCount = await client.clearBackups();
+      await cacheManager.clearBackupListCache();
+      await clearLastBackupFileInfo();
+      return { deletedCount };
+    }
     for (const file of files) {
       // 仅清理备份文件，防止误伤其他文件
-      if (file.name.endsWith(".json") || file.name.endsWith(".json.gz") || file.name.endsWith(".enc")) {
+      if (fileManager.isBackupFile(file.name)) {
         try {
           if (client.deleteFile) {
             await client.deleteFile(file.path);
@@ -82,6 +93,7 @@ export async function clearCloudBackups(config: StorageConfig): Promise<{ delete
           }
         } catch (err) {
           console.warn(`[DangerOperations] Failed to delete cloud file ${file.path}:`, err);
+          throw err;
         }
       }
     }
@@ -106,6 +118,7 @@ export async function resetFactorySettings(): Promise<void> {
   console.warn("[DangerOperations] Initiating factory reset...");
   try {
     // 1. 清空所有 IndexedDB 本地快照
+    await browser.storage.local.set({ auto_sync_enabled: false, scheduled_sync_enabled: false });
     await snapshotManager.deleteAllSnapshots();
 
     // 2. 清空 storage.local

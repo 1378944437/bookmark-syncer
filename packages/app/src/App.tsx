@@ -32,7 +32,7 @@ function App() {
                 </div>
 
                 {/* 弹窗主内容区 */}
-                <div className="flex-1 relative overflow-hidden px-4">
+                <div className="flex-1 min-h-0 relative overflow-x-hidden overflow-y-auto px-4">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={activeTab}

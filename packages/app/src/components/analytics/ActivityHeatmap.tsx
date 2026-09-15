@@ -2,6 +2,7 @@
  * 现代高质感近期同步活动热力图组件 (ActivityHeatmap.tsx)
  * 采用 GitHub / Linear 风格设计，支持响应式 14 天网格、动态光效、交互式明细透视与统计指示器
  */
+import { useI18n } from '../../i18n'
 import { useState } from 'react'
 import { Flame, Sparkles, TrendingUp } from 'lucide-react'
 import type { DailyActivity } from '../../core/analytics/sync-analytics'
@@ -12,6 +13,7 @@ export interface ActivityHeatmapProps {
 }
 
 export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
+  const { t, locale } = useI18n()
   const [hoveredDate, setHoveredDate] = useState<string | null>(null)
 
   const totalSyncs = activities.reduce((sum, item) => sum + item.count, 0)
@@ -38,8 +40,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
   const getWeekday = (dateStr: string) => {
     try {
       const d = new Date(`${dateStr}T00:00:00`)
-      const names = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-      return names[d.getDay()] || ''
+      return d.toLocaleDateString(locale, { weekday: 'short' })
     } catch {
       return ''
     }
@@ -57,15 +58,15 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
           </div>
           <div>
             <h3 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5">
-              <span>14 天同步活跃走势</span>
+              <span>{t('repair.activityTitle')}</span>
               {totalSyncs > 0 && (
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
-                  活跃 {activeDays}/14 天
+                  {t('repair.activeDays', { count: activeDays })}
                 </span>
               )}
             </h3>
             <p className="text-[11px] text-muted-foreground">
-              实时追踪每日书签增删改与两端同步频次
+              {t('repair.activityHint')}
             </p>
           </div>
         </div>
@@ -73,7 +74,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
         <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground self-end sm:self-auto">
           <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted/60 border border-border/60">
             <Sparkles className="w-3 h-3 text-indigo-500" />
-            <span>累计 {totalSyncs} 次同步</span>
+            <span>{t('repair.syncCount', { count: totalSyncs })}</span>
           </span>
         </div>
       </div>
@@ -89,6 +90,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
             <button
               type="button"
               key={act.date}
+              onFocus={() => setHoveredDate(act.date)}
               onMouseEnter={() => setHoveredDate(act.date)}
               onMouseLeave={() => setHoveredDate(null)}
               onClick={() => setHoveredDate(hoveredDate === act.date ? null : act.date)}
@@ -124,7 +126,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
         {activeItem ? (
           <div className="flex items-center gap-2 text-[11px] font-mono animate-in fade-in duration-200">
             <span className="font-semibold text-foreground">{activeItem.date} ({getWeekday(activeItem.date)})：</span>
-            <span className="text-primary font-bold">{activeItem.count} 次同步</span>
+            <span className="text-primary font-bold">{t('repair.syncCount', { count: activeItem.count })}</span>
             <span className="text-muted-foreground/60">|</span>
             <span className="text-emerald-600 dark:text-emerald-400 font-semibold">+{activeItem.added}</span>
             <span className="text-sky-600 dark:text-sky-400 font-semibold">~{activeItem.updated}</span>
@@ -134,7 +136,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
           <div className="flex items-center gap-2 text-[11px] font-mono">
             <span className="text-muted-foreground flex items-center gap-1">
               <TrendingUp className="w-3 h-3 text-emerald-500" />
-              <span>近两周聚合变动：</span>
+              <span>{t('repair.changes')}</span>
             </span>
             <span className="text-emerald-600 dark:text-emerald-400 font-bold">+{totalAdded}</span>
             <span className="text-sky-600 dark:text-sky-400 font-bold">~{totalUpdated}</span>
@@ -144,12 +146,12 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
 
         {/* GitHub 风格图例 */}
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground self-end sm:self-auto font-mono">
-          <span>少</span>
+          <span>{t('repair.less')}</span>
           <div className="w-2.5 h-2.5 rounded-sm bg-muted/40 border border-border/40" />
           <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/25 border border-emerald-500/40" />
           <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/60 border border-emerald-400" />
           <div className="w-2.5 h-2.5 rounded-sm bg-emerald-600 border border-emerald-300" />
-          <span>多</span>
+          <span>{t('repair.more')}</span>
         </div>
       </div>
     </div>

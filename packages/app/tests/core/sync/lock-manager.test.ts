@@ -12,6 +12,19 @@ beforeEach(() => {
 });
 
 describe("SyncLockManager", () => {
+  it('only one simultaneous acquisition in the same background instance succeeds', async () => {
+    const manager = new SyncLockManager();
+    expect(await Promise.all([manager.acquire('manual'), manager.acquire('manual')])).toEqual([true, false]);
+  });
+
+  it('never steals an active same-instance operation because its timestamp is old', async () => {
+    const manager = new SyncLockManager();
+    await manager.acquire('manual');
+    const browser = (await import('webextension-polyfill')).default;
+    const { sync_lock: lock } = await browser.storage.local.get('sync_lock');
+    await browser.storage.local.set({ sync_lock: { ...(lock as object), timestamp: 1 } });
+    expect(await manager.acquire('alarm')).toBe(false);
+  });
   it("成功获取锁", async () => {
     const manager = new SyncLockManager();
     const result = await manager.acquire("manual");
@@ -56,7 +69,7 @@ describe("SyncLockManager", () => {
     const browser = (await import("webextension-polyfill")).default;
     const stored = await browser.storage.local.get("sync_lock");
     const originalLock = stored["sync_lock"] as { holder: string; timestamp: number; lockId: string };
-    
+
     // 新实例获取锁（模拟另一次 auto-sync）
     // 先让旧锁过期
     originalLock.timestamp = Date.now() - LOCK_TIMEOUT_MS - 1000;

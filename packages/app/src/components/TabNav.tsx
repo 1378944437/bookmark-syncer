@@ -25,7 +25,7 @@ export function TabNav({ activeTab, onTabChange }: TabNavProps) {
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-wrap gap-2 items-center justify-between">
       {/* Tab 切换 */}
       <div className="flex bg-muted backdrop-blur-md p-1 rounded-full border border-border shadow-sm">
         <button
@@ -45,7 +45,7 @@ export function TabNav({ activeTab, onTabChange }: TabNavProps) {
           <Cloud className="w-4 h-4" />
           {t('tab.sync')}
         </button>
-        
+
         <button
           onClick={() => onTabChange('settings')}
           className={cn(

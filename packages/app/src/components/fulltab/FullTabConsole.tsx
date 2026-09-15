@@ -4,7 +4,7 @@
  */
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useStorage } from '../../hooks/useStorage'
+import { useActiveStorage } from '../../hooks/useActiveStorage'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
 import { FullTabHeader, type FullTabNavKey } from './FullTabHeader'
 import { FullTabDashboard } from './FullTabDashboard'
@@ -13,9 +13,9 @@ import { FullTabSettings } from './FullTabSettings'
 
 export function FullTabConsole() {
   const [activeNav, setActiveNav] = useState<FullTabNavKey>('dashboard')
-  const [webdavUrl] = useStorage('webdav_url', '')
+  const { isConfigured } = useActiveStorage()
   const isOnline = useOnlineStatus()
-  const isConfigured = !!webdavUrl
+
 
   return (
     <div className="w-full flex-1 flex flex-col">

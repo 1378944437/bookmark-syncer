@@ -6,8 +6,7 @@
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { snapshotManager, type Snapshot } from '../core/backup'
-import { bookmarkRepository, countBookmarks } from '../core/bookmark'
-import { holdRestoringUntil, setIsRestoring } from '../core/sync/sync-settings'
+import { restoreLocalSnapshotInBackground } from '../application/background-ops'
 
 export type SyncStatus = 'idle' | 'checking' | 'syncing' | 'success' | 'error'
 
@@ -55,14 +54,8 @@ export function useSnapshots(ctx: SyncViewContext) {
     setDrawerOpen(false)
 
     try {
-      await setIsRestoring(true)
-
-      // 先备份当前状态（本地快照恢复前）
-      const currentTree = await bookmarkRepository.getTree()
-      const currentCount = countBookmarks(currentTree)
-      await snapshotManager.createSnapshot(currentTree, currentCount, t('sync.confirmRestore.snapshotBackupReason'))
-
-      await bookmarkRepository.restoreFromBackup(pendingRestoreSnapshot.tree)
+      const result = await restoreLocalSnapshotInBackground(pendingRestoreSnapshot.id!)
+      if (!result.success) throw new Error(result.message)
 
       setSyncStatus('success')
       setMsg(t('sync.toast.snapshotRestoreSuccess'))
@@ -74,8 +67,6 @@ export function useSnapshots(ctx: SyncViewContext) {
       setMsg(t('sync.toast.restoreFailed'))
       toast.error(t('sync.toast.restoreFailed'), { description: (e as Error).message })
     } finally {
-      await holdRestoringUntil()
-
       setPendingRestoreSnapshot(null)
     }
   }

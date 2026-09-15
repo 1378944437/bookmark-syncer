@@ -2,7 +2,7 @@
  * 云端备份列表与恢复流程（自 SyncView 抽出的状态与处理器）
  * 处理器逻辑与原实现逐字一致，仅将确认抽屉开合与计数刷新改为 ctx 回调
  */
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { toast } from 'sonner'
 import type { StorageConfig } from '../core/storage/types'
 import { getCloudBackupList, getDeviceIdentity, type CloudBackupFile } from '../core/sync'
@@ -24,6 +24,9 @@ export function useCloudBackups(ctx: CloudBackupsContext) {
   const [cloudBackups, setCloudBackups] = useState<CloudBackupFile[]>([])
   const [loadingCloudBackups, setLoadingCloudBackups] = useState(false)
   const [pendingRestoreCloudBackup, setPendingRestoreCloudBackup] = useState<CloudBackupFile | null>(null)
+
+  const [restorePassphrase, setRestorePassphrase] = useState('')
+  const restoreConfig = useRef<StorageConfig | null>(null)
 
   /** 加载云端备份列表 */
   const loadCloudBackups = async () => {
@@ -65,6 +68,8 @@ export function useCloudBackups(ctx: CloudBackupsContext) {
 
   /** 请求从云端备份恢复 */
   const requestRestoreCloudBackup = (backup: CloudBackupFile) => {
+    restoreConfig.current = getConfig()
+    setRestorePassphrase('')
     setPendingRestoreCloudBackup(backup)
     openConfirm()
   }
@@ -84,10 +89,10 @@ export function useCloudBackups(ctx: CloudBackupsContext) {
     })
 
     try {
-      const config = getConfig()
+      const config = restoreConfig.current
       if (!config) throw new Error('云端配置未就绪')
 
-      const result = await restoreCloudBackupInBackground(config, pendingRestoreCloudBackup.path)
+      const result = await restoreCloudBackupInBackground(config, pendingRestoreCloudBackup.path, restorePassphrase || undefined)
 
       toast.dismiss(loadingToast)
 
@@ -108,6 +113,7 @@ export function useCloudBackups(ctx: CloudBackupsContext) {
       setMsg(t('sync.toast.restoreFailed'))
       toast.error(t('sync.toast.restoreFailed'), { description: (e as Error).message })
     } finally {
+      setRestorePassphrase('')
       setPendingRestoreCloudBackup(null)
     }
   }
@@ -116,6 +122,7 @@ export function useCloudBackups(ctx: CloudBackupsContext) {
   const clearPendingRestoreCloudBackup = () => setPendingRestoreCloudBackup(null)
 
   return {
+    restorePassphrase, setRestorePassphrase,
     cloudBackups,
     loadingCloudBackups,
     pendingRestoreCloudBackup,

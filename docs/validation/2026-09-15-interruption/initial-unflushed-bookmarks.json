@@ -1,0 +1,29 @@
+{
+  "date": "2026-09-15T08:35:21.862Z",
+  "browser": "153.0.4234.32",
+  "extensionVersion": "1.5.2",
+  "environment": "Real Edge extension; disposable profile; browser crash after server PUT commit; loopback WebDAV fixture",
+  "results": [
+    {
+      "name": "migration-crash-preserves-old-settings-pending-candidate-and-lock",
+      "status": "passed"
+    },
+    {
+      "name": "corrupt-migration-candidate-rejected-after-natural-lock-expiry",
+      "status": "passed",
+      "elapsedSinceLockMs": 300197
+    }
+  ],
+  "failure": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ []\n- [\n-   'survives-migration-crash'\n- ]\n",
+  "requestCounts": {
+    "PROPFIND": 14,
+    "PUT": 2,
+    "GET": 4
+  },
+  "limitations": [
+    "Not a real remote WebDAV/Gist service",
+    "Playwright/CDP attached",
+    "Not a toolbar popup lifecycle test",
+    "No Firefox or mobile browser"
+  ]
+}

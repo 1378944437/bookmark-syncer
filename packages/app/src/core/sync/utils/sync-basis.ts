@@ -34,7 +34,7 @@ export function isCloudNewerThanBasis(
   const basis: SyncBasis = state.basis;
   return (
     latest.lastModified > basis.mtime ||
-    (latest.lastModified === basis.mtime && latest.path !== basis.filePath)
+    latest.path !== basis.filePath
   );
 }
 

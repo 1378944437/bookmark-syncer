@@ -98,14 +98,14 @@ export class FileManager {
   /**
    * 解析备份文件名，提取元数据
    * 格式：bookmarks_20260127_143052_edge_157_d-xxx_n-yyy_v3.json.gz
-   * 
+   *
    * @param fileName 文件名
    * @returns 解析结果，如果无法解析则返回 null
    */
   parseBackupFileName(fileName: string): BackupFileMetadata | null {
     // 移除加密与压缩扩展名（.json.gz.enc → .json.gz）
     const cleanFileName = fileName.replace(/\.enc$/, "").replace(/\.gz$/, "");
-    
+
     // 解析格式: bookmarks_20260127_143052_edge_157_v3.json（_d-xxx 设备段、_n-xxx 名称段可选）
     const match = cleanFileName.match(
       /^bookmarks_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_([a-z]+)_(\d+)(?:_d-([a-z0-9]+))?(?:_n-([a-zA-Z0-9_-]+))?_v(\d+)\.json$/
@@ -181,19 +181,20 @@ export class FileManager {
         console.log("[FileManager] No backup files found");
         return null;
       }
+      if (backupFiles.length > 1 && backupFiles.every(file => file.order === 0)) throw new Error('Gist 历史备份顺序未确定，请在存储设置中选择当前版本');
 
       // 按最后修改时间排序，获取最新的
-      backupFiles.sort((a, b) => b.lastModified - a.lastModified);
+      backupFiles.sort((a, b) => (b.order ?? b.lastModified) - (a.order ?? a.lastModified));
       const latest = backupFiles[0];
 
       console.log(
         `[FileManager] Found latest backup: ${latest.name} (${new Date(latest.lastModified).toISOString()})`
       );
 
-      return { path: this.getFullPath(latest.name), lastModified: latest.lastModified };
+      return { path: latest.path, lastModified: latest.lastModified };
     } catch (error) {
       console.error("[FileManager] Failed to get latest backup file:", error);
-      return null;
+      throw error;
     }
   }
 
@@ -204,7 +205,7 @@ export class FileManager {
    */
   toCloudBackupFile(file: RemoteFileInfo | WebDAVFile): CloudBackupFile {
     const metadata = this.parseBackupFileName(file.name);
-    
+
     return {
       name: file.name,
       path: file.path,
@@ -230,6 +231,7 @@ export class FileManager {
   ): Promise<number> {
     try {
       const backupFiles = await this.listBackupFiles(client);
+      if (backupFiles.some(file => file.order === 0)) return 0; // 未接管的历史文件禁止自动删除。
       if (backupFiles.length === 0) {
         return 0;
       }
@@ -249,7 +251,7 @@ export class FileManager {
       }
 
       // 按服务器修改时间倒序排列（最新的排在最前）
-      backupFiles.sort((a, b) => b.lastModified - a.lastModified);
+      backupFiles.sort((a, b) => (b.order ?? b.lastModified) - (a.order ?? a.lastModified));
 
       const cutoffTime = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
       const filesToDelete: WebDAVFile[] = [];

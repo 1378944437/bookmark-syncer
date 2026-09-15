@@ -1,0 +1,32 @@
+[
+  {
+    "width": 1280,
+    "height": 900,
+    "lang": "en",
+    "mode": "tab",
+    "cssZoom": 1,
+    "cancelPreventedPush": true,
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "width": 360,
+    "height": 560,
+    "lang": "en",
+    "mode": "popup",
+    "cssZoom": 1.25,
+    "cancelPreventedPush": true,
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "width": 360,
+    "height": 560,
+    "lang": "zh-CN",
+    "mode": "popup",
+    "cssZoom": 1.5,
+    "cancelPreventedPush": true,
+    "overflow": false,
+    "errors": []
+  }
+]

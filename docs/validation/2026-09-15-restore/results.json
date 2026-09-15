@@ -1,0 +1,32 @@
+{
+  "date": "2026-09-15T08:52:07.433Z",
+  "browser": "153.0.4234.32",
+  "extensionVersion": "1.5.2",
+  "environment": "Real Edge extension; disposable profile; actual bookmark writes with third create callback suspended, then browser crash; loopback WebDAV fixture",
+  "results": [
+    {
+      "name": "partial-restore-and-safety-snapshot-survive-browser-crash",
+      "status": "passed"
+    },
+    {
+      "name": "recovery-record-blocks-edits-auto-upload-and-manual-upload-after-lock-expiry",
+      "status": "passed"
+    },
+    {
+      "name": "recovery-ui-restores-full-original-tree-and-clears-baseline-durably",
+      "status": "passed"
+    }
+  ],
+  "failure": null,
+  "requestCounts": {
+    "PROPFIND": 12,
+    "PUT": 1,
+    "GET": 1
+  },
+  "limitations": [
+    "Not a real remote WebDAV/Gist service",
+    "Playwright/CDP attached",
+    "Not a toolbar popup lifecycle test",
+    "No Firefox or mobile browser"
+  ]
+}

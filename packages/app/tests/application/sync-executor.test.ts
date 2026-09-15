@@ -1,3 +1,4 @@
+import { getStorageIdentifier } from '@src/core/storage/types';
 /**
  * sync-executor.ts 测试
  * 测试上传和拉取执行器
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   getSyncState: vi.fn(),
   smartPush: vi.fn(),
   smartPull: vi.fn(),
+  smartSync: vi.fn(),
   getTree: vi.fn(),
   computeTreeHash: vi.fn(),
 }));
@@ -28,13 +30,16 @@ vi.mock("@src/core/sync", () => ({
   getSyncState: (...args: any[]) => mocks.getSyncState(...args),
   smartPush: (...args: any[]) => mocks.smartPush(...args),
   smartPull: (...args: any[]) => mocks.smartPull(...args),
+  smartSync: (...args: any[]) => mocks.smartSync(...args),
 }));
 
 vi.mock("@src/core/sync/sync-settings", () => ({
+  getSyncScope: vi.fn(async () => ({ "bookmarks-bar": true, other: false, mobile: false })),
   getIsRestoring: (...args: any[]) => mocks.getIsRestoring(...args),
 }));
 
 vi.mock("@src/core/bookmark", () => ({
+  filterTreeByScope: (tree: unknown) => tree,
   bookmarkRepository: {
     getTree: (...args: any[]) => mocks.getTree(...args),
   },
@@ -50,6 +55,7 @@ const config = { url: "https://dav.example.com", username: "u", password: "p" };
 describe("executeUpload", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.smartSync.mockResolvedValue({ success: false, needsConflictResolution: true });
     // 默认状态：在线、未恢复、有配置、自动同步已启用
     mocks.getIsRestoring.mockResolvedValue(false);
     mocks.setIsRestoring.mockResolvedValue(undefined);
@@ -115,7 +121,7 @@ describe("executeUpload", () => {
 
     try {
       mocks.getSyncState.mockResolvedValueOnce({
-        url: config.url,
+        url: getStorageIdentifier(config),
         time: now - 30000,
         type: "download",
       });
@@ -136,7 +142,7 @@ describe("executeUpload", () => {
 
     try {
       mocks.getSyncState.mockResolvedValueOnce({
-        url: config.url,
+        url: getStorageIdentifier(config),
         time: now - 30000,
         type: "restore",
       });
@@ -157,7 +163,7 @@ describe("executeUpload", () => {
 
     try {
       mocks.getSyncState.mockResolvedValueOnce({
-        url: config.url,
+        url: getStorageIdentifier(config),
         time: now - POST_PULL_UPLOAD_SUPPRESSION_MS - 1,
         type: "download",
       });
@@ -173,8 +179,8 @@ describe("executeUpload", () => {
 
   it("云端有更新时先 pull 再 push", async () => {
     mocks.getSyncState.mockResolvedValueOnce({
-      url: config.url,
-      time: 1000,
+      url: getStorageIdentifier(config),
+      time: 1000, localHash: "baseline",
     });
     mocks.getCloudBackupList.mockResolvedValueOnce([
       {
@@ -192,8 +198,8 @@ describe("executeUpload", () => {
 
   it("pull 失败时不继续 push", async () => {
     mocks.getSyncState.mockResolvedValueOnce({
-      url: config.url,
-      time: 1000,
+      url: getStorageIdentifier(config),
+      time: 1000, localHash: "baseline",
     });
     mocks.getCloudBackupList.mockResolvedValueOnce([
       {
@@ -218,6 +224,7 @@ describe("executeUpload", () => {
 describe("executeAutoPull", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.smartSync.mockResolvedValue({ success: false, needsConflictResolution: true });
     mocks.getIsRestoring.mockResolvedValue(false);
     mocks.setIsRestoring.mockResolvedValue(undefined);
     mocks.getWebDAVConfig.mockResolvedValue({ config });
@@ -249,7 +256,7 @@ describe("executeAutoPull", () => {
 
   it("本地干净时覆盖拉取（让其他设备的删除能传播）", async () => {
     mocks.getSyncState.mockResolvedValueOnce({
-      url: config.url,
+      url: getStorageIdentifier(config),
       time: 1,
       localHash: "hash-a",
     });
@@ -260,7 +267,7 @@ describe("executeAutoPull", () => {
 
   it("本地有未同步修改时改为合并拉取，并把合并结果推上云端", async () => {
     mocks.getSyncState.mockResolvedValueOnce({
-      url: config.url,
+      url: getStorageIdentifier(config),
       time: 1,
       localHash: "stale-hash",
     });
@@ -270,14 +277,16 @@ describe("executeAutoPull", () => {
     expect(mocks.smartPush).toHaveBeenCalled();
   });
 
-  it("无本地基线（旧版本状态）时按本地脏处理，走合并不覆盖", async () => {
-    mocks.getSyncState.mockResolvedValueOnce({ url: config.url, time: 1 });
+  it("无本地基线时交给智能同步要求用户选择", async () => {
+    mocks.getSyncState.mockResolvedValueOnce({ url: getStorageIdentifier(config), time: 1 });
     await executeAutoPull();
-    expect(mocks.smartPull).toHaveBeenCalledWith(config, "auto_sync", "merge");
-    expect(mocks.smartPush).toHaveBeenCalled();
+    expect(mocks.smartSync).toHaveBeenCalledWith(config, "auto_sync");
+    expect(mocks.smartPull).not.toHaveBeenCalled();
+    expect(mocks.smartPush).not.toHaveBeenCalled();
   });
 
-  it("检测到云端更新时执行 pull", async () => {
+  it("检测到云端更新且本地干净时执行 pull", async () => {
+    mocks.getSyncState.mockResolvedValueOnce({ url: getStorageIdentifier(config), time: 1, localHash: "hash-a" });
     await executeAutoPull();
     expect(mocks.smartPull).toHaveBeenCalled();
   });
@@ -309,7 +318,7 @@ describe("executeAutoPull", () => {
 
   it("云端时间不新于本地时不 pull（旧版状态回退比较）", async () => {
     mocks.getSyncState.mockResolvedValueOnce({
-      url: config.url,
+      url: getStorageIdentifier(config),
       time: 5000,
     });
     mocks.getCloudBackupList.mockResolvedValueOnce([

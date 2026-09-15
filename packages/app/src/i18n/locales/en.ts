@@ -1,3 +1,4 @@
+import { repairEn } from './repair';
 import { fullTabEn } from "./fulltab-en";
 import { storageEn } from "./storage-en";
 
@@ -7,6 +8,7 @@ import { storageEn } from "./storage-en";
  */
 export const dictionary: Record<string, string> = {
   ...fullTabEn,
+  ...repairEn,
   ...storageEn,
   // ─── Common ───
   "common.cancel": "Cancel",
@@ -115,7 +117,7 @@ export const dictionary: Record<string, string> = {
   "sync.conflict.uploadCloudDesc": "Overwrites the cloud copy",
   "sync.conflict.uploadForbidden": "Upload unavailable",
   "sync.conflict.uploadForbiddenDesc": "No local bookmarks",
-  "sync.conflict.forceNewBackup": "Force new backup",
+  "sync.conflict.forceNewBackup": "Create a new file on the next upload",
 
   // ─── Overwrite confirmation ───
   "sync.confirmPush.title": "Overwrite cloud data?",

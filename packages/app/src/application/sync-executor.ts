@@ -2,15 +2,15 @@
  * 同步执行器
  * 执行上传和拉取同步操作
  */
-import { getCloudBackupList, getSyncState, smartPull, smartPush } from "../core/sync";
+import { getCloudBackupList, getSyncState, smartPull, smartPush, smartSync } from "../core/sync";
 import { isCloudNewerThanBasis, isLocalDirty } from "../core/sync/utils/sync-basis";
-import { bookmarkRepository, computeTreeHash } from "../core/bookmark";
+import { bookmarkRepository, computeTreeHash, filterTreeByScope } from "../core/bookmark";
 import { notifySyncCompleted } from "./sync-indicator";
 import {
     LOCK_HOLDER_AUTO,
     POST_PULL_UPLOAD_SUPPRESSION_MS,
 } from "./constants";
-import { getIsRestoring } from "../core/sync/sync-settings";
+import { getIsRestoring, getSyncScope } from "../core/sync/sync-settings";
 import { getActiveStorageConfig, getWebDAVConfig } from "./state-manager";
 import { getStorageIdentifier } from "../core/storage";
 
@@ -19,18 +19,18 @@ import { getStorageIdentifier } from "../core/storage";
  * 自动上传本地书签变化到云端
  * 如果检测到云端有未同步的更新，先增量拉取再上传
  */
-export async function executeUpload(): Promise<void> {
+export async function executeUpload(): Promise<boolean> {
   try {
     // 检查是否正在恢复（避免循环触发）
     if (await getIsRestoring()) {
       console.log("[SyncExecutor] Skipped upload: restoring in progress");
-      return;
+      return false;
     }
 
     // 检查网络状态
     if (!navigator.onLine) {
       console.log("[SyncExecutor] Skipped upload: offline");
-      return;
+      return false;
     }
 
     // 获取配置（优先多驱动配置，兼容仅 mock getWebDAVConfig 的单测环境）
@@ -39,12 +39,12 @@ export async function executeUpload(): Promise<void> {
     const config = active?.config;
     if (!config) {
       console.log("[SyncExecutor] Skipped upload: no config");
-      return;
+      return false;
     }
 
     if (active?.autoSyncEnabled === false) {
       console.log("[SyncExecutor] Skipped upload: auto sync disabled");
-      return;
+      return false;
     }
 
     const storageId = getStorageIdentifier(config);
@@ -60,13 +60,17 @@ export async function executeUpload(): Promise<void> {
       console.log(
         "[SyncExecutor] Skipped upload: recently pulled/restored, waiting for native bookmark sync to settle",
       );
-      return;
+      return false;
     }
 
     // 强制刷新：与 smartPush 的实时云端检查保持一致，
     // 避免缓存窗口内自动上传被“云端有更新”阻断
     const backupList = await getCloudBackupList(config, true);
     const latest = backupList[0] ?? null;
+    if (latest && !syncState?.localHash) {
+      const result = await smartSync(config, LOCK_HOLDER_AUTO);
+      return result.success;
+    }
 
     // 如果云端有更新，先增量拉取（时间基准：服务器文件时间，与设备本地时钟无关）
     if (
@@ -85,7 +89,7 @@ export async function executeUpload(): Promise<void> {
 
       if (!pullResult.success) {
         console.warn(`[SyncExecutor] Pull before upload failed: ${pullResult.message}`);
-        return;
+        return false;
       }
 
       console.log("[SyncExecutor] Pull completed, now uploading merged result...");
@@ -100,8 +104,10 @@ export async function executeUpload(): Promise<void> {
     } else {
       console.warn(`[SyncExecutor] Upload failed: ${result.message}`);
     }
+    return result.success;
   } catch (error) {
     console.error("[SyncExecutor] Upload error:", error);
+    return false;
   }
 }
 
@@ -149,6 +155,7 @@ export async function executeAutoPull(): Promise<void> {
     }
 
     const latest = backupList[0];
+    if (!syncState?.localHash) { await smartSync(config, LOCK_HOLDER_AUTO); return; }
 
     // 比对时间戳（基准：服务器文件时间，与设备本地时钟无关）
     if (
@@ -172,7 +179,7 @@ export async function executeAutoPull(): Promise<void> {
     // 改用合并拉取保住本地改动，再把合并结果推上云端；
     // 本地干净时才覆盖拉取（让其他设备删除的书签能正常传播）
     const currentTree = await bookmarkRepository.getTree();
-    const currentTreeHash = await computeTreeHash(currentTree);
+    const currentTreeHash = await computeTreeHash(filterTreeByScope(currentTree, await getSyncScope()));
     if (isLocalDirty(syncState, currentTreeHash)) {
       console.log(
         "[SyncExecutor] Local has unsynced changes, merging instead of overwriting",

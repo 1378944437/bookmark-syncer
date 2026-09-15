@@ -1,3 +1,4 @@
+import { getStorageIdentifier } from '@src/core/storage/types';
 /**
  * smart-sync-strategy.ts 测试
  * 验证锁传递修复：smartSync 持有锁全程传递给子策略
@@ -23,7 +24,7 @@ const {
   mockComputeTreeHash,
   mockBookmarkTree,
 } = vi.hoisted(() => {
-  const tree = [{ title: "Test", url: "https://test.com" }];
+  const tree = [{ title: "", children: [{ id: "1", title: "Bar", children: [{ title: "Test", url: "https://test.com" }] }] }];
   return {
     mockAcquire: vi.fn(async () => true),
     mockRelease: vi.fn(async () => {}),
@@ -156,14 +157,14 @@ describe("smartSync - 分支决策", () => {
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
-        data: [{ title: "Cloud", url: "https://cloud.com" }],
+        data: [{ title: "", children: [{ id: "1", title: "Bar", children: [{ title: "Cloud", url: "https://cloud.com" }] }] }],
       })
     );
     mockCompareWithCloud.mockResolvedValueOnce(false);
     mockGetLastSyncTime.mockResolvedValueOnce(Date.now() - 60000);
     // 本地基线与当前树一致（干净）→ 允许覆盖拉取
     mockGetSyncState.mockResolvedValueOnce({
-      url: testConfig.url,
+      url: getStorageIdentifier(testConfig),
       time: 1,
       localHash: "tree-hash-stub",
     });
@@ -186,14 +187,14 @@ describe("smartSync - 分支决策", () => {
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
-        data: [{ title: "Cloud", url: "https://cloud.com" }],
+        data: [{ title: "", children: [{ id: "1", title: "Bar", children: [{ title: "Cloud", url: "https://cloud.com" }] }] }],
       })
     );
     mockCompareWithCloud.mockResolvedValueOnce(false);
     mockGetLastSyncTime.mockResolvedValueOnce(Date.now() - 60000);
     // 基线与当前树哈希不一致 → 本地脏
     mockGetSyncState.mockResolvedValueOnce({
-      url: testConfig.url,
+      url: getStorageIdentifier(testConfig),
       time: 1,
       localHash: "outdated-hash",
     });
@@ -214,13 +215,13 @@ describe("smartSync - 分支决策", () => {
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
-        data: [{ title: "Cloud", url: "https://cloud.com" }],
+        data: [{ title: "", children: [{ id: "1", title: "Bar", children: [{ title: "Cloud", url: "https://cloud.com" }] }] }],
       })
     );
     mockCompareWithCloud.mockResolvedValueOnce(false);
     mockGetLastSyncTime.mockResolvedValueOnce(Date.now() - 60000);
     mockGetSyncState.mockResolvedValueOnce({
-      url: testConfig.url,
+      url: getStorageIdentifier(testConfig),
       time: 1,
     });
 
@@ -239,16 +240,17 @@ describe("smartSync - 分支决策", () => {
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: cloudMtime, clientVersion: "1.0.0" },
-        data: [{ title: "Cloud", url: "https://cloud.com" }],
+        data: [{ title: "", children: [{ id: "1", title: "Bar", children: [{ title: "Cloud", url: "https://cloud.com" }] }] }],
       })
     );
     mockCompareWithCloud.mockResolvedValueOnce(false);
     mockGetLastSyncTime.mockResolvedValueOnce(Date.now());
     // 基线与云端文件一致 → 云端没有更新 → 走推送
     mockGetSyncState.mockResolvedValueOnce({
-      url: testConfig.url,
+      url: getStorageIdentifier(testConfig),
       time: Date.now(),
       basis: { mtime: cloudMtime, filePath: "BookmarkSyncer/backup.json.gz" },
+      localHash: "baseline",
     });
 
     await smartSync(testConfig, "auto-sync");
@@ -312,7 +314,7 @@ describe("smartSync - 分支决策", () => {
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
-        data: [{ title: "Cloud", url: "https://cloud.com" }],
+        data: [{ title: "", children: [{ id: "1", title: "Bar", children: [{ title: "Cloud", url: "https://cloud.com" }] }] }],
       })
     );
     mockCompareWithCloud.mockResolvedValueOnce(false);

@@ -1,0 +1,35 @@
+[
+  {
+    "width": 1280,
+    "height": 900,
+    "lang": "en",
+    "text": "Sync options\nChoose sync direction\n\nCloud has 1 bookmarks (chrome), updated at 08:00:00.\nLocal has 1 bookmarks.\n\nRestore to local\nA local snapshot will be created\nUpload to cloud\nOverwrites the cloud copy\nCreate a new file on the next upload",
+    "focusInside": true,
+    "closed": true,
+    "restored": "Sync now",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "width": 360,
+    "height": 560,
+    "lang": "en",
+    "text": "Sync options\nChoose sync direction\n\nCloud has 1 bookmarks (chrome), updated at 08:00:00.\nLocal has 1 bookmarks.\n\nRestore to local\nA local snapshot will be created\nUpload to cloud\nOverwrites the cloud copy\nCreate a new file on the next upload",
+    "focusInside": true,
+    "closed": true,
+    "restored": "Sync now",
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "width": 360,
+    "height": 560,
+    "lang": "zh-CN",
+    "text": "同步选项\n请选择同步方向\n\n云端有 1 个书签 (chrome)，更新于 08:00:00。\n本地有 1 个书签。\n\n恢复到本地\n将创建本地自动快照\n上传到云端\n覆盖云端版本\n下次上传创建新文件",
+    "focusInside": true,
+    "closed": true,
+    "restored": "立即同步",
+    "overflow": false,
+    "errors": []
+  }
+]

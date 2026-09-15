@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-14",
+  "base": "83ce836e8c6683af20cf186e7840810cfd4bc8b1",
+  "version": "1.5.2",
+  "sourceAndTestsSha256": "4bebce9311467c20235d03875e8e6aed570d271dbca1fb484806ae249351f15d",
+  "hashedFileCount": 200,
+  "checks": {
+    "vitest": {
+      "files": 46,
+      "tests": 461,
+      "status": "passed",
+      "durationSeconds": 2.4
+    },
+    "chrome": {
+      "typecheck": "passed",
+      "build": "passed"
+    },
+    "firefox": {
+      "typecheck": "passed",
+      "build": "passed"
+    },
+    "sourceLineLimit": "passed",
+    "diffWhitespace": "passed",
+    "realExtension": "not_run",
+    "realStorage": "not_run",
+    "twoDevices": "not_run",
+    "release": "not_run"
+  },
+  "bundle": {
+    "mainKb": 582.38,
+    "gzipKb": 174.85
+  },
+  "warnings": [
+    "Main chunk exceeds 500 kB",
+    "Browserslist data is eight months old"
+  ]
+}

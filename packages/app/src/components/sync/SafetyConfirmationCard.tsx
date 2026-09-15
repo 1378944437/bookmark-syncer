@@ -43,7 +43,7 @@ export function SafetyConfirmationCard({
   const handleConfirmPush = async () => {
     setIsPushing(true);
     try {
-      const result = await smartPushInBackground(getConfig(), { skipSafetyGuard: true });
+      const result = await smartPushInBackground(getConfig(), { skipSafetyGuard: true, confirmationId: pending.id });
       if (result.success) {
         toast.success(t("safety.banner.pushSuccess"));
         await clearPendingSafetyConfirmation();

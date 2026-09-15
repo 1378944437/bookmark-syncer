@@ -29,6 +29,8 @@ export const DEFAULT_SAFETY_SETTINGS: SafetySettings = {
  * 待用户确认的安全熔断拦截快照信息
  */
 export interface PendingSafetyConfirmation {
+  context?: string;
+  target?: string;
   id: string;
   timestamp: number;
   deletedCount: number;
@@ -120,6 +122,9 @@ export async function clearPendingSafetyConfirmation(): Promise<void> {
 }
 
 export interface SafetyCheckParams {
+  context?: string;
+  target?: string;
+  confirmationId?: string;
   /** 本次检测删除的书签总数 */
   deletedCount: number;
   /** 变动前的基准书签总数 */
@@ -143,7 +148,9 @@ export interface SafetyCheckResult {
  * 3. 触发熔断时自动记录 pending_safety_confirmation
  */
 export async function evaluateSafetyBreaker(params: SafetyCheckParams): Promise<SafetyCheckResult> {
-  if (params.skipSafetyGuard) {
+  const pending = params.skipSafetyGuard ? await getPendingSafetyConfirmation() : null;
+  if (params.skipSafetyGuard && (!params.context ||
+      (pending?.context === params.context && pending?.id === params.confirmationId))) {
     return { allowed: true };
   }
 
@@ -163,7 +170,9 @@ export async function evaluateSafetyBreaker(params: SafetyCheckParams): Promise<
   // 触发条件：单次删除超过 10 条且占比达到或超过安全阈值
   if (deletedCount > 10 && deletePercentage >= settings.threshold) {
     const confirmation: PendingSafetyConfirmation = {
-      id: `safety-${Date.now()}`,
+      id: crypto.randomUUID(),
+      context: params.context,
+      target: params.target,
       timestamp: Date.now(),
       deletedCount,
       totalBefore,

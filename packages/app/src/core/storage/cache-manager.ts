@@ -107,7 +107,7 @@ export class CacheManager {
    * 获取缓存的备份文件列表
    * @returns 缓存的备份列表，如果不存在或已过期则返回 null
    */
-  async getCachedBackupList(): Promise<CachedBackupList | null> {
+  async getCachedBackupList(target?: string): Promise<CachedBackupList | null> {
     try {
       if (!this.isSessionStorageAvailable()) {
         return null;
@@ -115,6 +115,7 @@ export class CacheManager {
 
       const result = await browser.storage.session.get(LIST_CACHE_KEY);
       const cached = result[LIST_CACHE_KEY] as CachedBackupList | undefined;
+      if (target !== undefined && cached?.target !== target) return null;
 
       if (!cached) {
         return null;

@@ -74,6 +74,8 @@ export interface RestoreConfirmDrawerProps {
   cloudBackup: CloudBackupFile | null;
   onConfirmSnapshot: () => void;
   onConfirmCloudBackup: () => void;
+  passphrase?: string;
+  onPassphraseChange?: (value: string) => void;
   t: Translate;
 }
 
@@ -87,10 +89,12 @@ export function RestoreConfirmDrawer({
   cloudBackup,
   onConfirmSnapshot,
   onConfirmCloudBackup,
+  passphrase, onPassphraseChange,
   t,
 }: RestoreConfirmDrawerProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t("sync.confirmRestore.title")}>
+      {cloudBackup?.path.endsWith('.enc') && <input type="password" autoComplete="off" aria-label={t('repair.oldPassword')} placeholder={t('repair.oldPassword')} value={passphrase ?? ''} onChange={event => onPassphraseChange?.(event.target.value)} className="w-full border rounded bg-background p-2 text-xs mb-3" />}
       {(snapshot || cloudBackup) && (
         <div className="space-y-4 pt-1">
           <div className="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-xl flex gap-3">

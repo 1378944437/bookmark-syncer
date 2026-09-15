@@ -1,0 +1,57 @@
+{
+  "date": "2026-09-14T11:28:54.075Z",
+  "browser": "153.0.4234.32",
+  "extensionVersion": "1.5.2",
+  "environment": "Real Edge extension; two temporary profiles; loopback WebDAV fixture",
+  "results": [
+    {
+      "name": "two-profile-first-sync-and-excluded-root-protection",
+      "status": "passed"
+    },
+    {
+      "name": "identical-baseline-and-remote-deletion-propagation",
+      "status": "passed"
+    },
+    {
+      "name": "dirty-local-edit-requires-direction-choice",
+      "status": "passed"
+    },
+    {
+      "name": "remote-503-fails-closed-with-zero-upload",
+      "status": "passed"
+    },
+    {
+      "name": "failed-bookmark-event-retries-via-natural-alarm-without-another-edit",
+      "status": "passed"
+    },
+    {
+      "name": "real-indexeddb-safety-snapshot-clear-and-restore",
+      "status": "passed"
+    },
+    {
+      "name": "encryption-enable-rotate-history-password-and-disable",
+      "status": "passed"
+    },
+    {
+      "name": "closed-extension-page-keeps-background-upload-and-shared-lock",
+      "status": "passed"
+    },
+    {
+      "name": "service-worker-stop-and-message-wakeup",
+      "status": "passed"
+    }
+  ],
+  "failure": null,
+  "requestCounts": {
+    "PROPFIND": 62,
+    "PUT": 8,
+    "GET": 22,
+    "DELETE": 4
+  },
+  "limitations": [
+    "Not a real remote WebDAV/Gist service",
+    "Playwright/CDP attached",
+    "Not a toolbar popup lifecycle test",
+    "No Firefox or mobile browser"
+  ]
+}

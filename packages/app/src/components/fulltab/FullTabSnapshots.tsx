@@ -1,3 +1,5 @@
+import { useI18n } from '../../i18n';
+import { RecoveryNotice } from '../sync/RecoveryNotice';
 /**
  * 大屏控制台：快照时光机全景视图
  * 支持多网格卡片式呈现、差分变动微标、全文搜索过滤、手动创建与一键回滚
@@ -15,13 +17,16 @@ import {
 import { toast } from 'sonner'
 import { snapshotManager, type Snapshot } from '../../core/backup'
 import { bookmarkRepository, countBookmarks } from '../../core/bookmark'
-import { holdRestoringUntil, setIsRestoring } from '../../core/sync/sync-settings'
+import { restoreLocalSnapshotInBackground } from '../../application/background-ops'
 import { parseSnapshotReason } from '../../infrastructure/utils/snapshot-parser'
 import { cn } from '../../infrastructure/utils/format'
 import { Button } from '../Button'
 import { Input } from '../Input'
 
 export function FullTabSnapshots() {
+  const { t, locale } = useI18n()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -29,11 +34,12 @@ export function FullTabSnapshots() {
   const [confirmRestoreId, setConfirmRestoreId] = useState<number | null>(null)
 
   const loadSnapshots = async () => {
+    setLoading(true); setError('')
     try {
       const list = await snapshotManager.getAllSnapshots()
       setSnapshots(list.sort((a: Snapshot, b: Snapshot) => b.timestamp - a.timestamp))
     } catch (e) {
-      console.error('[FullTabSnapshots] Failed to load snapshots:', e)
+      setError((e as Error).message)
     } finally {
       setLoading(false)
     }
@@ -45,48 +51,46 @@ export function FullTabSnapshots() {
 
   // 手动创建新快照
   const handleCreate = async () => {
+    if (busy) return
+    setBusy(true)
     try {
       const tree = await bookmarkRepository.getTree()
       const count = countBookmarks(tree)
-      await snapshotManager.createSnapshot(tree, count, '手动创建 (手动 备份)')
+      await snapshotManager.createSnapshot(tree, count, 'manual')
       await loadSnapshots()
-      toast.success('本地快照创建成功')
+      toast.success(t('repair.snapCreated'))
     } catch (e) {
-      toast.error('创建快照失败', { description: (e as Error).message })
-    }
+      toast.error(t('repair.snapFailed'), { description: (e as Error).message })
+    } finally { setBusy(false) }
   }
 
   // 删除单份快照
   const handleDelete = async (id: number) => {
+    if (busy) return
+    setBusy(true)
     try {
       await snapshotManager.deleteSnapshot(id)
       setConfirmDeleteId(null)
       await loadSnapshots()
-      toast.success('快照已删除')
+      toast.success(t('repair.snapDeleted'))
     } catch (e) {
-      toast.error('删除快照失败', { description: (e as Error).message })
-    }
+      toast.error(t('repair.snapFailed'), { description: (e as Error).message })
+    } finally { setBusy(false) }
   }
 
   // 一键回滚到指定快照
   const handleRestore = async (snapshot: Snapshot) => {
+    if (busy) return
+    setBusy(true)
     try {
-      await setIsRestoring(true)
-
-      // 恢复前自动对当前书签建立安全防灾快照
-      const currentTree = await bookmarkRepository.getTree()
-      const currentCount = countBookmarks(currentTree)
-      await snapshotManager.createSnapshot(currentTree, currentCount, '快照恢复前自动备份 (自动 恢复)')
-
-      await bookmarkRepository.restoreFromBackup(snapshot.tree)
+      const result = await restoreLocalSnapshotInBackground(snapshot.id!)
+      if (!result.success) throw new Error(result.message)
       setConfirmRestoreId(null)
       await loadSnapshots()
-      toast.success(`已恢复到 ${new Date(snapshot.timestamp).toLocaleString()} 的版本`)
+      toast.success(t('repair.snapRestored'))
     } catch (e) {
-      toast.error('快照恢复失败', { description: (e as Error).message })
-    } finally {
-      await holdRestoringUntil()
-    }
+      toast.error(t('repair.snapFailed'), { description: (e as Error).message })
+    } finally { setBusy(false) }
   }
 
   // 根据搜索关键字过滤
@@ -100,6 +104,9 @@ export function FullTabSnapshots() {
 
   return (
     <div className="w-full space-y-6">
+      <RecoveryNotice />
+      {loading && <p role="status">{t('common.loading')}</p>}
+      {error && <p role="alert" className="text-destructive">{error} <Button disabled={busy} onClick={() => void loadSnapshots()}>{t('repair.retry')}</Button></p>}
       {/* 顶部工具栏 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card/60 backdrop-blur-md p-4 rounded-2xl border border-border">
         <div className="relative flex-1 max-w-md">
@@ -107,18 +114,18 @@ export function FullTabSnapshots() {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索快照标签、时机或日期..."
+            aria-label={t('repair.snapSearch')} placeholder={t('repair.snapSearch')}
             className="pl-9 h-10 bg-background/80"
           />
         </div>
 
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">
-            共 <strong className="text-foreground">{snapshots.length}</strong> 份历史快照
+            {t('repair.snapTotal', { count: snapshots.length })}
           </span>
-          <Button onClick={handleCreate} size="sm" className="gap-1.5 h-10">
+          <Button disabled={busy} onClick={handleCreate} size="sm" className="gap-1.5 h-10">
             <Plus className="w-4 h-4" />
-            <span>新建快照</span>
+            <span>{t('repair.snapCreate')}</span>
           </Button>
         </div>
       </div>
@@ -126,7 +133,13 @@ export function FullTabSnapshots() {
       {/* 快照卡片网格：电脑宽屏 3~4 列饱满呈现，移动端单列整齐排列 */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5">
         {filteredSnapshots.map((s) => {
-          const parsed = parseSnapshotReason(s.reason, '自动备份')
+          const parsed = parseSnapshotReason(s.reason)
+          if (locale === 'en') {
+            const labels: Record<string, string> = { '自动备份': 'Automatic backup', '手动备份': 'Manual backup', '手动创建': 'Manual snapshot', '上传前': 'Before upload', '上传前备份': 'Before upload', '下载前': 'Before download', '恢复前': 'Before restore', '云端恢复前': 'Before cloud restore', '自动': 'Automatic', '手动': 'Manual', '备份': 'Backup', '合并': 'Merge', '覆盖': 'Replace', '恢复': 'Restore' }
+            parsed.title = labels[parsed.title] || parsed.title
+            if (parsed.triggerLabel) parsed.triggerLabel = labels[parsed.triggerLabel] || parsed.triggerLabel
+            if (parsed.actionLabel) parsed.actionLabel = labels[parsed.actionLabel] || parsed.actionLabel
+          }
           const isDeleting = confirmDeleteId === s.id
           const isRestoring = confirmRestoreId === s.id
 
@@ -171,7 +184,7 @@ export function FullTabSnapshots() {
                   </span>
                   <span className="flex items-center gap-1 font-medium text-foreground">
                     <Bookmark className="w-3 h-3 text-primary" />
-                    {s.count} 书签
+                    {t('repair.snapBookmarks', { count: s.count })}
                   </span>
                 </div>
 
@@ -201,60 +214,60 @@ export function FullTabSnapshots() {
               <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-2">
                 {isRestoring ? (
                   <div className="flex items-center gap-2 w-full">
-                    <Button
+                    <Button disabled={busy}
                       size="sm"
                       variant="destructive"
                       className="h-8 text-xs flex-1"
                       onClick={() => handleRestore(s)}
                     >
-                      确认覆盖恢复
+                      {t('repair.snapConfirm')}
                     </Button>
-                    <Button
+                    <Button disabled={busy}
                       size="sm"
                       variant="ghost"
                       className="h-8 text-xs"
                       onClick={() => setConfirmRestoreId(null)}
                     >
-                      取消
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 ) : isDeleting ? (
                   <div className="flex items-center gap-2 w-full">
-                    <Button
+                    <Button disabled={busy}
                       size="sm"
                       variant="destructive"
                       className="h-8 text-xs flex-1"
                       onClick={() => handleDelete(s.id)}
                     >
-                      确认删除
+                      {t('common.delete')}
                     </Button>
-                    <Button
+                    <Button disabled={busy}
                       size="sm"
                       variant="ghost"
                       className="h-8 text-xs"
                       onClick={() => setConfirmDeleteId(null)}
                     >
-                      取消
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 ) : (
                   <>
-                    <Button
+                    <Button disabled={busy}
                       size="sm"
                       variant="outline"
                       className="h-8 text-xs gap-1 hover:border-primary/50"
                       onClick={() => setConfirmRestoreId(s.id)}
                     >
                       <RotateCcw className="w-3.5 h-3.5 text-primary" />
-                      <span>恢复此版本</span>
+                      <span>{t('common.restore')}</span>
                     </Button>
 
-                    <Button
+                    <Button disabled={busy}
                       size="sm"
                       variant="ghost"
                       className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
                       onClick={() => setConfirmDeleteId(s.id)}
-                      title="删除快照"
+                      aria-label={t('common.delete')} title={t('common.delete')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -266,10 +279,10 @@ export function FullTabSnapshots() {
         })}
       </div>
 
-      {!loading && filteredSnapshots.length === 0 && (
+      {!loading && !error && filteredSnapshots.length === 0 && (
         <div className="text-center py-16 text-muted-foreground space-y-2">
           <AlertCircle className="w-8 h-8 mx-auto text-muted-foreground/50" />
-          <p className="text-sm">未找到符合条件的本地快照</p>
+          <p className="text-sm">{t('repair.snapEmpty')}</p>
         </div>
       )}
     </div>

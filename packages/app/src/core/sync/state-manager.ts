@@ -5,6 +5,8 @@
 import browser from "webextension-polyfill";
 import { SYNC_STATE_KEY } from "./types";
 import type { SyncState } from "./types";
+import { getSyncScope } from './sync-settings';
+import { SYNC_SCOPE_KEYS } from '../bookmark/sync-scope';
 
 /**
  * 同步状态管理器类
@@ -20,6 +22,8 @@ export class SyncStateManager {
 
       // 只返回匹配当前 URL 的状态
       if (syncState?.url === url) {
+        const currentScope = await getSyncScope();
+        if (!syncState.scope || SYNC_SCOPE_KEYS.some(key => syncState.scope![key] !== currentScope[key])) return null;
         return syncState;
       }
 
@@ -36,10 +40,11 @@ export class SyncStateManager {
   async setState(state: SyncState): Promise<void> {
     try {
       await browser.storage.local.set({
-        [SYNC_STATE_KEY]: state,
+        [SYNC_STATE_KEY]: { ...state, scope: state.scope ?? await getSyncScope() },
       });
     } catch (error) {
       console.error("[SyncStateManager] Failed to set sync state:", error);
+      throw error;
     }
   }
 

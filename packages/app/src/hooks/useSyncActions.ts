@@ -1,3 +1,4 @@
+import { useBackgroundSyncStatus } from './useBackgroundSyncStatus'
 /**
  * 同步动作与视图状态（自 SyncView 抽出的状态与处理器）
  * 拥有：同步状态/提示消息/抽屉开合/强制覆盖确认；处理器体与原实现逐字一致。
@@ -41,6 +42,8 @@ export interface SyncActionsContext {
 export function useSyncActions(ctx: SyncActionsContext) {
   const { t, locale, isConfigured, isOnline, localCount, getConfig, loadCounts, setCloudMeta, refreshers } = ctx
 
+  const background = useBackgroundSyncStatus(getConfig(), isConfigured)
+  const confirmedConfig = useRef<StorageConfig | null>(null)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
   const [msg, setMsg] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -60,7 +63,13 @@ export function useSyncActions(ctx: SyncActionsContext) {
     return () => { if (msgTimerRef.current) clearTimeout(msgTimerRef.current) }
   }, [])
 
-  const isSyncBusy = syncStatus === 'checking' || syncStatus === 'syncing'
+  useEffect(() => {
+    if (background.result && !background.result.result.success && !background.busy) {
+      setSyncStatus('error')
+      setMsg(translateSyncMessage(locale, background.result.result.message))
+    }
+  }, [background.result, background.busy, locale])
+  const isSyncBusy = syncStatus === 'checking' || syncStatus === 'syncing' || background.busy
 
   const showGenericFailure = (message: string) => {
     setSyncStatus('error')
@@ -119,12 +128,12 @@ export function useSyncActions(ctx: SyncActionsContext) {
     }
   }
 
-  const executePush = async () => {
+  const executePush = async (config = getConfig()) => {
     setSyncStatus('syncing')
     setMsg(t('sync.status.uploading'))
     try {
       // 在后台 Service Worker 中执行，关闭面板不会中断
-      const result = await smartPushInBackground(getConfig())
+      const result = await smartPushInBackground(config)
 
       if (result.success) {
         setSyncStatus('success')
@@ -212,13 +221,14 @@ export function useSyncActions(ctx: SyncActionsContext) {
   const requestForcePush = () => {
     if (!isOnline || localCount === 0 || isSyncBusy) return
     setDrawerOpen(false)
+    confirmedConfig.current = getConfig()
     setConfirmPushOpen(true)
   }
 
   const confirmForcePush = async () => {
     if (!isOnline || localCount === 0 || isSyncBusy) return
     setConfirmPushOpen(false)
-    await executePush()
+    if (confirmedConfig.current) await executePush(confirmedConfig.current)
   }
 
   const openMoreActions = () => {
@@ -235,8 +245,8 @@ export function useSyncActions(ctx: SyncActionsContext) {
 
   return {
     // 状态
-    syncStatus,
-    msg,
+    syncStatus: background.busy && syncStatus === 'idle' ? 'syncing' as const : syncStatus,
+    msg: background.busy && !msg ? t('common.loading') : msg,
     drawerOpen,
     drawerMode,
     confirmDrawerOpen,

@@ -1,6 +1,8 @@
+import { useModalDialog } from '../hooks/useModalDialog';
 import { useRef } from 'react';
 import { motion, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
 import { X } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 
 interface DrawerProps {
@@ -12,6 +14,7 @@ interface DrawerProps {
 }
 
 export function Drawer({ isOpen, onClose, title, children, footer }: DrawerProps) {
+  const { t } = useI18n();
   const controls = useDragControls();
   const drawerRef = useRef<HTMLDivElement>(null);
 
@@ -21,7 +24,9 @@ export function Drawer({ isOpen, onClose, title, children, footer }: DrawerProps
     }
   };
 
+  const dialogRef = useModalDialog(isOpen);
   return (
+    <dialog ref={dialogRef} aria-label={title || 'Dialog'} onCancel={(event) => { event.preventDefault(); onClose(); }} className="fixed inset-0 m-0 h-full w-full max-h-none max-w-none border-0 bg-transparent p-0 text-foreground backdrop:bg-transparent">
     <AnimatePresence>
       {isOpen && (
         <>
@@ -52,7 +57,7 @@ export function Drawer({ isOpen, onClose, title, children, footer }: DrawerProps
             style={{ willChange: 'transform' }} // Optimization
           >
             {/* Handle Bar */}
-            <div 
+            <div
                 className="w-full flex items-center justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none"
                 onPointerDown={(e) => controls.start(e)}
             >
@@ -62,7 +67,8 @@ export function Drawer({ isOpen, onClose, title, children, footer }: DrawerProps
             {/* Header */}
             <div className="px-6 pb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground tracking-tight">{title}</h2>
-              <button 
+              <button
+                aria-label={t('repair.close')}
                 onClick={onClose}
                 className="p-1 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -85,5 +91,6 @@ export function Drawer({ isOpen, onClose, title, children, footer }: DrawerProps
         </>
       )}
     </AnimatePresence>
+    </dialog>
   );
 }

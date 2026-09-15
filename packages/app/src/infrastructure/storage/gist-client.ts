@@ -13,6 +13,8 @@ export interface GistFileDetail {
 }
 
 export interface GistResponse {
+  truncated?: boolean
+  html_url?: string
   id: string
   description: string
   public: boolean
@@ -54,26 +56,9 @@ export class GistClient {
     options: RequestInit = {},
     customSignal?: AbortSignal
   ): Promise<Response> {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), GistClient.TIMEOUT_MS)
-
-    if (customSignal) {
-      customSignal.addEventListener('abort', () => controller.abort())
-    }
-
-    try {
-      return await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      })
-    } catch (err) {
-      if ((err as Error).name === 'AbortError') {
-        throw new Error('GitHub API 请求超时，请检查网络或配置加速代理')
-      }
-      throw err
-    } finally {
-      clearTimeout(timeoutId)
-    }
+    const timeout = AbortSignal.timeout(GistClient.TIMEOUT_MS)
+    const signal = customSignal ? AbortSignal.any([customSignal, timeout]) : timeout
+    return fetch(url, { ...options, signal })
   }
 
   /**
@@ -145,7 +130,7 @@ export class GistClient {
     }
 
     const data = (await res.json()) as GistResponse
-    return { id: data.id, url: data.updated_at }
+    return { id: data.id, url: data.html_url || '' }
   }
 
   /**

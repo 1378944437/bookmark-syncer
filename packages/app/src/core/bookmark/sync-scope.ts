@@ -7,6 +7,7 @@
  * 层级不一致」的现实：范围是用户圈定的，算法不再猜
  */
 import type { BookmarkNode } from "../../types";
+import { annotateSystemFolders } from "./normalizer";
 
 export const SYNC_SCOPE_KEYS = ["bookmarks-bar", "other", "mobile"] as const;
 
@@ -31,16 +32,25 @@ function isScopeKey(segment: string | undefined): segment is SyncScopeKey {
  * 返回新数组；范围内的文件夹连同子树原样保留（不拷贝、不改内容）
  */
 export function filterTreeByScope(tree: BookmarkNode[], scope: SyncScope): BookmarkNode[] {
-  return tree.filter((node) => {
+  // 浏览器树包含一个容器根；只复制需要标注和过滤的两层，保护调用方输入。
+  const roots = tree.map(node => ({ ...node, ...(node.children ? { children: node.children.map(child => ({ ...child })) } : {}) }));
+  const container = roots.length === 1 && !roots[0].url && !!roots[0].children &&
+    (roots[0].id === '0' || roots[0].id === 'root________' || (!roots[0].id && roots[0].title === ''));
+  if (container) annotateSystemFolders(roots);
+  const included = (node: BookmarkNode) => {
     if (node.url) return true; // 顶层裸书签（理论不出现）不受治理
     if (isScopeKey(node.folderType)) return scope[node.folderType];
     return true; // 未知顶层文件夹保留
-  });
+  };
+  if (container) return [{ ...roots[0], children: roots[0].children!.filter(included) }];
+  return roots.filter(included);
 }
 
 /** 规范化存储中的范围对象（合并默认值，防缺字段） */
 export function normalizeSyncScope(stored: Partial<SyncScope> | undefined): SyncScope {
-  return { ...DEFAULT_SYNC_SCOPE, ...(stored ?? {}) };
+  return Object.fromEntries(SYNC_SCOPE_KEYS.map(key => [key,
+    typeof stored?.[key] === 'boolean' ? stored[key] : DEFAULT_SYNC_SCOPE[key],
+  ])) as SyncScope;
 }
 
 /** 是否至少保留了一个范围（设置页防全关） */

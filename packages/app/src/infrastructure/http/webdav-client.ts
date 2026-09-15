@@ -39,7 +39,6 @@ export class WebDAVClient implements IWebDAVClient {
 
   constructor(config: WebDAVConfig) {
     this.config = config;
-    console.log(`[WebDAVClient] Instance created for ${config.url}`);
   }
 
   /**
@@ -68,22 +67,10 @@ export class WebDAVClient implements IWebDAVClient {
    * 外部 signal（如下载队列超时）与内部超时任一触发都会中止请求
    */
   private async fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    const externalSignal = init.signal ?? null;
-    const onExternalAbort = () => controller.abort();
-    externalSignal?.addEventListener("abort", onExternalAbort);
-    try {
-      return await fetch(url, { ...init, signal: controller.signal });
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`WebDAV 请求超时（${Math.round(timeoutMs / 1000)}秒）: ${init.method || "GET"} ${url}`);
-      }
-      throw error;
-    } finally {
-      clearTimeout(timer);
-      externalSignal?.removeEventListener("abort", onExternalAbort);
-    }
+    const timeout = AbortSignal.timeout(timeoutMs);
+    const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+    // 原生超时信号持续覆盖响应体读取，不在收到响应头时提前解除。
+    return fetch(url, { ...init, signal });
   }
 
   async testConnection(): Promise<boolean> {
@@ -200,9 +187,11 @@ export class WebDAVClient implements IWebDAVClient {
         },
         credentials: "omit",
       }, WebDAVClient.REQUEST_TIMEOUT_MS);
+      if (response.status === 404) return false;
+      if (!response.ok && response.status !== 207) throw new Error(`WebDAV 目录检查失败: HTTP ${response.status}`);
       return response.ok || response.status === 207;
-    } catch {
-      return false;
+    } catch (error) {
+      throw error;
     }
   }
 

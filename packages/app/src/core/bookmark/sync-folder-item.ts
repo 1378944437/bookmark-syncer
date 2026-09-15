@@ -5,7 +5,7 @@
 import { BrowserBookmarksAPI } from "../../infrastructure/browser/api";
 import type { BookmarkNode } from "../../types";
 import { getFolderIdentityKey } from "./indexer";
-import type { SharedSyncState, SyncItemContext, SyncRecurse } from "./sync-item-types";
+import type { SharedSyncState,SyncItemContext,SyncRecurse } from "./sync-item-types";
 
 /** 处理云端文件夹节点（递归同步其子节点） */
 export async function syncCloudFolder(
@@ -23,19 +23,19 @@ export async function syncCloudFolder(
     processedLocalIds,
     folderTargets,
     stats,
-  } = ctx;
+  }=ctx;
 
-  const children = cloudNode.children;
-  if (!children) return;
+  const children=cloudNode.children;
+  if(!children) return;
 
   // === 处理文件夹 ===
-  const cloudFolderPath = localParentPath
+  const cloudFolderPath=localParentPath
     ? `${localParentPath}/${cloudNode.title}`
-    : cloudNode.title;
-  const folderIdentityKey = getFolderIdentityKey(cloudNode);
-  const existingTarget = folderTargets.get(folderIdentityKey);
+    :cloudNode.title;
+  const folderIdentityKey=getFolderIdentityKey(cloudNode);
+  const existingTarget=folderTargets.get(folderIdentityKey);
 
-  if (existingTarget?.id) {
+  if(existingTarget?.id) {
     await recurse(
       existingTarget.id,
       children,
@@ -46,22 +46,22 @@ export async function syncCloudFolder(
     return;
   }
 
-  let matchedFolder: BookmarkNode | undefined;
+  let matchedFolder: BookmarkNode|undefined;
 
   // 1. 先在当前文件夹找同名文件夹（简单匹配）
-  matchedFolder = localChildren.find(
+  matchedFolder=localChildren.find(
     (local) =>
-      local.id &&
-      !local.url &&
-      (local.title?.trim() || "") === (cloudNode.title?.trim() || "") &&
+      local.id&&
+      !local.url&&
+      (local.title?.trim()||"")===(cloudNode.title?.trim()||"")&&
       !processedLocalIds.has(local.id),
   );
 
   // 2. 如果没找到，从全局索引按路径找
-  if (!matchedFolder) {
-    const globalFolder = localIndex.pathToFolder.get(cloudFolderPath);
-    if (globalFolder && globalFolder.id && !processedLocalIds.has(globalFolder.id)) {
-      matchedFolder = {
+  if(!matchedFolder) {
+    const globalFolder=localIndex.pathToFolder.get(cloudFolderPath);
+    if(globalFolder&&globalFolder.id&&!processedLocalIds.has(globalFolder.id)) {
+      matchedFolder={
         id: globalFolder.id,
         title: globalFolder.title,
         parentId: globalFolder.parentId,
@@ -71,49 +71,26 @@ export async function syncCloudFolder(
     }
   }
 
-  if (matchedFolder && matchedFolder.id) {
+  if(matchedFolder&&matchedFolder.id) {
     processedLocalIds.add(matchedFolder.id);
-    folderTargets.set(folderIdentityKey, matchedFolder);
+    folderTargets.set(folderIdentityKey,matchedFolder);
 
     // 更新标题（如果改名了）
-    if ((matchedFolder.title?.trim() || "") !== (cloudNode.title?.trim() || "")) {
-      try {
-        await BrowserBookmarksAPI.update(matchedFolder.id, { title: cloudNode.title });
-        stats.bookmarksUpdated++; // 复用统计字段
-      } catch (error) {
-        console.warn(
-          `[Merger] Failed to update folder title ${matchedFolder.id}:`,
-          error,
-        );
-      }
+    if((matchedFolder.title?.trim()||"")!==(cloudNode.title?.trim()||"")) {
+      await BrowserBookmarksAPI.update(matchedFolder.id,{ title: cloudNode.title });
+      stats.bookmarksUpdated++; // 复用统计字段
     }
 
     // 调整位置（如果移动了）
-    if (
-      matchedFolder.parentId !== localParentId ||
-      matchedFolder.index !== i
+    if(
+      matchedFolder.parentId!==localParentId||
+      matchedFolder.index!==i
     ) {
-      try {
-        await BrowserBookmarksAPI.move(matchedFolder.id, {
-          parentId: localParentId,
-          index: i,
-        });
-        stats.foldersMoved++;
-      } catch (error) {
-        const errorMsg = (error as Error).message || '';
-        // 文件夹ID不存在是正常情况（可能被其他文件夹处理过）
-        if (errorMsg.includes("Can't find bookmark")) {
-          console.log(
-            `[Merger] Folder ${matchedFolder.id} already processed, skipping move`,
-          );
-        } else {
-          // 其他错误才需要警告
-          console.warn(
-            `[Merger] Failed to move folder ${matchedFolder.id}:`,
-            error,
-          );
-        }
-      }
+      await BrowserBookmarksAPI.move(matchedFolder.id,{
+        parentId: localParentId,
+        index: i,
+      });
+      stats.foldersMoved++;
     }
 
     // 递归同步子节点
@@ -126,32 +103,25 @@ export async function syncCloudFolder(
     );
   } else {
     // 创建新文件夹
-    try {
-      const created = await BrowserBookmarksAPI.create({
-        parentId: localParentId,
-        title: cloudNode.title,
-        index: i,
-      });
-      if (created.id) {
-        processedLocalIds.add(created.id); // 记录新创建的 ID，防止 Phase 3 误删
-        const createdFolder = { ...(created as BookmarkNode), children: [] };
-        localChildren.push(createdFolder);
-        folderTargets.set(folderIdentityKey, createdFolder);
-        stats.foldersCreated++;
+    const created=await BrowserBookmarksAPI.create({
+      parentId: localParentId,
+      title: cloudNode.title,
+      index: i,
+    });
+    if(created.id) {
+      processedLocalIds.add(created.id); // 记录新创建的 ID，防止 Phase 3 误删
+      const createdFolder={ ...(created as BookmarkNode),children: [] };
+      localChildren.push(createdFolder);
+      folderTargets.set(folderIdentityKey,createdFolder);
+      stats.foldersCreated++;
 
-        // 继续走 smartSync，让新建文件夹的子节点也受同轮去重保护
-        await recurse(
-          created.id,
-          children,
-          localIndex,
-          cloudFolderPath,
-          sharedState,
-        );
-      }
-    } catch (error) {
-      console.warn(
-        `[Merger] Failed to create folder "${cloudNode.title}":`,
-        error,
+      // 继续走 smartSync，让新建文件夹的子节点也受同轮去重保护
+      await recurse(
+        created.id,
+        children,
+        localIndex,
+        cloudFolderPath,
+        sharedState,
       );
     }
   }

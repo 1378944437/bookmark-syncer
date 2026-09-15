@@ -1,0 +1,58 @@
+{
+  "date": "2026-09-15T09:19:56.151Z",
+  "scripts": {
+    "scripts/verify-extension.cjs": {
+      "sha256": "2723aadcdd4447965b568ee68ea9f0b2827b06cab1c1ee0b428991bd3b1add17",
+      "lines": 291
+    },
+    "scripts/verify-firefox.cjs": {
+      "sha256": "b213a6003d2e33036e248639915428002729171110fc54c5bb5e1948b8b9f186",
+      "lines": 94
+    },
+    "scripts/firefox-page.cjs": {
+      "sha256": "412a3e08f058d6059c1d6c57d2e34cb28ca1f5c31aa8e746940d33528dfdccbf",
+      "lines": 56
+    }
+  },
+  "inputs": {
+    "packages/app/src": {
+      "files": 156,
+      "sha256": "b98df7333c72911d1365689545c573c9808cd4b5e44d85f5b14f467bbe5fb37d"
+    },
+    "packages/app/tests": {
+      "files": 46,
+      "sha256": "f0f42cb85b668216bf0eb655601497bbf227743c62b1af18a6eb30ea97832258"
+    },
+    "apps/chrome-extension/dist": {
+      "files": 18,
+      "sha256": "687f262412c9ac1942db2d9775fd3eb325a84eea89ffca4d1683445c5bff1abd"
+    },
+    "apps/firefox-extension/dist": {
+      "files": 17,
+      "sha256": "fa72751f7f7747ccb718db6b7f346ca9bad5b9e7f0a1e709a62e580593d87a31"
+    }
+  },
+  "fingerprintMethod": "SHA256 of sorted relative path + LF + file SHA256 + LF for each file",
+  "identicalTo": "../2026-09-15-restore/evidence.json",
+  "actualChecks": {
+    "integrationPassed": 6,
+    "scriptSyntax": "passed",
+    "diffWhitespace": "passed"
+  },
+  "runtime": {
+    "browser": "Playwright Firefox Nightly",
+    "version": "153.0",
+    "revision": "1538",
+    "buildId": "20260722113508",
+    "firefoxExeSha256": "9571c9a49d6d4de3e4c3b14e2e4bd6521e5b879f4ab6c95143e2098cb66e6618"
+  },
+  "reusedChecks": {
+    "testFiles": 46,
+    "unitTestsPassed": 463,
+    "chromeTypesAndBuild": "previously passed",
+    "firefoxTypesAndBuild": "previously passed"
+  },
+  "results": "results.json",
+  "applicationChangesThisRound": false,
+  "release": "not_run"
+}

@@ -13,36 +13,22 @@ export async function createChildren(
   parentId: string,
   children: BookmarkNode[],
 ): Promise<void> {
-  for (const child of children) {
-    if (child.url) {
+  for(const child of children) {
+    if(child.url) {
       // 创建书签
-      try {
-        await BrowserBookmarksAPI.create({
-          parentId,
-          title: child.title,
-          url: child.url,
-        });
-      } catch (error) {
-        console.warn(
-          `[Merger] Failed to create bookmark "${child.title}":`,
-          error
-        );
-      }
-    } else if (child.children) {
+      await BrowserBookmarksAPI.create({
+        parentId,
+        title: child.title,
+        url: child.url,
+      });
+    } else if(child.children) {
       // 创建文件夹并递归
-      try {
-        const newFolder = await BrowserBookmarksAPI.create({
-          parentId,
-          title: child.title,
-        });
-        if (newFolder.id && child.children.length > 0) {
-          await createChildren(newFolder.id, child.children);
-        }
-      } catch (error) {
-        console.warn(
-          `[Merger] Failed to create folder "${child.title}":`,
-          error
-        );
+      const newFolder=await BrowserBookmarksAPI.create({
+        parentId,
+        title: child.title,
+      });
+      if(newFolder.id&&child.children.length>0) {
+        await createChildren(newFolder.id,child.children);
       }
     }
   }
@@ -66,64 +52,50 @@ export async function createChildren(
  * 合并节点（只添加新的）
  * 用于保守的合并策略
  */
-export async function mergeNodes(parentId: string, nodes: BookmarkNode[]): Promise<void> {
-  const localChildren = [...((await BrowserBookmarksAPI.getChildren(parentId)) as BookmarkNode[])];
-  let addedCount = 0;
+export async function mergeNodes(parentId: string,nodes: BookmarkNode[]): Promise<void> {
+  const localChildren=[...((await BrowserBookmarksAPI.getChildren(parentId)) as BookmarkNode[])];
+  let addedCount=0;
 
-  for (const node of nodes) {
-    if (node.url) {
-      const normalizedNodeUrl = normalizeUrl(node.url);
-      const exists = localChildren.some((local) => normalizeUrl(local.url) === normalizedNodeUrl);
-      if (!exists) {
-        try {
-          const createdBookmark = await BrowserBookmarksAPI.create({
-            parentId,
-            title: node.title,
-            url: node.url,
-            index: node.index,
-          });
-          localChildren.push(createdBookmark as BookmarkNode);
-          addedCount++;
-        } catch (error) {
-          console.warn(
-            `[Merger] Failed to create bookmark during merge: ${node.title}`,
-            error,
-          );
-        }
+  for(const node of nodes) {
+    if(node.url) {
+      const normalizedNodeUrl=normalizeUrl(node.url);
+      const exists=localChildren.some((local) => normalizeUrl(local.url)===normalizedNodeUrl);
+      if(!exists) {
+        const createdBookmark=await BrowserBookmarksAPI.create({
+          parentId,
+          title: node.title,
+          url: node.url,
+          index: node.index,
+        });
+        localChildren.push(createdBookmark as BookmarkNode);
+        addedCount++;
       }
     } else {
-      const existingFolder = localChildren.find(
-        (local) => !local.url && local.title === node.title,
+      const existingFolder=localChildren.find(
+        (local) => !local.url&&local.title===node.title,
       );
 
-      if (existingFolder?.id) {
-        if (node.children && node.children.length > 0) {
-          await mergeNodes(existingFolder.id, node.children);
+      if(existingFolder?.id) {
+        if(node.children&&node.children.length>0) {
+          await mergeNodes(existingFolder.id,node.children);
         }
       } else {
-        try {
-          const newFolder = await BrowserBookmarksAPI.create({
-            parentId,
-            title: node.title,
-            index: node.index,
-          });
-          localChildren.push({ ...(newFolder as BookmarkNode), children: [] });
-          addedCount++;
+        const newFolder=await BrowserBookmarksAPI.create({
+          parentId,
+          title: node.title,
+          index: node.index,
+        });
+        localChildren.push({ ...(newFolder as BookmarkNode),children: [] });
+        addedCount++;
 
-          if (node.children && node.children.length > 0) {
-            await mergeNodes(newFolder.id, node.children);
-          }
-        } catch (error) {
-          console.warn(
-            `[Merger] Failed to create folder during merge: ${node.title}`,
-            error,
-          );
+        if(node.children&&node.children.length>0) {
+          await mergeNodes(newFolder.id,node.children);
         }
       }
     }
   }
 
-  if (addedCount > 0) {
+  if(addedCount>0) {
     console.log(`[Merger] Merged ${addedCount} new items`);
   }
 }

@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/1378944437/marksync/releases/latest"><img src="https://img.shields.io/github/v/release/1378944437/marksync?color=2563eb&style=flat-square&logo=github" alt="Latest Release"></a>
   <a href="https://github.com/1378944437/marksync/releases"><img src="https://img.shields.io/github/downloads/1378944437/marksync/total?color=16a34a&style=flat-square&logo=github" alt="Downloads"></a>
-  <img src="https://img.shields.io/badge/tests-371%20passed-10b981?style=flat-square&logo=vitest" alt="371 Tests Passing">
+  <img src="https://img.shields.io/badge/tests-463%20passed-10b981?style=flat-square&logo=vitest" alt="463 Tests Passing">
   <img src="https://img.shields.io/badge/typescript-strict-3178c6?style=flat-square&logo=typescript" alt="TypeScript Strict">
   <img src="https://img.shields.io/badge/react-19-06b6d4?style=flat-square&logo=react" alt="React 19">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-amber?style=flat-square" alt="License"></a>
@@ -60,15 +60,28 @@
 点击扩展图标 ➔ **「设置」** ➔ **「云端存储服务」**：
 - **方式 A：WebDAV**
   - 选择你的服务商预设（如坚果云或 Nextcloud），系统会自动填充 WebDAV 地址；
-  - 填入账号与**应用授权密码**，点击「保存并测试连接」。
+  - 填入账号与**应用授权密码**，先「测试当前输入」，再「保存连接配置」。测试不会保存或上传。
 - **方式 B：GitHub Gist**
   - 填入具有 `gist` 权限的 Personal Access Token；
-  - 点击「自动创建」即可一键生成云端私密 Gist 仓库，点击「测试 Gist 连通性」。
+  - 点击「自动创建」或输入已有 Gist ID，测试后「保存连接配置」。多份旧备份顺序不明时，从「接管旧版 Gist 备份」选择当前版本。
 
 ### 3. 开始同步
 返回首页点击 **「立即同步」** 即可。你也可以在「同步策略」中开启 **「自动同步」**，书签变动时自动静默上云。
 
 ---
+
+## 同步与恢复说明
+
+- 默认仅同步书签栏。比较、上传及云端恢复使用同一范围，范围外书签不参与搬移或删除。本地完整快照恢复不受云端范围限制。
+- 首次使用、切换账号/目标或范围后，内容不同时需选择同步方向。数量相同不代表内容一致。
+- 改密、启用或关闭加密先验证并发布新备份，再保存本地设置；历史密文仍需原密码。中断时使用「继续未完成的加密迁移」，不要手工删除迁移记录。
+- 恢复写入失败后暂停自动同步，保留操作前快照，可从恢复提示或快照页恢复。快照失败时不会继续覆盖。
+- Gist 新版使用版本索引。未知顺序的历史文件不自动清理；索引异常或旧客户端产生未索引文件时停止同步。请协调同一目标上的设备升级。
+- 「下次上传创建新文件」不会立即上传。配置导出默认不含密码和 Gist Token；缺少凭据的导入不会自动同步。
+
+本轮本地修复与隔离验证已完成，涵盖 Edge 集成、指定崩溃恢复和 Playwright Firefox 跨浏览器功能。真实服务及实际使用环境验收已决定延后到后续使用中进行；这些场景尚未验证，本轮未签名或发布。完整结果、证据与限制见 [当前交付状态](docs/DELIVERY_STATUS.md)。
+
+实际使用时请参考[验收清单](docs/ACTUAL_USAGE_CHECKLIST.md)。
 
 ## 🏢 常用云盘配置速览
 

@@ -1,3 +1,4 @@
+import { repairZh } from './repair';
 import { fullTabZh } from "./fulltab-zh";
 import { storageZh } from "./storage-zh";
 
@@ -7,6 +8,7 @@ import { storageZh } from "./storage-zh";
  */
 export const dictionary: Record<string, string> = {
   ...fullTabZh,
+  ...repairZh,
   ...storageZh,
   // ─── 通用 ───
   "common.cancel": "取消",
@@ -115,7 +117,7 @@ export const dictionary: Record<string, string> = {
   "sync.conflict.uploadCloudDesc": "覆盖云端版本",
   "sync.conflict.uploadForbidden": "禁止上传",
   "sync.conflict.uploadForbiddenDesc": "本地书签为空",
-  "sync.conflict.forceNewBackup": "强制新备份",
+  "sync.conflict.forceNewBackup": "下次上传创建新文件",
 
   // ─── 覆盖云端确认 ───
   "sync.confirmPush.title": "确认覆盖云端数据？",

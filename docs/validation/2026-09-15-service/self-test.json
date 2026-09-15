@@ -1,0 +1,51 @@
+{
+  "date": "2026-09-15T09:31:07.496Z",
+  "mode": "loopback-self-test",
+  "status": "passed",
+  "code": "self_test_passed",
+  "browser": "153.0.4234.32",
+  "extensionVersion": "1.5.2",
+  "results": [
+    {
+      "name": "webdav-accepted",
+      "status": "passed"
+    },
+    {
+      "name": "webdav-unauthorized",
+      "status": "passed"
+    },
+    {
+      "name": "webdav-unavailable",
+      "status": "passed"
+    },
+    {
+      "name": "gist-accepted",
+      "status": "passed"
+    },
+    {
+      "name": "gist-unauthorized",
+      "status": "passed"
+    },
+    {
+      "name": "gist-unavailable",
+      "status": "passed"
+    },
+    {
+      "name": "no-external-write-or-provider-config-persistence",
+      "status": "passed"
+    },
+    {
+      "name": "config-validation-and-error-redaction",
+      "status": "passed"
+    }
+  ],
+  "methods": [
+    "PROPFIND",
+    "PROPFIND",
+    "PROPFIND",
+    "GET",
+    "GET",
+    "GET"
+  ],
+  "remoteWritesExecuted": false
+}

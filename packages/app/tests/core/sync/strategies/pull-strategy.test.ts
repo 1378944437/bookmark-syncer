@@ -49,7 +49,7 @@ const {
   mockGetFileWithDedup: vi.fn(async () =>
     JSON.stringify({
       metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
-      data: [{ title: "Cloud Bookmark", url: "https://cloud.com" }],
+      data: [{ title: "", children: [{ id: "1", title: "Bar", children: [{ title: "Cloud", url: "https://cloud.com" }] }] }],
     })
   ),
 }));
@@ -112,7 +112,7 @@ beforeEach(() => {
   mockGetFileWithDedup.mockResolvedValue(
     JSON.stringify({
       metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
-      data: [{ title: "Cloud Bookmark", url: "https://cloud.com" }],
+      data: [{ title: "", children: [{ id: "1", title: "Bar", children: [{ title: "Cloud", url: "https://cloud.com" }] }] }],
     })
   );
 
@@ -146,10 +146,10 @@ describe("smartPull - 基本流程", () => {
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
-        data: Array.from({ length: 5 }, (_, i) => ({
+        data: [{ title: "", children: [{ id: "1", title: "Bar", children: Array.from({ length: 5 }, (_, i) => ({
           title: `C${i}`,
           url: `https://c${i}.com`,
-        })),
+        })) }] }],
       }),
     );
 

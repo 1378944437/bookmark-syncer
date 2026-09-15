@@ -284,17 +284,18 @@ describe("restoreFromCloudBackup", () => {
       "manual"
     );
     expect(result.success).toBe(false);
-    expect(result.message).toContain("无法读取备份文件");
+    expect(result.message).toContain("备份为空");
   });
 
-  it("快照创建失败不影响恢复", async () => {
+  it("快照创建失败必须中止恢复", async () => {
     mocks.createSnapshot.mockRejectedValueOnce(new Error("snapshot fail"));
     const result = await restoreFromCloudBackup(
       config,
       "/BookmarkSyncer/backup.json.gz",
       "manual"
     );
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    expect(mocks.restoreFromBackup).not.toHaveBeenCalled();
   });
 
   it("锁在 finally 中释放", async () => {

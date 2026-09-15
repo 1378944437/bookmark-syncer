@@ -1,3 +1,4 @@
+import { getStorageIdentifier } from '@src/core/storage/types';
 /**
  * push-strategy.ts 测试
  * 验证原子性（先传后删）+ skipLock 修复 + 基本上传流程
@@ -32,7 +33,7 @@ const {
   mockBookmarkTree,
 } = vi.hoisted(() => {
   const tree = [
-    { title: "Folder", children: [{ title: "Test", url: "https://test.com" }] },
+    { title: "", children: [{ id: "1", title: "Folder", children: [{ title: "Test", url: "https://test.com" }] }] },
   ];
   return {
     mockAcquire: vi.fn(async () => true),
@@ -156,6 +157,11 @@ const testConfig = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockClient.putFile.mockResolvedValue(undefined);
+  mockClient.getFile.mockImplementation(async () => mockClient.putFile.mock.calls.at(-1)?.[1] ?? '');
+  mockClient.listFiles.mockImplementation(async () => {
+    const path = mockClient.putFile.mock.calls.at(-1)?.[0];
+    return path ? [{ path, name: path.split('/').pop(), lastModified: Date.now() }] : [];
+  });
   mockClient.deleteFile.mockResolvedValue(undefined);
   mockClient.exists.mockResolvedValue(true);
   mockAcquire.mockResolvedValue(true);
@@ -196,7 +202,7 @@ describe("smartPush - 基本流程", () => {
     );
     // 确保（旧版状态回退比较）云端服务器时间 <= 本地记录时间，不触发"云端有更新"的阻止逻辑
     mockGetSyncState.mockResolvedValueOnce({
-      url: testConfig.url,
+      url: getStorageIdentifier(testConfig),
       time: cloudTimestamp + 1000,
     });
     mockCompareWithCloud.mockResolvedValueOnce(true);
@@ -303,11 +309,11 @@ describe("smartPush - 云端更新阻止自动上传", () => {
     mockGetFileWithDedup.mockResolvedValueOnce(
       JSON.stringify({
         metadata: { timestamp: Date.now(), clientVersion: "1.0.0" },
-        data: [{ title: "Cloud", url: "https://cloud.com" }],
+        data: [{ title: "", children: [{ id: "1", title: "Bar", children: [{ title: "Cloud", url: "https://cloud.com" }] }] }],
       })
     );
     mockGetSyncState.mockResolvedValueOnce({
-      url: testConfig.url,
+      url: getStorageIdentifier(testConfig),
       time: Date.now() - 60000,
     });
 

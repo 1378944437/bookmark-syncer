@@ -5,6 +5,7 @@
  * 消除 Core → Application 的反向依赖。UI 层可继续从 application barrel 使用
  */
 import browser from "webextension-polyfill";
+import { getRecoveryRecord } from './recovery';
 import type { LastBackupFileInfo } from "../storage/types";
 import { STORAGE_CONSTANTS } from "../storage/types";
 import { normalizeSyncScope, type SyncScope } from "../bookmark/sync-scope";
@@ -27,6 +28,8 @@ function getRestoringStorageArea(): typeof browser.storage.local | typeof browse
  */
 export async function getIsRestoring(): Promise<boolean> {
   try {
+    if (await getRecoveryRecord()) return true;
+    if ((await browser.storage.local.get('encryption_migration')).encryption_migration) return true;
     const storageArea = getRestoringStorageArea();
     const result = await storageArea.get(RESTORING_KEY);
     const state = result[RESTORING_KEY] as RestoringState | undefined;
@@ -56,7 +59,7 @@ export async function getIsRestoring(): Promise<boolean> {
     return state.value;
   } catch (error) {
     console.error("[StateManager] Failed to get restoring state:", error);
-    return false;
+    return true;
   }
 }
 
@@ -81,6 +84,7 @@ export async function setIsRestoring(value: boolean): Promise<void> {
     }
   } catch (error) {
     console.error("[StateManager] Failed to set restoring state:", error);
+    throw error;
   }
 }
 
@@ -211,6 +215,7 @@ export async function getDeviceIdentity(): Promise<DeviceIdentity> {
 }
 
 export interface RemoteDeviceInfo {
+  target?: string;
   deviceId?: string;
   deviceName?: string;
   time: number;
@@ -234,8 +239,9 @@ export async function getLastRemoteDevice(): Promise<RemoteDeviceInfo | null> {
 /**
  * 获取最后备份文件信息
  */
-export async function getLastBackupFileInfo(): Promise<LastBackupFileInfo | null> {
+export async function getLastBackupFileInfo(target?: string): Promise<LastBackupFileInfo | null> {
   const result = await browser.storage.local.get(STORAGE_CONSTANTS.LAST_BACKUP_FILE_KEY);
+  if (target !== undefined && (result[STORAGE_CONSTANTS.LAST_BACKUP_FILE_KEY] as LastBackupFileInfo | undefined)?.target !== target) return null;
   return (result[STORAGE_CONSTANTS.LAST_BACKUP_FILE_KEY] as LastBackupFileInfo | undefined) || null;
 }
 

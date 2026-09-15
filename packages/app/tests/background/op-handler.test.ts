@@ -71,6 +71,15 @@ describe("BackgroundOpHandler", () => {
     expect(result.success).toBe(true);
   });
 
+  it('records a page-requested operation as manual with its actual result message', async () => {
+    const indicator = await import('@src/application/sync-indicator');
+    const notify = vi.spyOn(indicator, 'notifySyncCompleted').mockResolvedValueOnce();
+    mocks.smartPush.mockResolvedValueOnce({ success: true, action: 'uploaded', message: 'upload verified' });
+    await listener({ type: 'sync:push', config: CONFIG });
+    expect(notify).toHaveBeenCalledWith('uploaded', { trigger: 'manual', message: 'upload verified' });
+    notify.mockRestore();
+  });
+
   it("sync:pull 映射到 smartPull(config, 'manual', mode)", async () => {
     mocks.smartPull.mockResolvedValueOnce({ success: true, action: "downloaded", message: "恢复成功" });
 
@@ -123,6 +132,18 @@ describe("BackgroundOpHandler", () => {
     const result = await listener({ type: "someOtherMessage" });
     expect(result).toBeUndefined();
     expect(mocks.smartPush).not.toHaveBeenCalled();
+  });
+
+  it('does not accept internal lock or encryption bypass options from a page', async () => {
+    mocks.smartPush.mockResolvedValueOnce({ success: true, action: 'uploaded', message: 'ok' });
+    await listener({ type: 'sync:push', config: CONFIG, options: { skipLock: true, writeEncryption: {}, confirmationId: 'approved' } });
+    expect(mocks.smartPush).toHaveBeenCalledWith(CONFIG, 'manual', { skipSafetyGuard: false, confirmationId: 'approved' });
+  });
+
+  it('rejects an invalid maintenance action without clearing local data', async () => {
+    const browser = (await import('webextension-polyfill')).default;
+    expect((await listener({ type: 'storage:maintenance', kind: 'typo' })).success).toBe(false);
+    expect(browser.storage.local.clear).not.toHaveBeenCalled();
   });
 
   it("重复注册不会产生多个监听器", async () => {

@@ -1,104 +1,60 @@
-/**
- * bookmark-monitor.ts 测试
- * 测试书签变化监听和防抖同步
- */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import browser, { __resetMockStore } from '../../src/__mocks__/webextension-polyfill';
+const mocks = vi.hoisted(() => ({ executeUpload: vi.fn() }));
+vi.mock('@src/application/sync-executor', () => ({ executeUpload: mocks.executeUpload }));
+import { triggerDebouncedSync, handleDebounceAlarm, registerBookmarkListeners, resumePendingUpload } from '../../src/application/bookmark-monitor';
+import { DEBOUNCE_ALARM } from '../../src/application/constants';
+const alarm = { name: DEBOUNCE_ALARM, scheduledTime: 0 };
 
-const mocks = vi.hoisted(() => ({
-  getIsRestoring: vi.fn(),
-  getWebDAVConfig: vi.fn(),
-  executeUpload: vi.fn(),
-}));
-
-vi.mock("@src/core/sync/sync-settings", () => ({
-  getIsRestoring: (...args: any[]) => mocks.getIsRestoring(...args),
-}));
-
-vi.mock("@src/application/state-manager", () => ({
-  getWebDAVConfig: (...args: any[]) => mocks.getWebDAVConfig(...args),
-}));
-
-vi.mock("@src/application/sync-executor", () => ({
-  executeUpload: (...args: any[]) => mocks.executeUpload(...args),
-}));
-
-import {
-  handleDebounceAlarm,
-  registerBookmarkListeners,
-  triggerDebouncedSync,
-} from "@src/application/bookmark-monitor";
-import { DEBOUNCE_ALARM } from "@src/application/constants";
-import browser from "webextension-polyfill";
-
-describe("bookmark-monitor", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    mocks.getIsRestoring.mockResolvedValue(false);
-    mocks.getWebDAVConfig.mockResolvedValue({ autoSyncEnabled: true });
-    mocks.executeUpload.mockResolvedValue(undefined);
-    vi.mocked(browser.alarms.create).mockResolvedValue(undefined as any);
-    vi.mocked(browser.alarms.clear).mockResolvedValue(true);
+describe('durable bookmark changes', () => {
+  beforeEach(async () => {
+    vi.useFakeTimers(); __resetMockStore(); vi.clearAllMocks();
+    await browser.storage.local.set({ webdav_url: 'https://dav.example.com', webdav_username: 'user', webdav_password: 'test', auto_sync_enabled: true });
+    mocks.executeUpload.mockResolvedValue(true);
   });
-
-  // ─── triggerDebouncedSync ───
-
-  describe("triggerDebouncedSync", () => {
-    it("创建防抖 alarm", async () => {
-      await triggerDebouncedSync();
-      expect(browser.alarms.create).toHaveBeenCalledWith(
-        DEBOUNCE_ALARM,
-        expect.objectContaining({ when: expect.any(Number) })
-      );
-    });
-
-    it("清除旧的防抖 alarm 后创建新的", async () => {
-      await triggerDebouncedSync();
-      expect(browser.alarms.clear).toHaveBeenCalledWith(DEBOUNCE_ALARM);
-      expect(browser.alarms.create).toHaveBeenCalledWith(
-        DEBOUNCE_ALARM,
-        expect.anything()
-      );
-    });
-
-    it("恢复中跳过", async () => {
-      mocks.getIsRestoring.mockResolvedValueOnce(true);
-      await triggerDebouncedSync();
-      expect(browser.alarms.create).not.toHaveBeenCalled();
-    });
+  afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
+  it('persists changes before scheduling the alarm', async () => {
+    await triggerDebouncedSync();
+    expect((await browser.storage.local.get('pending_bookmark_upload')).pending_bookmark_upload).toBeDefined();
+    expect(browser.alarms.create).toHaveBeenCalledWith(DEBOUNCE_ALARM, expect.anything());
   });
-
-  // ─── handleDebounceAlarm ───
-
-  describe("handleDebounceAlarm", () => {
-    it("匹配 alarm 时执行上传", async () => {
-      const alarm = { name: DEBOUNCE_ALARM, scheduledTime: Date.now() };
-      await handleDebounceAlarm(alarm as any);
-      expect(mocks.executeUpload).toHaveBeenCalled();
-    });
-
-    it("不匹配 alarm 名称时跳过", async () => {
-      const alarm = { name: "otherAlarm", scheduledTime: Date.now() };
-      await handleDebounceAlarm(alarm as any);
-      expect(mocks.executeUpload).not.toHaveBeenCalled();
-    });
-
-    it("自动同步禁用时跳过上传", async () => {
-      mocks.getWebDAVConfig.mockResolvedValueOnce({ autoSyncEnabled: false });
-      const alarm = { name: DEBOUNCE_ALARM, scheduledTime: Date.now() };
-      await handleDebounceAlarm(alarm as any);
-      expect(mocks.executeUpload).not.toHaveBeenCalled();
-    });
+  it('failed or suppressed uploads stay pending across worker restart', async () => {
+    await triggerDebouncedSync(); mocks.executeUpload.mockResolvedValueOnce(false);
+    await handleDebounceAlarm(alarm);
+    const state = await browser.storage.local.get();
+    expect(state.acknowledged_bookmark_upload).toBeUndefined();
+    vi.mocked(browser.alarms.create).mockClear();
+    await resumePendingUpload();
+    expect(browser.alarms.create).toHaveBeenCalled();
   });
-
-  // ─── registerBookmarkListeners ───
-
-  describe("registerBookmarkListeners", () => {
-    it("注册 4 种书签事件", () => {
-      registerBookmarkListeners();
-      expect(browser.bookmarks.onCreated?.addListener).toHaveBeenCalled();
-      expect(browser.bookmarks.onRemoved?.addListener).toHaveBeenCalled();
-      expect(browser.bookmarks.onChanged?.addListener).toHaveBeenCalled();
-      expect(browser.bookmarks.onMoved?.addListener).toHaveBeenCalled();
-    });
+  it('an event during upload remains pending after the old operation finishes', async () => {
+    await triggerDebouncedSync();
+    const first = (await browser.storage.local.get('pending_bookmark_upload')).pending_bookmark_upload as { id: string };
+    mocks.executeUpload.mockImplementationOnce(async () => { await triggerDebouncedSync(); return true; });
+    await Promise.all([handleDebounceAlarm(alarm), handleDebounceAlarm(alarm)]);
+    expect(mocks.executeUpload).toHaveBeenCalledTimes(1);
+    const state = await browser.storage.local.get();
+    expect(state.acknowledged_bookmark_upload).toBe(first.id);
+    expect((state.pending_bookmark_upload as { id: string }).id).not.toBe(first.id);
+    await handleDebounceAlarm(alarm);
+    expect(mocks.executeUpload).toHaveBeenCalledTimes(2);
+  });
+  it('does not upload old pending work to a different target', async () => {
+    await triggerDebouncedSync();
+    await browser.storage.local.set({ webdav_url: 'https://other.example.com' });
+    await handleDebounceAlarm(alarm);
+    expect(mocks.executeUpload).not.toHaveBeenCalled();
+  });
+  it('ignores events generated by an unfinished restore', async () => {
+    await browser.storage.local.set({ bookmark_recovery: { snapshotId: 1 } });
+    await triggerDebouncedSync();
+    expect(browser.alarms.create).not.toHaveBeenCalled();
+  });
+  it('registers all four bookmark event listeners', () => {
+    registerBookmarkListeners();
+    expect(browser.bookmarks.onCreated.addListener).toHaveBeenCalled();
+    expect(browser.bookmarks.onRemoved.addListener).toHaveBeenCalled();
+    expect(browser.bookmarks.onChanged.addListener).toHaveBeenCalled();
+    expect(browser.bookmarks.onMoved.addListener).toHaveBeenCalled();
   });
 });

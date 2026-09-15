@@ -173,12 +173,12 @@ describe("createChildren", () => {
     expect(browser.bookmarks.create).toHaveBeenCalledTimes(2);
   });
 
-  it("创建失败时静默跳过", async () => {
+  it("创建失败时向上传播错误", async () => {
     vi.mocked(browser.bookmarks.create).mockRejectedValueOnce(new Error("fail"));
     const children: BookmarkNode[] = [
       { title: "A", url: "https://a.com" },
     ];
-    await expect(createChildren("parent-1", children)).resolves.toBeUndefined();
+    await expect(createChildren("parent-1", children)).rejects.toThrow("fail");
   });
 });
 

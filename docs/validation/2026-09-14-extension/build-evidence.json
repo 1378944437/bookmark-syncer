@@ -1,0 +1,24 @@
+{
+  "date": "2026-09-14T11:30:56.080Z",
+  "sourceTestsAndScriptSha256": "13408229993ef3fe63c2d94bdab581165254e6e661a118acc229f8172518ad93",
+  "hashedFiles": 201,
+  "tests": {
+    "files": 46,
+    "passed": 463
+  },
+  "chrome": {
+    "types": "passed",
+    "build": "passed",
+    "distSha256": "316f203ad29d3d164af37d4f71ea1d8c2d41f7d4be4ea4137a0bba69428bdafd"
+  },
+  "firefox": {
+    "types": "passed",
+    "build": "passed",
+    "distSha256": "bd68cec030b41a60482c2efb61ed1da1a852cc551d9478e8f721a7ee5bd34db0"
+  },
+  "integration": {
+    "passed": 9,
+    "results": "results.json"
+  },
+  "release": "not_run"
+}

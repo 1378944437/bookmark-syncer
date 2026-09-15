@@ -16,6 +16,7 @@ import type { SmartSyncResult } from "../types";
 import { isCloudNewerThanBasis, isLocalDirty } from "../utils/sync-basis";
 import { smartPull } from "./pull-strategy";
 import { smartPush } from "./push-strategy";
+import { assertNoRecovery } from '../recovery';
 
 /**
  * 智能同步：自动判断推送或拉取
@@ -41,6 +42,8 @@ export async function smartSync(
   }
 
   try {
+    await assertNoRecovery();
+    const syncScope = await getSyncScope();
     const client = createStorageProvider(config);
     const storageId = getStorageIdentifier(config);
 
@@ -70,7 +73,7 @@ export async function smartSync(
           // 从文件名解析浏览器信息
           const fileName = latest.path.split("/").pop() || "";
           const parsed = fileManager.parseBackupFileName(fileName);
-          
+
           cloudInfo = {
             exists: true,
             timestamp: latest.lastModified,
@@ -93,6 +96,7 @@ export async function smartSync(
         throw error;
       }
       console.warn("[SmartSyncStrategy] No cloud data found:", error);
+      throw error;
     }
 
     // Case A: 云端无数据 → 直接上传
@@ -104,7 +108,6 @@ export async function smartSync(
 
     // 3. 比对内容（双方均按同步范围过滤后再比较）
     console.log("[SmartSyncStrategy] Comparing local and cloud...");
-    const syncScope = await getSyncScope();
     const isIdentical = await compareWithCloud(
       filterTreeByScope(localTree, syncScope),
       filterTreeByScope(cloudData.data, syncScope),
@@ -116,7 +119,9 @@ export async function smartSync(
         time: Date.now(),
         url: storageId,
         type: "skip_identical",
+        scope: syncScope,
         basis: { mtime: latest.lastModified, filePath: latest.path },
+        localHash: await computeTreeHash(filterTreeByScope(localTree, syncScope)),
       });
       return {
         success: true,
@@ -136,9 +141,7 @@ export async function smartSync(
 
     // 首次同步或环境变更，且云端有数据 → 需要用户选择
     if (
-      lastSyncTime === 0 &&
-      cloudInfo.totalCount &&
-      cloudInfo.totalCount > 0
+      lastSyncTime === 0 || !syncState?.localHash
     ) {
       console.log("[SmartSyncStrategy] First sync detected, need user choice");
       return {

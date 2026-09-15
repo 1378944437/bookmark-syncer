@@ -3,11 +3,17 @@
  * 支持将完整扩展设置打包导出为便携格式，并在其他设备一键解析还原
  */
 import browser from "webextension-polyfill";
+import { validateSettings } from "./settings-validation";
+import { assertNoRecovery } from "../core/sync/recovery";
 
 export const MIGRATION_SCHEMA_VERSION = "1.0";
 export const MIGRATION_PREFIX = "marksync://config/v1/";
 
 export interface ExportableSettings {
+  storage_type?: "webdav" | "gist";
+  gist_token?: string;
+  gist_id?: string;
+  gist_endpoint?: string;
   webdav_url?: string;
   webdav_username?: string;
   webdav_password?: string;
@@ -43,6 +49,7 @@ export async function exportSettings(options?: {
   const includePasswords = options?.includePasswords ?? false;
 
   const keysToRead = [
+    "storage_type", "gist_token", "gist_id", "gist_endpoint",
     "webdav_url",
     "webdav_username",
     "webdav_password",
@@ -66,7 +73,7 @@ export async function exportSettings(options?: {
   for (const key of keysToRead) {
     if (all[key] !== undefined) {
       // 敏感密码过滤
-      if (!includePasswords && (key === "webdav_password" || key === "e2e_passphrase")) {
+      if (!includePasswords && (key === "webdav_password" || key === "e2e_passphrase" || key === "gist_token")) {
         continue;
       }
       // @ts-ignore
@@ -117,6 +124,8 @@ export function parseAndValidateSettings(rawInput: string): {
       return { valid: false, error: "无效的 MarkSync 配置文件格式" };
     }
 
+    if (parsed.version !== MIGRATION_SCHEMA_VERSION) throw new Error("不支持的配置版本");
+    validateSettings(parsed.settings);
     return { valid: true, payload: parsed as MigrationConfigPayload };
   } catch (error) {
     return { valid: false, error: `配置代码解析失败: ${(error as Error).message}` };
@@ -131,8 +140,12 @@ export async function applyMigratedSettings(payload: MigrationConfigPayload): Pr
     throw new Error("无效的设置数据");
   }
 
+  await assertNoRecovery();
+  if (payload.version !== MIGRATION_SCHEMA_VERSION) throw new Error("不支持的配置版本");
+  validateSettings(payload.settings);
   const toSave: Record<string, unknown> = {};
   const s = payload.settings;
+  for (const key of ["storage_type", "gist_token", "gist_id", "gist_endpoint"] as const) if (s[key] !== undefined) toSave[key] = s[key];
 
   // 严格按白名单应用，防止非法污染
   if (typeof s.webdav_url === "string") toSave.webdav_url = s.webdav_url.trim();
@@ -150,6 +163,15 @@ export async function applyMigratedSettings(payload: MigrationConfigPayload): Pr
   if (typeof s.e2e_passphrase === "string") toSave.e2e_passphrase = s.e2e_passphrase;
   if (typeof s.app_language === "string") toSave.app_language = s.app_language;
   if (typeof s.device_name === "string") toSave.device_name = s.device_name;
+
+  // 无密码导入不可沿用另一目标的旧凭据，也不可立即启动后台同步。
+  if (s.gist_id !== undefined) toSave.gist_token = s.gist_token ?? '';
+  if (s.webdav_url !== undefined) toSave.webdav_password = s.webdav_password ?? '';
+  if (s.e2e_enabled !== undefined) toSave.e2e_passphrase = s.e2e_passphrase ?? '';
+  const incomplete = (s.storage_type === 'gist' && (!s.gist_token || !s.gist_id)) ||
+    ((s.storage_type === 'webdav' || s.webdav_url !== undefined) && (!s.webdav_url || !s.webdav_username || !s.webdav_password)) ||
+    (s.e2e_enabled && !s.e2e_passphrase);
+  if (incomplete) { toSave.auto_sync_enabled = false; toSave.scheduled_sync_enabled = false; }
 
   await browser.storage.local.set(toSave);
   console.log("[SettingsMigrator] Settings applied successfully:", Object.keys(toSave));

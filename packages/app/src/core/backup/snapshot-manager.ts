@@ -6,6 +6,7 @@ import { IDBPDatabase, openDB } from "idb";
 import type { BookmarkNode } from "../../types";
 import { calculateBookmarkDiff } from "../bookmark/diff-calculator";
 import { getMaxLocalSnapshots } from "../sync/sync-settings";
+import { getRecoveryRecord } from '../sync/recovery';
 import type {
     CreateSnapshotParams,
     Snapshot,
@@ -56,7 +57,7 @@ export class SnapshotManager {
   /**
    * 创建快照
    * 自动清理超出限制的旧快照
-   * 
+   *
    * @param tree 书签树
    * @param count 书签数量
    * @param reason 创建原因
@@ -69,7 +70,7 @@ export class SnapshotManager {
     diff?: SnapshotDiffStats
   ): Promise<number> {
     const db = await this.getDb();
-    
+
     // 自动比对上一快照差分变动（若上层未显式传入）
     let calculatedDiff = diff;
     if (!calculatedDiff) {
@@ -92,7 +93,7 @@ export class SnapshotManager {
       count,
       ...(calculatedDiff ? { diff: calculatedDiff } : {}),
     };
-    
+
     const id = await db.add(this.config.storeName, snapshot);
 
     // 保留最近 N 个快照，删除旧的
@@ -108,16 +109,17 @@ export class SnapshotManager {
   private async cleanOldSnapshots(): Promise<void> {
     const db = await this.getDb();
     const keys = await db.getAllKeys(this.config.storeName);
-    
+
     // 优先尊重构造函数显式配置（测试或特定实例），否则读取用户自定义配置
     const maxSnapshots = this.hasExplicitMaxSnapshots
       ? this.config.maxSnapshots
       : await getMaxLocalSnapshots();
 
     if (keys.length > maxSnapshots) {
-      const toDelete = keys.slice(0, keys.length - maxSnapshots);
+      const protectedId = (await getRecoveryRecord())?.snapshotId;
+      const toDelete = keys.filter(key => key !== protectedId).slice(0, keys.length - maxSnapshots);
       console.log(`[SnapshotManager] Cleaning ${toDelete.length} old snapshots (retaining ${maxSnapshots})`);
-      
+
       for (const key of toDelete) {
         await db.delete(this.config.storeName, key);
       }
@@ -131,7 +133,7 @@ export class SnapshotManager {
   async getLatestSnapshot(): Promise<Snapshot | undefined> {
     const db = await this.getDb();
     const keys = await db.getAllKeys(this.config.storeName);
-    
+
     if (keys.length === 0) {
       return undefined;
     }
@@ -147,7 +149,7 @@ export class SnapshotManager {
   async getAllSnapshots(): Promise<Snapshot[]> {
     const db = await this.getDb();
     const snapshots = await db.getAll(this.config.storeName);
-    
+
     // 按时间倒序返回
     return snapshots.sort((a, b) => b.timestamp - a.timestamp);
   }
@@ -167,6 +169,7 @@ export class SnapshotManager {
    * @param id 快照 ID
    */
   async deleteSnapshot(id: number): Promise<void> {
+    if ((await getRecoveryRecord())?.snapshotId === id) throw new Error('此快照用于恢复未完成的操作，暂不能删除');
     const db = await this.getDb();
     await db.delete(this.config.storeName, id);
     console.log(`[SnapshotManager] Deleted snapshot ${id}`);
@@ -176,6 +179,7 @@ export class SnapshotManager {
    * 删除所有快照
    */
   async deleteAllSnapshots(): Promise<void> {
+    if (await getRecoveryRecord()) throw new Error('请先恢复未完成的书签操作');
     const db = await this.getDb();
     await db.clear(this.config.storeName);
     console.log("[SnapshotManager] Deleted all snapshots");

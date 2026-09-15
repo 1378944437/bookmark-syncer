@@ -29,7 +29,7 @@ export const CHROMIUM_ROOT_ID_TO_FOLDER_TYPE: Record<string, string> = {
  * 在 Chromium 上正常工作。
  *
  * 同时兼容旧版云端数据：旧版 Chrome 上传的备份顶层节点无 id、无 folderType
- * （当时 assignHashToNode 未识别系统根），按位置推断（Chrome 顺序 bar/other/mobile）。
+ * （当时 assignHashToNode 未识别系统根），仅匹配已知系统标题，不猜测未知目录的位置。
  *
  * @param tree 书签树（就地修改）
  */
@@ -37,7 +37,7 @@ export function annotateSystemFolders(tree: BookmarkNode[]): BookmarkNode[] {
   const root = tree[0];
   if (!root || !root.children) return tree;
 
-  root.children.forEach((child, idx) => {
+  root.children.forEach((child) => {
     if (child.url) return; // 书签不是文件夹
     if (child.folderType) return; // 已有标注（新版上传的数据）
 
@@ -54,9 +54,14 @@ export function annotateSystemFolders(tree: BookmarkNode[]): BookmarkNode[] {
     }
 
     // 旧版云端数据：顶层文件夹无 id（assignHashToNode 未保留），
-    // 按位置推断（Chrome 顶层顺序固定为 bar/other/mobile）
+    // 仅兼容可识别的历史标题；未知系统根不按数组位置映射。
     if (!child.id) {
-      child.folderType = idx === 0 ? "bookmarks-bar" : idx === 1 ? "other" : "mobile";
+      const legacyTitles: Record<string, string> = {
+        'bookmarks bar': 'bookmarks-bar', 'bookmarks toolbar': 'bookmarks-bar', '书签栏': 'bookmarks-bar', '書籤列': 'bookmarks-bar',
+        'other bookmarks': 'other', '其他书签': 'other', '其他書籤': 'other',
+        'mobile bookmarks': 'mobile', '移动设备书签': 'mobile', '行動裝置書籤': 'mobile',
+      };
+      child.folderType = legacyTitles[child.title.trim().toLowerCase()];
     }
   });
 
@@ -68,10 +73,10 @@ export function annotateSystemFolders(tree: BookmarkNode[]): BookmarkNode[] {
  */
 export function isSystemRootFolder(node: BookmarkNode): boolean {
   if (node.url) return false;
+  if (node.folderType) return true;
   if (!node.id) return false;
   if (node.id === "0" && !node.title) return true;
   if (node.id === "root________") return true;
-  if (node.folderType) return true;
   return FIREFOX_SYSTEM_IDS.includes(node.id);
 }
 
@@ -84,12 +89,12 @@ export function hasCrossBrowserMapping(node: BookmarkNode): boolean {
   if (node.folderType && FOLDER_TYPE_TO_FIREFOX_ID[node.folderType]) {
     return true;
   }
-  
+
   // Firefox ID → Chrome/Edge folderType
   if (node.id && FIREFOX_ID_TO_FOLDER_TYPE[node.id]) {
     return true;
   }
-  
+
   // 没有映射关系（如 Firefox 的 menu________）
   return false;
 }
@@ -105,7 +110,7 @@ export function findMatchingSystemFolder(
   if (backupNode.folderType) {
     const match = localFolders.find((l) => l.folderType === backupNode.folderType);
     if (match) return match;
-    
+
     // 尝试 Firefox ID 映射
     const firefoxId = FOLDER_TYPE_TO_FIREFOX_ID[backupNode.folderType];
     if (firefoxId) {
@@ -120,7 +125,7 @@ export function findMatchingSystemFolder(
     if (mappedType) {
       const match = localFolders.find((l) => l.folderType === mappedType);
       if (match) return match;
-      
+
       const sameIdMatch = localFolders.find((l) => l.id === backupNode.id);
       if (sameIdMatch) return sameIdMatch;
     }

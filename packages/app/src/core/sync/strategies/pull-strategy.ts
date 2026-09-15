@@ -18,6 +18,7 @@ import { fileManager } from "../../storage";
 import { acquireSyncLock, releaseSyncLock } from "../lock-manager";
 import { setSyncState } from "../state-manager";
 import type { SyncResult } from "../types";
+import { assertNoRecovery, beginRecovery, finishRecovery } from '../recovery';
 
 /**
  * 智能下载：拉取云端数据并恢复到本地
@@ -52,6 +53,7 @@ export async function smartPull(
   }
 
   try {
+    await assertNoRecovery();
     await setIsRestoring(true);
 
     const client = createStorageProvider(config);
@@ -62,17 +64,18 @@ export async function smartPull(
     console.log("[PullStrategy] Creating local snapshot before pull...");
     let currentTree: BookmarkNode[] = [];
     let currentCount = 0;
+    let snapshotId: number;
     try {
       currentTree = await bookmarkRepository.getTree();
       currentCount = countBookmarks(currentTree);
-      await snapshotManager.createSnapshot(
+      snapshotId = await snapshotManager.createSnapshot(
         currentTree,
         currentCount,
         `下载前 (${lockHolder === "manual" ? "手动" : "自动"} ${mode === "overwrite" ? "覆盖" : "合并"})`
       );
     } catch (error) {
       console.warn("[PullStrategy] Failed to create snapshot:", error);
-      // 快照创建失败不影响同步
+      throw error;
     }
 
     // 1. 下载云端最新备份数据
@@ -82,7 +85,7 @@ export async function smartPull(
       console.error("[PullStrategy] Pull aborted: no cloud backup found");
       return { success: false, action: "error", message: "云端无备份数据" };
     }
-    
+
     // 下载 →（端到端解密）→ 解压 → 解析 → 结构校验，统一由 helper 处理；
     // .enc 备份需要本机密码解密，未开启时队列层会抛出开启提示
     const e2e = await getE2ESettings();
@@ -97,7 +100,7 @@ export async function smartPull(
     cloudData.data = filterTreeByScope(cloudData.data, syncScope);
     const cloudCount = countBookmarks(cloudData.data);
     const cloudTime = cloudData.metadata?.timestamp || 0;
-    
+
     // 从文件名解析浏览器信息
     const fileName = latest.path.split("/").pop() || "";
     const parsed = fileManager.parseBackupFileName(fileName);
@@ -123,6 +126,7 @@ export async function smartPull(
     // 2. 恢复书签
     console.log(`[PullStrategy] Restoring bookmarks (${mode} mode)...`);
     const missingFolderFallback = (await getMissingFolderFallback()) && syncScope.other;
+    await beginRecovery(snapshotId, 'pull');
     if (mode === "overwrite") {
       await bookmarkRepository.restoreFromBackup(cloudData, { missingFolderFallback });
     } else {
@@ -136,6 +140,7 @@ export async function smartPull(
       localHash = await computeTreeHash(restoredTree);
     } catch (error) {
       console.warn("[PullStrategy] Failed to compute local baseline:", error);
+      throw error;
     }
 
     // 4. 更新同步时间（基线 = 所拉取文件的服务器时间）
@@ -143,9 +148,11 @@ export async function smartPull(
       time: Date.now(),
       url: getStorageIdentifier(config),
       type: "download",
+      scope: syncScope,
       basis: { mtime: latest.lastModified, filePath: latest.path },
       localHash,
     });
+    await finishRecovery();
 
     const elapsed = Date.now() - startTime;
     console.log(`[PullStrategy] Pull completed in ${elapsed}ms`);

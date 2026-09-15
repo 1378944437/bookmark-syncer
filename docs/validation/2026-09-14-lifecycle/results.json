@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-14T11:38:24.712Z",
+  "browser": "153.0.4234.32",
+  "extensionVersion": "1.5.2",
+  "environment": "Real Edge extension; temporary profile; native Edge without debugging flags during observation; loopback WebDAV fixture",
+  "results": [
+    {
+      "name": "debugger-free-restart-and-natural-alarm-upload",
+      "status": "passed",
+      "firstDelayedFailureMs": 45536,
+      "recoveryToUploadMs": 45154,
+      "requestCounts": {
+        "PROPFIND": 7,
+        "GET": 2,
+        "PUT": 1
+      }
+    },
+    {
+      "name": "completed-upload-ack-and-baseline-survive-process-termination",
+      "status": "passed"
+    }
+  ],
+  "failure": null,
+  "requestCounts": {
+    "PROPFIND": 15,
+    "PUT": 2,
+    "GET": 3
+  },
+  "limitations": [
+    "Not a real remote WebDAV/Gist service",
+    "Playwright used only before/after native phase; natural worker suspension not directly observed; no interruption during writes",
+    "Not a toolbar popup lifecycle test",
+    "No Firefox or mobile browser"
+  ]
+}

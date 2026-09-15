@@ -9,6 +9,7 @@ import { cn } from '../infrastructure/utils/format'
 export interface StatsCardProps {
   label: string
   count: number
+  unknown?: boolean
   loading: boolean
   color: 'indigo' | 'zinc'
   icon?: ComponentType<{ className?: string }>
@@ -21,6 +22,7 @@ export interface StatsCardProps {
 export function StatsCard({
   label,
   count,
+  unknown,
   loading,
   color,
   icon: Icon,
@@ -75,7 +77,7 @@ export function StatsCard({
           {loading ? (
             <div className="h-8 w-16 bg-muted animate-pulse rounded" />
           ) : (
-            <span>{count}</span>
+            <span>{unknown ? '—' : count}</span>
           )}
         </div>
 
@@ -91,4 +93,3 @@ export function StatsCard({
     </div>
   )
 }
-

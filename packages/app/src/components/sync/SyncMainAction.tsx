@@ -17,13 +17,14 @@ export interface SyncMainActionProps {
 
 export function SyncMainAction({
   isOnline,
+  isConfigured,
   syncStatus,
   isSyncBusy,
   onSync,
   t,
 }: SyncMainActionProps) {
   const isActionDisabled =
-    !isOnline || (syncStatus !== 'idle' && syncStatus !== 'success' && syncStatus !== 'error')
+    !isConfigured || !isOnline || (syncStatus !== 'idle' && syncStatus !== 'success' && syncStatus !== 'error')
 
   return (
     <div className="relative flex items-center justify-center">

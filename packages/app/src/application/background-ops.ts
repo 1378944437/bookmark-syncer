@@ -16,12 +16,16 @@ import type { SmartSyncResult, SyncResult } from "../core/sync/types";
 // ─── 消息定义 ───
 
 export type BackgroundOpMessage =
+  | { type: 'sync:encryption'; config: StorageConfig; next: import('../core/sync/sync-settings').E2ESettings }
+  | { type: 'storage:maintenance'; kind: 'local' | 'cloud' | 'factory'; config?: StorageConfig }
+  | { type: 'storage:adopt'; config: StorageConfig; path: string }
+  | { type: 'sync:restoreLocalSnapshot'; id: number }
   | { type: "storage:test"; config: StorageConfig }
   | { type: "webdav:test"; config: WebDAVConfig }
-  | { type: "sync:push"; config: StorageConfig; options?: { skipSafetyGuard?: boolean } }
+  | { type: "sync:push"; config: StorageConfig; options?: { skipSafetyGuard?: boolean; confirmationId?: string } }
   | { type: "sync:pull"; config: StorageConfig; mode: "overwrite" | "merge" }
   | { type: "sync:smart"; config: StorageConfig }
-  | { type: "sync:restoreCloudBackup"; config: StorageConfig; path: string };
+  | { type: "sync:restoreCloudBackup"; config: StorageConfig; path: string; passphrase?: string };
 
 /** WebDAV 连接测试（登录）结果 */
 export type WebDAVTestResult =
@@ -35,12 +39,30 @@ export type WebDAVTestResult =
  */
 async function sendBackgroundOp<T>(message: BackgroundOpMessage, fallback: T): Promise<T> {
   try {
-    return (await browser.runtime.sendMessage(message)) as T;
+    return (await browser.runtime.sendMessage(message)) as T ?? fallback;
   } catch (error) {
     console.error("[BackgroundOps] Failed to send message:", error);
     return fallback;
   }
 }
+
+export const restoreLocalSnapshotInBackground = (id: number): Promise<SyncResult> => sendBackgroundOp(
+  { type: 'sync:restoreLocalSnapshot', id },
+  { success: false, action: 'error', message: '无法连接扩展后台服务' },
+);
+
+export async function maintenanceInBackground(kind: 'local' | 'cloud' | 'factory', config?: StorageConfig) {
+  const result = await sendBackgroundOp<{ deletedCount?: number; snapshotId?: number; success?: boolean; message?: string }>(
+    { type: 'storage:maintenance', kind, config }, { success: false, message: '无法连接扩展后台服务' });
+  if (result.success === false) throw new Error(result.message);
+  return result;
+}
+
+export const adoptBackupInBackground = (config: StorageConfig, path: string): Promise<SyncResult> => sendBackgroundOp(
+  { type: 'storage:adopt', config, path }, { success: false, action: 'error', message: '无法连接扩展后台服务' });
+
+export const migrateEncryptionInBackground = (config: StorageConfig, next: import('../core/sync/sync-settings').E2ESettings): Promise<SyncResult> => sendBackgroundOp(
+  { type: 'sync:encryption', config, next }, { success: false, action: 'error', message: '无法连接扩展后台服务' });
 
 /** 在后台测试存储连接（登录/鉴权验证） */
 export async function storageTestInBackground(config: StorageConfig): Promise<WebDAVTestResult> {
@@ -66,7 +88,7 @@ export async function smartSyncInBackground(config: StorageConfig): Promise<Smar
 /** 在后台执行上传（Push） */
 export async function smartPushInBackground(
   config: StorageConfig,
-  options?: { skipSafetyGuard?: boolean }
+  options?: { skipSafetyGuard?: boolean; confirmationId?: string }
 ): Promise<SyncResult> {
   return sendBackgroundOp<SyncResult>(
     { type: "sync:push", config, options },
@@ -89,9 +111,10 @@ export async function smartPullInBackground(
 export async function restoreCloudBackupInBackground(
   config: StorageConfig,
   path: string,
+  passphrase?: string,
 ): Promise<SyncResult> {
   return sendBackgroundOp<SyncResult>(
-    { type: "sync:restoreCloudBackup", config, path },
+    { type: "sync:restoreCloudBackup", config, path, passphrase },
     { success: false, action: "error", message: "无法连接扩展后台服务" },
   );
 }

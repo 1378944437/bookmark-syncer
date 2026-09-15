@@ -1,3 +1,5 @@
+import { getStorageIdentifier } from '../core/storage/types';
+import { RecoveryNotice } from './sync/RecoveryNotice';
 /**
  * 同步主视图
  * 统一聚合状态、核心动作、细粒度进度反馈、底栏快照与相关抽屉/模态弹窗
@@ -33,7 +35,8 @@ export function SyncView() {
   const { t, locale } = useI18n()
   const { isConfigured, getConfig } = useActiveStorage()
   const [syncState] = useStorage<{ time: number; url: string; type: string } | null>('syncState', null)
-  const [lastRemoteDevice] = useStorage<{ deviceId?: string; deviceName?: string; time: number } | null>('last_remote_device', null)
+  const [remoteDevice] = useStorage<{ target?: string; deviceId?: string; deviceName?: string; time: number } | null>('last_remote_device', null)
+  const lastRemoteDevice = isConfigured && remoteDevice?.target === getStorageIdentifier(getConfig()) ? remoteDevice : null
   const isOnline = useOnlineStatus()
 
   useSyncCompletionToast(syncState, t('sync.toast.completed'))
@@ -95,17 +98,19 @@ export function SyncView() {
     countsApi.loadCounts(signal)
     snapshotsApi.loadSnapshots()
     return () => { signal.aborted = true }
-  }, [isConfigured, syncState?.time])
+  }, [isConfigured, getConfig, syncState?.time])
 
   // 两端书签是否完全一致
   const isSynced =
     isConfigured &&
     !countsApi.loading &&
     countsApi.localCount > 0 &&
-    countsApi.localCount === countsApi.cloudCount
+    countsApi.verified
 
   return (
     <>
+      <RecoveryNotice />
+      {countsApi.error && <p role="alert" className="text-sm text-destructive break-words">{countsApi.error}</p>}
       <motion.div
         variants={container}
         initial="hidden"
@@ -142,6 +147,7 @@ export function SyncView() {
           <StatsCard
             label={t('sync.stats.cloud')}
             count={countsApi.cloudCount}
+            unknown={!!countsApi.error}
             loading={countsApi.loading}
             color="indigo"
             icon={Cloud}
@@ -216,7 +222,7 @@ export function SyncView() {
             : actionsApi.drawerMode === 'actions'
             ? t('sync.drawer.title.actions')
             : actionsApi.drawerMode === 'activity'
-            ? '近期同步活动与热力图'
+            ? t('repair.activityTitle')
             : t('sync.drawer.title.conflict')
         }
       >
@@ -282,6 +288,8 @@ export function SyncView() {
         cloudBackup={cloudBackupsApi.pendingRestoreCloudBackup}
         onConfirmSnapshot={snapshotsApi.confirmRestoreSnapshot}
         onConfirmCloudBackup={cloudBackupsApi.confirmRestoreCloudBackup}
+        passphrase={cloudBackupsApi.restorePassphrase}
+        onPassphraseChange={cloudBackupsApi.setRestorePassphrase}
         t={t}
       />
     </>

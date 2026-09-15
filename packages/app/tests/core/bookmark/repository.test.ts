@@ -160,7 +160,7 @@ describe("BookmarkRepository", () => {
 
     it("缺少根节点子节点抛出错误", async () => {
       const badTree: BookmarkNode[] = [{ title: "" }]; // 没有 children
-      await expect(repo.restoreFromBackup(badTree)).rejects.toThrow("缺少根节点或子节点");
+      await expect(repo.restoreFromBackup(badTree)).rejects.toThrow("缺少子节点");
     });
 
     it("无效的备份格式抛出错误", async () => {

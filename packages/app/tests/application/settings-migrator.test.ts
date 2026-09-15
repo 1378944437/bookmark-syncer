@@ -72,6 +72,13 @@ describe("SettingsMigrator - 配置导出与导入迁移", () => {
   });
 
   describe("applyMigratedSettings", () => {
+    it('does not retain old-target credentials or auto sync after an incomplete import', async () => {
+      await browser.storage.local.set({ gist_token: 'old-target-secret', e2e_passphrase: 'old-password' });
+      await applyMigratedSettings({ app: 'marksync', version: '1.0', exportedAt: 1,
+        settings: { storage_type: 'gist', gist_id: 'new-target', e2e_enabled: true, auto_sync_enabled: true } });
+      expect(await browser.storage.local.get(['gist_token', 'e2e_passphrase', 'auto_sync_enabled', 'scheduled_sync_enabled']))
+        .toEqual({ gist_token: '', e2e_passphrase: '', auto_sync_enabled: false, scheduled_sync_enabled: false });
+    });
     it("正确将解析后的配置应用并写入 storage，配额保底 5 份", async () => {
       const payload = {
         app: "marksync" as const,

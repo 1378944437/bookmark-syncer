@@ -2,7 +2,7 @@
  * 同步状态反馈与二级操作区
  * 提供细粒度步骤推进感知、可一键复制的结构化错误气泡及解耦的“更多同步选项”入口
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertCircle, Check, Copy, MoreHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
@@ -31,28 +31,6 @@ export function SyncStatusFeedback({
   onOpenMoreActions,
 }: SyncStatusFeedbackProps) {
   const [copied, setCopied] = useState(false)
-  const [stepText, setStepText] = useState<string>('')
-
-  // 在同步长耗时场景下，根据耗时动态切换微步骤文案，提升可预期性
-  useEffect(() => {
-    if (!isSyncBusy) {
-      setStepText('')
-      return
-    }
-    setStepText(t('sync.status.connecting'))
-    const timer1 = setTimeout(() => {
-      setStepText(t('sync.status.analyzing'))
-    }, 800)
-    const timer2 = setTimeout(() => {
-      setStepText(t('sync.status.syncing'))
-    }, 2200)
-
-    return () => {
-      clearTimeout(timer1)
-      clearTimeout(timer2)
-    }
-  }, [isSyncBusy, t])
-
   // 复制异常报错信息
   const handleCopyError = async () => {
     if (!msg) return
@@ -76,13 +54,14 @@ export function SyncStatusFeedback({
             /* 结构化错误气泡：带警示图标与一键复制 */
             <motion.div
               key="error-box"
+              role="alert"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               className="flex items-center gap-2 max-w-[92%] px-3 py-1.5 rounded-lg bg-destructive/10 border border-destructive/25 text-destructive text-xs shadow-sm"
             >
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span className="truncate max-w-[200px]" title={msg}>
+              <span className="min-w-0 whitespace-pre-wrap break-words" title={msg}>
                 {msg}
               </span>
               <button
@@ -98,13 +77,14 @@ export function SyncStatusFeedback({
             /* 细粒度同步阶段感知提示 */
             <motion.div
               key="busy-step"
+              role="status"
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               className="flex items-center gap-2 text-xs font-medium text-primary"
             >
               <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
-              <span>{stepText || msg || t('sync.status.analyzing')}</span>
+              <span>{msg || t('sync.status.analyzing')}</span>
             </motion.div>
           ) : msg ? (
             /* 普通提示（成功或普通状态） */

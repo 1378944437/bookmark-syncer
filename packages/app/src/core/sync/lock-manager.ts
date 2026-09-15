@@ -16,12 +16,16 @@ export class SyncLockManager {
    * 内存值丢失（如同 holder 的新操作已抢锁）时一律不释放，交给超时兜底
    */
   private activeLockId: string | null = null;
+  private acquiring = false;
 
   /**
    * 尝试获取同步锁
    * 使用 lockId 机制防止并发获取时的竞态条件
    */
   async acquire(holder: string): Promise<boolean> {
+    // 所有写操作都在后台执行；同步门先于首次 await，避免同一 SW 内竞态。
+    if (this.acquiring || this.activeLockId) return false;
+    this.acquiring = true;
     try {
       const result = await browser.storage.local.get(SYNC_LOCK_KEY);
       const existingLock = result[SYNC_LOCK_KEY] as SyncLock | undefined;
@@ -73,6 +77,8 @@ export class SyncLockManager {
     } catch (error) {
       console.error("[SyncLockManager] Failed to acquire lock:", error);
       return false;
+    } finally {
+      this.acquiring = false;
     }
   }
 

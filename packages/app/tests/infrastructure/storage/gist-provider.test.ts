@@ -1,3 +1,5 @@
+import { INDEX_FILE } from '@src/infrastructure/storage/gist-index';
+import { fileManager } from '@src/core/storage/file-manager';
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { GistStorageProvider } from '@src/infrastructure/storage/gist-provider'
 import { GistClient } from '@src/infrastructure/storage/gist-client'
@@ -9,6 +11,19 @@ describe('GistClient & GistStorageProvider 测试', () => {
     token: 'ghp_mock_token_123456',
     gistId: 'gist_mock_id_789',
     endpoint: 'https://api.github.com',
+  }
+
+  function memoryGist(provider: GistStorageProvider) {
+    const gist: any = { updated_at: '2026-09-14T12:00:00Z', files: {} };
+    vi.spyOn(provider.getClient(), 'getGist').mockImplementation(async () => structuredClone(gist));
+    const patch = vi.spyOn(provider.getClient(), 'updateGist').mockImplementation(async files => {
+      for (const [name, file] of Object.entries(files)) {
+        if (file === null) delete gist.files[name];
+        else gist.files[name] = { filename: name, size: file.content.length, ...file };
+      }
+      return structuredClone(gist);
+    });
+    return { gist, patch };
   }
 
   beforeEach(() => {
@@ -67,27 +82,13 @@ describe('GistClient & GistStorageProvider 测试', () => {
     )
   })
 
-  it('putFile 通过 PATCH 调用更新指定文件', async () => {
-    const provider = new GistStorageProvider(mockConfig)
-
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ id: 'gist_mock_id_789' }),
-    } as any)
-
-    await provider.putFile('/MarkSync/bookmarks_test.json.gz', 'mock_gz_content')
-    expect(fetchSpy).toHaveBeenCalledWith(
-      'https://api.github.com/gists/gist_mock_id_789',
-      expect.objectContaining({
-        method: 'PATCH',
-        body: JSON.stringify({
-          files: {
-            'bookmarks_test.json.gz': { content: 'mock_gz_content' },
-          },
-        }),
-      })
-    )
+  it('一次 PATCH 写入备份和版本索引并读回确认', async () => {
+    const provider = new GistStorageProvider(mockConfig);
+    const { gist, patch } = memoryGist(provider);
+    await provider.putFile('MarkSync/bookmarks_test.json.gz', 'content');
+    expect(patch).toHaveBeenCalledTimes(1);
+    expect(Object.keys(patch.mock.calls[0][0])).toEqual(['bookmarks_test.json.gz', INDEX_FILE]);
+    expect(JSON.parse(gist.files[INDEX_FILE].content).current).toBe('bookmarks_test.json.gz');
   })
 
   it('getFile 正确提取 Gist 中的文件内容', async () => {
@@ -112,27 +113,29 @@ describe('GistClient & GistStorageProvider 测试', () => {
     expect(content).toBe('{"hello":"world"}')
   })
 
-  it('deleteFile 发送 null 值删除文件', async () => {
-    const provider = new GistStorageProvider(mockConfig)
+  it('版本顺序独立于共享时间，清理永不删除当前版本', async () => {
+    const provider = new GistStorageProvider(mockConfig);
+    const { gist } = memoryGist(provider);
+    for (let i = 0; i < 6; i++) await provider.putFile('MarkSync/bookmarks_' + i + '.json.gz', 'data');
+    expect((await fileManager.getLatestBackupFile(provider))?.path).toBe('MarkSync/bookmarks_5.json.gz');
+    await fileManager.cleanOldBackups(provider, { minToKeep: 5, maxToKeep: 5 });
+    expect(gist.files['bookmarks_0.json.gz']).toBeUndefined();
+    expect(gist.files['bookmarks_5.json.gz']).toBeDefined();
+    await expect(provider.deleteFile('MarkSync/bookmarks_5.json.gz')).rejects.toThrow('当前版本');
+  })
 
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ id: 'gist_mock_id_789' }),
-    } as any)
-
-    await provider.deleteFile?.('/MarkSync/old_backup.json')
-    expect(fetchSpy).toHaveBeenCalledWith(
-      'https://api.github.com/gists/gist_mock_id_789',
-      expect.objectContaining({
-        method: 'PATCH',
-        body: JSON.stringify({
-          files: {
-            'old_backup.json': null,
-          },
-        }),
-      })
-    )
+  it('旧库多版本先选择再接管，未知历史不自动清理', async () => {
+    const provider = new GistStorageProvider(mockConfig);
+    const { gist, patch } = memoryGist(provider);
+    for (let i = 0; i < 6; i++) gist.files['bookmarks_' + i + '.json.gz'] = { content: 'old' };
+    await expect(fileManager.getLatestBackupFile(provider)).rejects.toThrow('顺序未确定');
+    await fileManager.cleanOldBackups(provider, { minToKeep: 5, maxToKeep: 5 });
+    expect(patch).not.toHaveBeenCalled();
+    await provider.adoptBackup('MarkSync/bookmarks_3.json.gz');
+    expect((await fileManager.getLatestBackupFile(provider))?.path).toBe('MarkSync/bookmarks_3.json.gz');
+    await provider.putFile('MarkSync/bookmarks_new.json.gz', 'new');
+    await fileManager.cleanOldBackups(provider, { minToKeep: 5, maxToKeep: 5 });
+    expect(Object.keys(gist.files).filter(name => name.startsWith('bookmarks_'))).toHaveLength(7);
   })
 
   it('createStorageProvider 正确识别 Gist 配置', () => {
@@ -142,6 +145,34 @@ describe('GistClient & GistStorageProvider 测试', () => {
     })
     expect(provider.type).toBe('gist')
   })
+
+  it.each(['corrupt', 'truncated', 'unindexed'])('fails closed for an unsafe Gist index: %s', async kind => {
+    const provider = new GistStorageProvider(mockConfig);
+    const { gist, patch } = memoryGist(provider);
+    await provider.putFile('MarkSync/bookmarks_one.json.gz', 'one');
+    patch.mockClear();
+    if (kind === 'corrupt') gist.files[INDEX_FILE].content = '{';
+    if (kind === 'truncated') gist.files[INDEX_FILE].truncated = true;
+    if (kind === 'unindexed') gist.files['bookmarks_unknown.json.gz'] = { content: 'unknown' };
+    await expect(provider.putFile('MarkSync/bookmarks_two.json.gz', 'two')).rejects.toThrow();
+    expect(patch).not.toHaveBeenCalled();
+    expect(gist.files['bookmarks_one.json.gz']).toBeDefined();
+  });
+
+  it('detects a remote revision change before publishing or deleting', async () => {
+    const provider = new GistStorageProvider(mockConfig);
+    const { gist, patch } = memoryGist(provider);
+    await provider.putFile('MarkSync/bookmarks_one.json.gz', 'one');
+    await provider.putFile('MarkSync/bookmarks_two.json.gz', 'two');
+    await provider.listFiles('MarkSync');
+    const index = JSON.parse(gist.files[INDEX_FILE].content);
+    index.revision = 'another-device';
+    gist.files[INDEX_FILE].content = JSON.stringify(index);
+    patch.mockClear();
+    await expect(provider.putFile('MarkSync/bookmarks_three.json.gz', 'three')).rejects.toThrow('版本已变化');
+    await expect(provider.deleteFile('MarkSync/bookmarks_one.json.gz')).rejects.toThrow('版本已变化');
+    expect(patch).not.toHaveBeenCalled();
+  });
 
   it('createStorageProvider 正确识别 WebDAV 配置', () => {
     const provider = createStorageProvider({
@@ -153,8 +184,7 @@ describe('GistClient & GistStorageProvider 测试', () => {
   })
 
   it('getStorageIdentifier 对 Gist 与 WebDAV 正确生成状态存储目标标识', () => {
-    expect(getStorageIdentifier({ token: 't', gistId: 'gist_abc' })).toBe('gist://gist_abc')
-    expect(getStorageIdentifier({ url: 'https://dav.example.com', username: 'u', password: 'p' })).toBe('https://dav.example.com')
+    expect(getStorageIdentifier({ token: 't', gistId: 'gist_abc' })).toBe('gist:https://api.github.com/gist_abc')
+    expect(getStorageIdentifier({ url: 'https://dav.example.com', username: 'u', password: 'p' })).toBe('webdav:https://dav.example.com|u')
   })
 })
-

@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-15T09:16:36.131Z",
+  "browser": "153.0.4234.32",
+  "extensionVersion": "1.5.2",
+  "environment": "Real Edge and Playwright Firefox extensions; temporary profiles; loopback WebDAV fixture",
+  "results": [
+    {
+      "name": "firefox-temporary-addon-load-and-real-background-connection",
+      "status": "passed",
+      "firefoxVersion": "153.0"
+    },
+    {
+      "name": "edge-to-firefox-pull-protects-menu-and-excluded-duplicate-urls",
+      "status": "passed"
+    },
+    {
+      "name": "cross-browser-remote-deletion-propagates-with-menu-preserved",
+      "status": "passed"
+    },
+    {
+      "name": "firefox-dirty-local-change-requires-direction-choice",
+      "status": "passed"
+    },
+    {
+      "name": "firefox-to-edge-explicit-push-and-automatic-pull",
+      "status": "passed"
+    },
+    {
+      "name": "firefox-indexeddb-snapshot-restores-toolbar-menu-and-other",
+      "status": "passed"
+    }
+  ],
+  "failure": null,
+  "requestCounts": {
+    "PROPFIND": 40,
+    "PUT": 5,
+    "GET": 17,
+    "DELETE": 3
+  },
+  "limitations": [
+    "Not a real remote WebDAV/Gist service",
+    "Browser automation attached",
+    "Not a toolbar popup lifecycle test",
+    "Playwright Firefox runtime, not stock Firefox; no mobile browser"
+  ]
+}

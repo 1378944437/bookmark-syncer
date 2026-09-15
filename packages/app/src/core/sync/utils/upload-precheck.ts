@@ -35,6 +35,8 @@ export interface CloudStateCheckParams {
   e2e: E2ESettings;
   syncScope: SyncScope;
   skipSafetyGuard?: boolean;
+  forceUpload?: boolean;
+  confirmationId?: string;
 }
 
 /**
@@ -66,6 +68,7 @@ export async function checkCloudStateBeforeUpload(
     if (cloudData.metadata?.deviceId || cloudData.metadata?.deviceName) {
       try {
         await saveLastRemoteDevice({
+          target: configUrl,
           deviceId: cloudData.metadata.deviceId,
           deviceName: cloudData.metadata.deviceName,
           time: Date.now(),
@@ -111,8 +114,11 @@ export async function checkCloudStateBeforeUpload(
       const diff = calculateBookmarkDiff(scopedCloudTree, scopedLocalTree);
 
       const safetyCheck = await evaluateSafetyBreaker({
+        context: JSON.stringify([configUrl, syncScope, latest.path, latest.lastModified, await computeTreeHash(scopedLocalTree)]),
+        target: configUrl,
+        confirmationId: params.confirmationId,
         deletedCount: diff.deleted,
-        totalBefore: cloudCount,
+        totalBefore: countBookmarks(scopedCloudTree),
         skipSafetyGuard: params.skipSafetyGuard,
       });
 
@@ -138,7 +144,7 @@ export async function checkCloudStateBeforeUpload(
     const cloudBrowser = fileManager.parseBackupFileName(fileName)?.browser || "";
     const isManualSync = lockHolder === "manual";
 
-    if (isManualSync && isSameBrowser(localBrowserName, cloudBrowser)) {
+    if (params.forceUpload || (isManualSync && isSameBrowser(localBrowserName, cloudBrowser))) {
       console.log("[PushStrategy] Content identical but manual sync from same browser, creating new backup");
       return { kind: "proceed" };
     }
@@ -148,6 +154,7 @@ export async function checkCloudStateBeforeUpload(
       time: Date.now(),
       url: configUrl,
       type: "skip_identical",
+      scope: syncScope,
       basis: { mtime: latest.lastModified, filePath: latest.path },
       localHash: await computeTreeHash(scopedLocalTree),
     });
@@ -167,7 +174,7 @@ export async function checkCloudStateBeforeUpload(
       throw error;
     }
     console.warn("[PushStrategy] Failed to check cloud state:", error);
-    // 云端文件不存在或网络故障，继续上传
-    return { kind: "proceed" };
+    // 状态未知时停止上传，保留云端现场。
+    throw error;
   }
 }

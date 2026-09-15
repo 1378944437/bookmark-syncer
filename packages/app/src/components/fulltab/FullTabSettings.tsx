@@ -2,6 +2,7 @@
  * 大屏控制台：设置与工具中心
  * 现代宽屏选项卡架构，整合 WebDAV 配置、安全防御、同步策略、配置迁移与危险操作区
  */
+import { useI18n } from '../../i18n'
 import { useState } from 'react'
 import { Cloud, Info, RefreshCw, ShieldCheck, Sliders } from 'lucide-react'
 import { cn } from '../../infrastructure/utils/format'
@@ -14,14 +15,15 @@ import { AboutPage } from '../settings/AboutPage'
 type SettingsTabKey = 'webdav' | 'security' | 'sync' | 'general' | 'about'
 
 export function FullTabSettings() {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<SettingsTabKey>('webdav')
 
   const tabs = [
-    { key: 'webdav' as const, label: '云端存储', icon: Cloud },
-    { key: 'sync' as const, label: '同步策略', icon: RefreshCw },
-    { key: 'security' as const, label: '安全加密', icon: ShieldCheck },
-    { key: 'general' as const, label: '偏好工具', icon: Sliders },
-    { key: 'about' as const, label: '关于扩展', icon: Info },
+    { key: 'webdav' as const, label: t('repair.cloudStorage'), icon: Cloud },
+    { key: 'sync' as const, label: t('settings.sync.title'), icon: RefreshCw },
+    { key: 'security' as const, label: t('settings.security.title'), icon: ShieldCheck },
+    { key: 'general' as const, label: t('settings.general.title'), icon: Sliders },
+    { key: 'about' as const, label: t('settings.about.title'), icon: Info },
   ]
 
   const renderContent = () => {

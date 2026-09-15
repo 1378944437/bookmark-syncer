@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-14T11:40:48.659Z",
+  "scriptSha256": "15a927be3f832c47998eecc815d9cfca6b672598e169c3ff677e474680f4565e",
+  "fingerprintMethod": "SHA256 of sorted relative path + LF + file SHA256 + LF for each file",
+  "inputs": {
+    "packages/app/src": {
+      "files": 156,
+      "sha256": "b98df7333c72911d1365689545c573c9808cd4b5e44d85f5b14f467bbe5fb37d"
+    },
+    "packages/app/tests": {
+      "files": 46,
+      "sha256": "f0f42cb85b668216bf0eb655601497bbf227743c62b1af18a6eb30ea97832258"
+    },
+    "apps/chrome-extension/dist": {
+      "files": 18,
+      "sha256": "687f262412c9ac1942db2d9775fd3eb325a84eea89ffca4d1683445c5bff1abd"
+    },
+    "apps/firefox-extension/dist": {
+      "files": 17,
+      "sha256": "fa72751f7f7747ccb718db6b7f346ca9bad5b9e7f0a1e709a62e580593d87a31"
+    }
+  },
+  "inputsModifiedAfterPriorEvidence": [],
+  "priorEvidence": "../2026-09-14-extension/build-evidence.json",
+  "reused": {
+    "tests": 463,
+    "testFiles": 46,
+    "chromeBuildAndTypes": "passed previously",
+    "firefoxBuildAndTypes": "passed previously"
+  },
+  "lifecycle": {
+    "passed": 2,
+    "results": "results.json"
+  },
+  "applicationChangesThisRound": false,
+  "release": "not_run"
+}

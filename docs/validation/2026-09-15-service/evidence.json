@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-15T09:34:44.662Z",
+  "selfTest": "self-test.json",
+  "results": {
+    "passed": 8,
+    "remoteWritesExecuted": false
+  },
+  "scripts": {
+    "scripts/verify-service.cjs": {
+      "lines": 126,
+      "sha256": "62dd8b89cc1c0213c41b6fa85736f8573e7d12fbcd89859bc401dd318621c769"
+    },
+    "scripts/verify-extension.cjs": {
+      "lines": 291,
+      "sha256": "2723aadcdd4447965b568ee68ea9f0b2827b06cab1c1ee0b428991bd3b1add17"
+    },
+    "scripts/verify-firefox.cjs": {
+      "lines": 94,
+      "sha256": "b213a6003d2e33036e248639915428002729171110fc54c5bb5e1948b8b9f186"
+    },
+    "scripts/firefox-page.cjs": {
+      "lines": 56,
+      "sha256": "412a3e08f058d6059c1d6c57d2e34cb28ca1f5c31aa8e746940d33528dfdccbf"
+    },
+    "scripts/verify-restore-interruption.cjs": {
+      "lines": 112,
+      "sha256": "ce3872292add7a42caa4c20787f5d294c8870425c15791b19f2976adb7a04bd0"
+    },
+    "scripts/verify-interruption.cjs": {
+      "lines": 72,
+      "sha256": "ce68f0272b0212396689367164c3953373ed18560c0b08f1e46a7bc9874d70eb"
+    }
+  },
+  "applicationSourceChanged": false,
+  "realProviderValidation": "deferred_by_user",
+  "release": "not_run"
+}

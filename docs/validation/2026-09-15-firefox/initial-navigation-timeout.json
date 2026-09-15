@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-15T08:58:58.317Z",
+  "extensionVersion": "1.5.2",
+  "environment": "Real Edge and Playwright Firefox extensions; temporary profiles; loopback WebDAV fixture",
+  "results": [],
+  "failure": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"moz-extension://764b753a-a80c-4a6b-bc88-17c0c6f5d4b2/index.html?mode=tab\", waiting until \"load\"\u001b[22m\n",
+  "requestCounts": {},
+  "limitations": [
+    "Not a real remote WebDAV/Gist service",
+    "Browser automation attached",
+    "Not a toolbar popup lifecycle test",
+    "Playwright Firefox runtime, not stock Firefox; no mobile browser"
+  ]
+}

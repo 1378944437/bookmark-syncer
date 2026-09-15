@@ -6,6 +6,7 @@ import { BrowserBookmarksAPI } from "../../infrastructure/browser/api";
 import type { BookmarkMetadata, BookmarkNode, CloudBackup } from "../../types";
 import { countBookmarks } from "./comparator";
 import { assignHashes } from "./hash-calculator";
+import { validateRestoreTree } from "./validation";
 import { buildGlobalIndex } from "./indexer";
 import { createChildren, mergeNodes } from "./merger-basic";
 import { deleteUnprocessedNodes, smartSync, type SharedSyncState } from "./smart-sync-engine";
@@ -15,6 +16,8 @@ import { findMatchingSystemFolder, hasCrossBrowserMapping, annotateSystemFolders
  * 恢复选项
  */
 export interface RestoreOptions {
+  /** 本机完整快照还原包含 Firefox 专有书签菜单；云端同步不启用。 */
+  includeLocalOnlyRoots?: boolean;
   /**
    * 缺失文件夹兜底：云端存在本设备没有的系统文件夹（如该设备没有「移动设备书签」）时，
    * 把其中书签合并到本地「其他书签」（只增不删）。
@@ -45,8 +48,8 @@ export class BookmarkRepository {
   async createCloudBackup(identity?: {
     deviceId?: string;
     deviceName?: string;
-  }): Promise<CloudBackup> {
-    const tree = await this.getTree();
+  }, sourceTree?: BookmarkNode[]): Promise<CloudBackup> {
+    const tree = sourceTree ?? await this.getTree();
 
     // 为所有节点分配 Hash（动态计算）
     const treeWithHash = await assignHashes(tree);
@@ -82,16 +85,9 @@ export class BookmarkRepository {
       throw new Error("备份数据格式无效");
     }
 
-    if (!tree || tree.length === 0) {
-      throw new Error("备份数据为空");
-    }
-
+    validateRestoreTree(tree);
     const root = tree[0];
-    if (!root || !root.children) {
-      throw new Error("备份数据格式无效：缺少根节点或子节点");
-    }
-
-    // 兼容旧版云端数据：顶层系统文件夹可能无 folderType/id，按位置推断
+    // 兼容具有已知标题的历史系统文件夹。
     annotateSystemFolders(tree);
 
     const backupCount = countBookmarks(tree);
@@ -100,7 +96,13 @@ export class BookmarkRepository {
     // 获取本地书签树并构建全局索引
     console.log("[BookmarkRepository] Building global index...");
     const localTree = await this.getTree();
-    const localIndex = await buildGlobalIndex(localTree);
+    const matchRoot = (remote: BookmarkNode, locals: BookmarkNode[]) =>
+      options?.includeLocalOnlyRoots && remote.id === 'menu________'
+        ? locals.find(local => local.id === remote.id)
+        : hasCrossBrowserMapping(remote) ? findMatchingSystemFolder(remote, locals) : undefined;
+    const participating = localTree[0]?.children?.filter(local => root.children!.some(remote =>
+      matchRoot(remote, [local])?.id === local.id)) ?? [];
+    const localIndex = await buildGlobalIndex([{ ...localTree[0], children: participating }]);
     console.log(
       `[BookmarkRepository] Index: ${localIndex.urlToBookmarks.size} URLs, ${localIndex.pathToFolder.size} folders`,
     );
@@ -114,7 +116,7 @@ export class BookmarkRepository {
 
     // 对每个系统文件夹执行智能同步
     console.log(
-      `[BookmarkRepository] Syncing ${root.children.length} system folders...`,
+      `[BookmarkRepository] Syncing ${root.children!.length} system folders...`,
     );
 
     // 跨顶层文件夹共享的同步状态：
@@ -127,14 +129,14 @@ export class BookmarkRepository {
       folderUsedUrls: new Map<string, Set<string>>(),
     };
 
-    for (const backupChild of root.children) {
+    for (const backupChild of root.children!) {
       // 检查是否有跨浏览器映射
-      if (!hasCrossBrowserMapping(backupChild)) {
+      if (!hasCrossBrowserMapping(backupChild) && !(options?.includeLocalOnlyRoots && backupChild.id === 'menu________')) {
         // 静默跳过没有映射的系统文件夹（如 Firefox 的 menu________）
         continue;
       }
 
-      const targetFolder = findMatchingSystemFolder(backupChild, localChildren);
+      const targetFolder = matchRoot(backupChild, localChildren);
 
       if (targetFolder && targetFolder.id && backupChild.children) {
         // folderType 优先：与 buildGlobalIndex 的路径前缀一致，
@@ -194,6 +196,7 @@ export class BookmarkRepository {
           console.log(`[Repository] Child ${child.id} already removed, skipping`);
         } else {
           console.warn(`[Repository] Failed to remove child ${child.id}:`, error);
+          throw error;
         }
       }
     }
@@ -229,12 +232,13 @@ export class BookmarkRepository {
       tree = backup.data;
     }
 
+    validateRestoreTree(tree);
     const root = tree[0];
     if (!root || !root.children) {
       throw new Error("Invalid bookmark backup format");
     }
 
-    // 兼容旧版云端数据：顶层系统文件夹可能无 folderType/id，按位置推断
+    // 兼容旧版云端数据：顶层系统文件夹可能无 folderType/id，按已知标题识别
     annotateSystemFolders(tree);
 
     // 获取本地书签树

@@ -13,6 +13,8 @@ export interface RemoteFileInfo {
   path: string;
   lastModified: number;
   size?: number;
+  /** 明确的版本顺序；0 表示尚未确定的历史文件。 */
+  order?: number;
 }
 
 /**
@@ -51,4 +53,8 @@ export interface IStorageProvider {
 
   /** 删除指定的远程文件 */
   deleteFile?(path: string): Promise<void>;
+  /** 经用户选择后接管旧备份；仅具有版本索引的存储提供。 */
+  adoptBackup?(path: string): Promise<void>;
+  /** 用户明确清空云端时使用；不会删除非备份文件。 */
+  clearBackups?(): Promise<number>;
 }
