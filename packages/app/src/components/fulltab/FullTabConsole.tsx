@@ -1,49 +1,28 @@
-/**
- * 大屏控制台顶层容器 FullTabConsole.tsx
- * 聚合头部导航与三大核心全屏视图（仪表盘/快照时光机/设置工具）
- */
 import { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import { useActiveStorage } from '../../hooks/useActiveStorage'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import { useI18n } from '../../i18n'
 import { FullTabHeader, type FullTabNavKey } from './FullTabHeader'
+import { FullTabSidebar } from './FullTabSidebar'
 import { FullTabDashboard } from './FullTabDashboard'
 import { FullTabSnapshots } from './FullTabSnapshots'
 import { FullTabSettings } from './FullTabSettings'
+import { FullTabActivity } from './FullTabActivity'
 
 export function FullTabConsole() {
   const [activeNav, setActiveNav] = useState<FullTabNavKey>('dashboard')
   const { isConfigured } = useActiveStorage()
   const isOnline = useOnlineStatus()
-
-
-  return (
-    <div className="w-full flex-1 flex flex-col">
-      {/* 控制台头部 */}
-      <FullTabHeader
-        activeNav={activeNav}
-        onNavChange={setActiveNav}
-        isOnline={isOnline}
-        isConfigured={isConfigured}
-      />
-
-      {/* 视图内容切换 */}
-      <div className="flex-1 w-full">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeNav}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="w-full"
-          >
-            {activeNav === 'dashboard' && <FullTabDashboard />}
-            {activeNav === 'snapshots' && <FullTabSnapshots />}
-            {activeNav === 'settings' && <FullTabSettings />}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </div>
-  )
+  const { t } = useI18n()
+  return <div className="console-shell">
+    <a className="console-skip-link" href="#console-content">{t('fulltab.skipContent')}</a>
+    <FullTabSidebar activeNav={activeNav} onNavigate={setActiveNav} />
+    <main id="console-content" className="console-main" aria-labelledby="console-page-title" tabIndex={-1}>
+      <FullTabHeader activeNav={activeNav} isOnline={isOnline} isConfigured={isConfigured} />
+      {activeNav === 'dashboard' && <FullTabDashboard onNavigate={setActiveNav} />}
+      {activeNav === 'activity' && <FullTabActivity />}
+      {activeNav === 'snapshots' && <FullTabSnapshots />}
+      {activeNav === 'settings' && <FullTabSettings />}
+    </main>
+  </div>
 }
