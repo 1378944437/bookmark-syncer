@@ -83,7 +83,7 @@
 
 实际使用时请参考[验收清单](docs/ACTUAL_USAGE_CHECKLIST.md)。
 
-1.5.5 修复手机页面下方留白与桌面弹窗缩成小方块，保留设置页滚动和主题适配。本地包与安装方式见[本地安装包说明](docs/LOCAL_PACKAGES_1.5.5.md)：Chrome/Edge 解压加载，Firefox 提供未签名临时测试包。
+1.6.0 重构独立大屏控制台，并修复手机仪表盘快照入口布局。本地包与安装方式见[发布页面](https://github.com/1378944437/marksync/releases/tag/v1.6.0)。
 
 ## 🏢 常用云盘配置速览
 

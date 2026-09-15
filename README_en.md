@@ -83,7 +83,7 @@ Local repairs and isolated validation are complete, including Edge integration, 
 
 Use the [actual usage checklist](docs/ACTUAL_USAGE_CHECKLIST.md) when validating in a real environment.
 
-Version 1.5.5 fixes unused space below mobile pages and desktop popups collapsing into a small square, while preserving settings scrolling and theme integration. See the [local package guide](docs/LOCAL_PACKAGES_1.5.5.md) (Chinese): load the extracted package in Chrome/Edge; the unsigned Firefox package is for temporary testing.
+Version 1.6.0 redesigns the standalone desktop console and fixes the mobile dashboard snapshot entry layout. See the [release page](https://github.com/1378944437/marksync/releases/tag/v1.6.0) for packages.
 
 ## 🏢 Common WebDAV Provider Quick Reference
 
