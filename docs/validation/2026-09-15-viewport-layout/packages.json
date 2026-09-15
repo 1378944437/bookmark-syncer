@@ -1,0 +1,32 @@
+{
+  "version": "1.5.5",
+  "date": "2026-09-15T11:14:50.0558965Z",
+  "typesAndBuilds": "passed for Chrome and Firefox",
+  "focusedTests": 10,
+  "packages": [
+    {
+      "file": "marksync-chrome-v1.5.5.zip",
+      "platform": "chrome",
+      "version": "1.5.5",
+      "bytes": 265794,
+      "files": 17,
+      "sha256": "d608b088b0c80498524a3d6a93db773a934352178ea6a617b7972ffc724c538d",
+      "runtimeFilesMatchDist": true,
+      "manifestResourcesPresent": true,
+      "signed": false
+    },
+    {
+      "file": "marksync-firefox-v1.5.5-unsigned.xpi",
+      "platform": "firefox",
+      "version": "1.5.5",
+      "bytes": 265370,
+      "files": 16,
+      "sha256": "5d109387240b8013ab9db9bfe7ad6c85c1e1a7495c499ba9dfa4d79c99782c4d",
+      "runtimeFilesMatchDist": true,
+      "manifestResourcesPresent": true,
+      "signed": false
+    }
+  ],
+  "realPhoneValidation": "not_run",
+  "published": false
+}

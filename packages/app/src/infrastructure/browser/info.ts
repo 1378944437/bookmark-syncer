@@ -9,6 +9,19 @@ export interface BrowserInfo {
   fullName: string;
 }
 
+type DeviceNavigator = Pick<Navigator, 'userAgent' | 'maxTouchPoints'> & {
+  userAgentData?: { mobile?: boolean }
+}
+
+/** 手机页需要视口高度；桌面（包括触屏电脑）必须保留 popup 固定测量尺寸。 */
+export function isMobileBrowser(device: DeviceNavigator | undefined =
+  typeof navigator === 'undefined' ? undefined : navigator): boolean {
+  if (!device) return false
+  return device.userAgentData?.mobile === true
+    || /Android|iPhone|iPad|iPod/i.test(device.userAgent)
+    || (/Macintosh/i.test(device.userAgent) && device.maxTouchPoints > 1)
+}
+
 /**
  * 从 User Agent 解析浏览器信息
  * 

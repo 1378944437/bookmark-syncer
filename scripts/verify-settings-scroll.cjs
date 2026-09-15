@@ -11,7 +11,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extension, 'manifest.json'
 const id = crypto.createHash('sha256').update(Buffer.from(manifest.key, 'base64')).digest('hex')
   .slice(0, 32).replace(/[0-9a-f]/g, c => String.fromCharCode(97 + parseInt(c, 16)));
 const baseline = process.argv.includes('--baseline');
-const output = path.resolve('docs/validation/2026-09-15-settings-scroll');
+const output = path.resolve(process.env.MARKSYNC_SCROLL_OUTPUT || 'docs/validation/2026-09-15-settings-scroll');
 const results = [];
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function geometry(locator) {
@@ -40,7 +40,7 @@ async function reach(page, locator, name, details) {
   // those can programmatically scroll overflow:hidden and hide this regression.
   const viewport = page.viewportSize();
   await page.mouse.move(details.fullTab ? viewport.width / 2 : Math.min(viewport.width - 40, 260),
-    (details.fullTab ? viewport.height : Math.min(viewport.height, 560)) - 70);
+    (details.fullTab || details.mobile ? viewport.height : Math.min(viewport.height, 560)) - 70);
   for (let i = 0; i < 12; i++) { await page.mouse.wheel(0, 700); await pause(60); }
   const state = await geometry(locator);
   results.push({ name, ...details, ...state });
@@ -91,6 +91,14 @@ async function checkTheme(context) {
       for (const [width, height, fullTab] of cases) {
         const page = await context.newPage();
         await page.setViewportSize({ width, height });
+        const mobile = !fullTab && (width !== 360 || height !== 560);
+        if (mobile) {
+          const cdp = await context.newCDPSession(page);
+          await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+          await cdp.send('Emulation.setUserAgentOverride', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36',
+          });
+        }
         await page.goto(`chrome-extension://${id}/index.html${fullTab ? '?mode=tab' : ''}`);
         await page.evaluate(language => chrome.storage.local.set({ app_language: language, auto_sync_enabled: false,
           scheduled_sync_enabled: false, storage_type: 'webdav' }), language);
@@ -102,7 +110,7 @@ async function checkTheme(context) {
         await page.locator('#webdav-url').waitFor();
         await pause(500);
         await page.locator('#webdav-url').fill('https://dav.jianguoyun.com/dav/');
-        const details = { language, width, height, fullTab };
+        const details = { language, width, height, fullTab, mobile };
         const test = page.getByRole('button', { name: zh ? '测试当前输入' : 'Test these inputs', exact: true });
         await reach(page, test, 'webdav-test', details);
         if (!baseline) {

@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react'
 import browser from 'webextension-polyfill'
+import { isMobileBrowser } from '../infrastructure/browser/info'
 
 /**
  * 判断当前是否处于独立大屏模式
@@ -41,6 +42,7 @@ export async function openInFullTab(): Promise<void> {
 
 export function useDisplayMode() {
   const [isFullTab, setIsFullTab] = useState<boolean>(checkIsFullTab)
+  const [isMobile] = useState(isMobileBrowser)
 
   useEffect(() => {
     const handleResize = () => {
@@ -53,6 +55,7 @@ export function useDisplayMode() {
 
   return {
     isFullTab,
+    isMobile,
     openInFullTab,
   }
 }

@@ -89,6 +89,21 @@
 
 /* ===== Component Styles ===== */
 @layer components {
+  /* 原生桌面 popup 从约 25px 的视口开始测量，不能用 max-width:100%
+     或 max-height:100dvh 限制自身，否则尺寸会锁死在初始小方块。 */
+  .compact-layout {
+    width: 360px;
+    height: 560px;
+  }
+
+  /* 手机扩展以页面展示；不依赖部分扩展宿主错误报告的 hover/pointer。 */
+  .compact-layout.mobile-layout {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+  }
+
   .glass-panel {
     @apply bg-card border border-border rounded-xl shadow-sm;
   }

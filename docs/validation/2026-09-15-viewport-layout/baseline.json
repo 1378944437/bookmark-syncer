@@ -1,0 +1,19 @@
+[
+  {
+    "name": "native-action-popup",
+    "width": 25,
+    "height": 25,
+    "contentWidth": 25,
+    "contentHeight": 25,
+    "container": {
+      "x": 0,
+      "y": 0,
+      "width": 25,
+      "height": 25,
+      "top": 0,
+      "right": 25,
+      "bottom": 25,
+      "left": 0
+    }
+  }
+]

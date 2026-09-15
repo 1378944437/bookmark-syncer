@@ -1,15 +1,16 @@
 /**
  * 扩展主容器
- * 弹窗默认 360x560，较矮视口内收缩；全屏独立标签页模式下自适应铺满
+ * 桌面弹窗提供固定测量尺寸；手机紧凑页铺满视口；独立控制台自然延展
  */
 import type { ReactNode } from 'react'
 
 interface LayoutWrapperProps {
   children: ReactNode
   isFullTab?: boolean
+  isMobile?: boolean
 }
 
-export const LayoutWrapper = ({ children, isFullTab = false }: LayoutWrapperProps) => {
+export const LayoutWrapper = ({ children, isFullTab = false, isMobile = false }: LayoutWrapperProps) => {
   if (isFullTab) {
     return (
       <div className="relative min-h-[100dvh] w-full bg-background text-foreground font-sans flex flex-col transition-colors duration-300 overflow-x-hidden pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
@@ -38,7 +39,7 @@ export const LayoutWrapper = ({ children, isFullTab = false }: LayoutWrapperProp
   }
 
   return (
-    <div className="relative w-[360px] max-w-full h-[560px] max-h-[100dvh] bg-background text-foreground font-sans overflow-hidden rounded-xl flex flex-col transition-colors duration-300 border border-border/70 dark:border-white/[0.08]">
+    <div className={`compact-layout ${isMobile ? 'mobile-layout' : ''} relative bg-background text-foreground font-sans overflow-hidden rounded-xl flex flex-col transition-colors duration-300 border border-border/70 dark:border-white/[0.08]`}>
       {/* 弹窗微光 */}
       <div
         className="absolute -top-20 -left-20 w-80 h-80 rounded-full pointer-events-none transition-opacity duration-700 opacity-90 dark:opacity-80"

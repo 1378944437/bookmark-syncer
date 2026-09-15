@@ -83,7 +83,7 @@ Local repairs and isolated validation are complete, including Edge integration, 
 
 Use the [actual usage checklist](docs/ACTUAL_USAGE_CHECKLIST.md) when validating in a real environment.
 
-Version 1.5.4 fixes clipped settings controls and improves mobile theme integration. See the [local package guide](docs/LOCAL_PACKAGES_1.5.4.md) (Chinese): load the extracted package in Chrome/Edge; the unsigned Firefox package is for temporary testing.
+Version 1.5.5 fixes unused space below mobile pages and desktop popups collapsing into a small square, while preserving settings scrolling and theme integration. See the [local package guide](docs/LOCAL_PACKAGES_1.5.5.md) (Chinese): load the extracted package in Chrome/Edge; the unsigned Firefox package is for temporary testing.
 
 ## 🏢 Common WebDAV Provider Quick Reference
 

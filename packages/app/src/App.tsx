@@ -12,7 +12,7 @@ import { useDisplayMode } from './hooks/useDisplayMode'
 import { I18nProvider } from './i18n'
 
 function App() {
-  const { isFullTab } = useDisplayMode()
+  const { isFullTab, isMobile } = useDisplayMode()
   const [activeTab, setActiveTab] = useState<'sync' | 'settings'>('sync')
 
   return (
@@ -21,7 +21,7 @@ function App() {
     <ErrorBoundary>
       <I18nProvider>
         <ThemeProvider>
-          <LayoutWrapper isFullTab={isFullTab}>
+          <LayoutWrapper isFullTab={isFullTab} isMobile={isMobile}>
             {isFullTab ? (
               <FullTabConsole />
             ) : (
